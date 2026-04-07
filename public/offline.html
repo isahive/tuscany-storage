@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Offline — Tuscany Village Storage</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'DM Sans', Arial, sans-serif;
+      background: #FAF7F2;
+      color: #1C0F06;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 24px;
+      text-align: center;
+    }
+    .container { max-width: 400px; }
+    .icon {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      background: #EDE5D8;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 24px;
+    }
+    .icon svg { width: 40px; height: 40px; color: #8A7B6B; }
+    h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    p { color: #8A7B6B; margin-bottom: 24px; line-height: 1.5; }
+    button {
+      background: #B8914A;
+      color: #1C0F06;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 4px;
+      font-weight: 500;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+    button:hover { background: #D4A96A; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="icon">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M18.364 5.636a9 9 0 010 12.728M5.636 18.364a9 9 0 010-12.728M12 9v4m0 4h.01" />
+      </svg>
+    </div>
+    <h1>You're offline</h1>
+    <p>It looks like you've lost your internet connection. Please check your connection and try again.</p>
+    <button onclick="window.location.reload()">Retry</button>
+  </div>
+</body>
+</html>
