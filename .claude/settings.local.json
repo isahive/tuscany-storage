@@ -8,7 +8,9 @@
       "Bash(echo \"=== ALL FILES ===\" && find app/admin -name \"*.tsx\" | sort && echo \"\" && echo \"=== DAY 5 FILES ===\" && ls app/sitemap.ts app/robots.ts app/\\\\\\(public\\\\\\)/loading.tsx app/\\\\\\(public\\\\\\)/error.tsx app/admin/loading.tsx app/admin/error.tsx app/portal/loading.tsx app/portal/error.tsx components/shared/SignatureCanvas.tsx app/portal/lease/sign/page.tsx public/offline.html 2>&1 && echo \"\" && echo \"=== SEO LAYOUTS ===\" && find app/\\\\\\(public\\\\\\) -name \"layout.tsx\" | sort && echo \"\" && echo \"=== UNIT DETAIL ===\" && ls app/\\\\\\(public\\\\\\)/units/\\\\[slug\\\\]/page.tsx 2>&1)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(git merge:*)"
+      "Bash(git merge:*)",
+      "Bash(git push:*)",
+      "Bash(gh pr:*)"
     ]
   }
 }
