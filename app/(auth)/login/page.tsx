@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { signIn } from 'next-auth/react'
+import { signIn, getSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import {
   Box,
@@ -42,7 +42,12 @@ export default function LoginPage() {
     if (!result || result.error) {
       setError('Invalid email or password. Please try again.')
     } else {
-      router.push('/portal')
+      const session = await getSession()
+      if (session?.user?.role === 'admin') {
+        router.push('/admin')
+      } else {
+        router.push('/portal')
+      }
     }
   }
 
