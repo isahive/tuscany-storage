@@ -1,5 +1,8 @@
 import type { NextAuthOptions } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
+import GoogleProvider from 'next-auth/providers/google'
+import FacebookProvider from 'next-auth/providers/facebook'
+import AppleProvider from 'next-auth/providers/apple'
 import bcrypt from 'bcryptjs'
 import { connectDB } from './db'
 import Tenant from '@/models/Tenant'
@@ -20,8 +23,17 @@ function checkLoginRateLimit(email: string): boolean {
   return entry.count <= MAX_LOGIN_ATTEMPTS
 }
 
+// Split full name into first/last best-effort
+function splitName(name: string): { firstName: string; lastName: string } {
+  const parts = (name ?? '').trim().split(/\s+/)
+  const firstName = parts[0] ?? 'Unknown'
+  const lastName = parts.slice(1).join(' ') || '-'
+  return { firstName, lastName }
+}
+
 export const authOptions: NextAuthOptions = {
   providers: [
+    // ─── Credentials ──────────────────────────────────────────────────────────
     CredentialsProvider({
       name: 'credentials',
       credentials: {
@@ -33,7 +45,6 @@ export const authOptions: NextAuthOptions = {
 
         const emailKey = credentials.email.toLowerCase()
 
-        // Rate limit login attempts per email
         if (!checkLoginRateLimit(emailKey)) {
           throw new Error('Too many login attempts. Please try again in 15 minutes.')
         }
@@ -46,7 +57,6 @@ export const authOptions: NextAuthOptions = {
         const isValid = await bcrypt.compare(credentials.password, tenant.password)
         if (!isValid) return null
 
-        // Reset attempts on successful login
         loginAttempts.delete(emailKey)
 
         return {
@@ -57,15 +67,90 @@ export const authOptions: NextAuthOptions = {
         }
       },
     }),
+
+    // ─── Google ───────────────────────────────────────────────────────────────
+    ...(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
+      ? [
+          GoogleProvider({
+            clientId: process.env.GOOGLE_CLIENT_ID,
+            clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+          }),
+        ]
+      : []),
+
+    // ─── Facebook ─────────────────────────────────────────────────────────────
+    ...(process.env.FACEBOOK_CLIENT_ID && process.env.FACEBOOK_CLIENT_SECRET
+      ? [
+          FacebookProvider({
+            clientId: process.env.FACEBOOK_CLIENT_ID,
+            clientSecret: process.env.FACEBOOK_CLIENT_SECRET,
+          }),
+        ]
+      : []),
+
+    // ─── Apple ────────────────────────────────────────────────────────────────
+    ...(process.env.APPLE_ID && process.env.APPLE_SECRET
+      ? [
+          AppleProvider({
+            clientId: process.env.APPLE_ID,
+            clientSecret: process.env.APPLE_SECRET,
+          }),
+        ]
+      : []),
   ],
+
   callbacks: {
-    async jwt({ token, user }) {
+    async signIn({ user, account }) {
+      // Social login: find or create tenant
+      if (account?.provider && account.provider !== 'credentials') {
+        if (!user.email) return false
+
+        await connectDB()
+
+        const existing = await Tenant.findOne({ email: user.email.toLowerCase() })
+
+        if (!existing) {
+          const { firstName, lastName } = splitName(user.name ?? '')
+          // Create a tenant with a random unusable password (social login only)
+          const randomPassword = await bcrypt.hash(Math.random().toString(36), 12)
+          await Tenant.create({
+            email: user.email.toLowerCase(),
+            firstName,
+            lastName,
+            phone: '',
+            password: randomPassword,
+            role: 'tenant',
+            status: 'active',
+            autopayEnabled: false,
+            smsOptIn: false,
+          })
+        }
+
+        return true
+      }
+
+      return true
+    },
+
+    async jwt({ token, user, account }) {
       if (user) {
         token.id = user.id
-        token.role = user.role
+        token.role = (user as { role?: string }).role ?? 'tenant'
       }
+
+      // For social logins, fetch role from DB
+      if (account?.provider && account.provider !== 'credentials' && token.email) {
+        await connectDB()
+        const tenant = await Tenant.findOne({ email: token.email.toLowerCase() })
+        if (tenant) {
+          token.id = tenant._id.toString()
+          token.role = tenant.role
+        }
+      }
+
       return token
     },
+
     async session({ session, token }) {
       if (session.user) {
         session.user.id = token.id as string
@@ -74,11 +159,14 @@ export const authOptions: NextAuthOptions = {
       return session
     },
   },
+
   pages: {
     signIn: '/login',
   },
+
   session: {
     strategy: 'jwt',
   },
+
   secret: process.env.NEXTAUTH_SECRET,
 }
