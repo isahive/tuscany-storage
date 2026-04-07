@@ -53,6 +53,51 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="TuscanyStorage" />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              '@context': 'https://schema.org',
+              '@type': 'LocalBusiness',
+              '@id': 'https://tuscanystorage.com',
+              name: 'Tuscany Village Self Storage',
+              description:
+                'Safe, clean, and affordable storage units in Florence, SC. Climate-controlled, drive-up, and vehicle storage available.',
+              url: 'https://tuscanystorage.com',
+              telephone: '+1-843-555-0100',
+              address: {
+                '@type': 'PostalAddress',
+                streetAddress: '1234 Tuscany Blvd',
+                addressLocality: 'Florence',
+                addressRegion: 'SC',
+                postalCode: '29501',
+                addressCountry: 'US',
+              },
+              geo: {
+                '@type': 'GeoCoordinates',
+                latitude: 34.1954,
+                longitude: -79.7626,
+              },
+              openingHoursSpecification: [
+                {
+                  '@type': 'OpeningHoursSpecification',
+                  dayOfWeek: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
+                  opens: '09:00',
+                  closes: '18:00',
+                },
+                {
+                  '@type': 'OpeningHoursSpecification',
+                  dayOfWeek: 'Saturday',
+                  opens: '09:00',
+                  closes: '14:00',
+                },
+              ],
+              image: 'https://tuscanystorage.com/images/facility.jpg',
+              priceRange: '$$',
+              sameAs: [],
+            }),
+          }}
+        />
       </head>
       <body>{children}</body>
     </html>
