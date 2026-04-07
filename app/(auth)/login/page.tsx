@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { signIn, getSession } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import {
   Box,
   Card,
@@ -49,13 +49,32 @@ function AppleIcon() {
 
 // ── Page ────────────────────────────────────────────────────────────────────
 
+const AUTH_ERROR_MESSAGES: Record<string, string> = {
+  OAuthSignin: 'Could not start sign-in with this provider. Check that it is configured in the dashboard.',
+  OAuthCallback: 'Error during OAuth callback. The provider may not be configured yet.',
+  OAuthCreateAccount: 'Could not create an account with this provider.',
+  OAuthAccountNotLinked: 'This email is already registered with a different sign-in method.',
+  Configuration: 'Server configuration error. Please contact support.',
+  AccessDenied: 'Access denied.',
+  Verification: 'The verification link has expired or already been used.',
+  Default: 'An unexpected error occurred. Please try again.',
+}
+
 export default function LoginPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [socialLoading, setSocialLoading] = useState<string | null>(null)
+
+  useEffect(() => {
+    const errorCode = searchParams.get('error')
+    if (errorCode) {
+      setError(AUTH_ERROR_MESSAGES[errorCode] ?? AUTH_ERROR_MESSAGES.Default)
+    }
+  }, [searchParams])
 
   const redirectAfterLogin = async () => {
     const session = await getSession()
