@@ -1799,6 +1799,76 @@ None — this endpoint always returns 200.
 
 ---
 
+## 12. Card Management (`/api/payments/setup-intent`, `/api/payments/confirm-setup`)
+
+These endpoints allow tenants to save or update their payment method (credit/debit card) for autopay. **No card data touches our server** — only Stripe reference IDs are stored.
+
+---
+
+### [POST] /api/payments/setup-intent
+
+**Auth:** Required (tenant or admin)
+**Description:** Creates a Stripe SetupIntent so the frontend can collect card details securely. If the tenant doesn't have a Stripe Customer yet, one is created automatically.
+
+**Request Body:** None (empty `{}`)
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "clientSecret": "seti_1ABC...secret_XYZ",
+    "customerId": "cus_abc123"
+  }
+}
+```
+
+**Frontend flow:**
+1. Call this endpoint to get `clientSecret`
+2. Pass it to Stripe's `<Elements>` + `<PaymentElement>`
+3. Call `stripe.confirmSetup()` — Stripe handles card collection
+4. On success, call `/api/payments/confirm-setup` with the resulting `paymentMethodId`
+
+---
+
+### [POST] /api/payments/confirm-setup
+
+**Auth:** Required (tenant or admin)
+**Description:** After the frontend confirms a SetupIntent with Stripe, this endpoint saves the new `paymentMethodId` as the tenant's default payment method. Also sets it as the default on the Stripe Customer.
+
+**Request Body:**
+```json
+{
+  "paymentMethodId": "pm_1ABC..."   // required — from Stripe's confirmSetup result
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "paymentMethodId": "pm_1ABC...",
+    "card": {
+      "brand": "visa",
+      "last4": "4242",
+      "expMonth": 12,
+      "expYear": 2028
+    }
+  }
+}
+```
+
+**Error Codes:**
+
+| Code | Description |
+|---|---|
+| 401 | Not authenticated |
+| 400 | Missing or invalid `paymentMethodId` |
+| 404 | Tenant not found |
+
+---
+
 ## Notes
 
 - **Monetary values** are stored as integers in cents (e.g., `15000` = $150.00).
