@@ -24,7 +24,6 @@ export async function POST(req: NextRequest) {
     }
 
     // Verify signature and parse event
-    // eslint-disable-next-line no-explicit-any
     let event: { type: string; data: { object: any } };
 
     try {
