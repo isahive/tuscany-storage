@@ -1,0 +1,26 @@
+{
+  "name": "Tuscany Village Storage",
+  "short_name": "TuscanyStorage",
+  "description": "Manage your storage unit, pay rent, and get your gate code from anywhere.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#1C0F06",
+  "background_color": "#FAF7F2",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["business", "utilities"],
+  "lang": "en-US"
+}

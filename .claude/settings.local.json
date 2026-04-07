@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npm run:*)",
+      "Bash(cd \"C:\\\\Users\\\\isabe\\\\OneDrive\\\\Desktop\\\\HiveMedia\\\\tuscany-storage\" && rm -rf .next && npm run build 2>&1)"
+    ]
+  }
+}
