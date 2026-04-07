@@ -10,6 +10,10 @@ const withPWA = withPWAInit({
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  reactStrictMode: true,
+  experimental: {
+    serverComponentsExternalPackages: ['mongoose', 'pdfkit', 'twilio', '@sendgrid/mail'],
+  },
   images: {
     remotePatterns: [
       {
