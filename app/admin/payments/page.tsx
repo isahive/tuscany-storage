@@ -603,7 +603,7 @@ export default function AdminPaymentsPage() {
               value={dateFrom}
               onChange={(e) => setDateFrom(e.target.value)}
               size="small"
-              slotProps={{ inputLabel: { shrink: true } }}
+              InputLabelProps={{ shrink: true }}
               sx={{ minWidth: 150 }}
             />
             <TextField
@@ -612,7 +612,7 @@ export default function AdminPaymentsPage() {
               value={dateTo}
               onChange={(e) => setDateTo(e.target.value)}
               size="small"
-              slotProps={{ inputLabel: { shrink: true } }}
+              InputLabelProps={{ shrink: true }}
               sx={{ minWidth: 150 }}
             />
             {(statusFilter !== 'all' || typeFilter !== 'all' || dateFrom || dateTo) && (
