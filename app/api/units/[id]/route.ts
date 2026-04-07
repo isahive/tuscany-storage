@@ -41,6 +41,9 @@ const updateUnitSchema = z.object({
   status: z.enum(['available', 'occupied', 'maintenance', 'reserved']).optional(),
   features: z.array(z.string()).optional(),
   notes: z.string().optional(),
+  gridX: z.number().int().min(0).optional(),
+  gridY: z.number().int().min(0).optional(),
+  gridFloor: z.number().int().min(1).optional(),
 })
 
 export async function PATCH(req: NextRequest, context: RouteContext) {

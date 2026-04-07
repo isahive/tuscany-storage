@@ -15,6 +15,9 @@ export interface IUnitDocument extends Document {
   currentTenantId?: Types.ObjectId
   currentLeaseId?: Types.ObjectId
   notes?: string
+  gridX?: number
+  gridY?: number
+  gridFloor?: number
   createdAt: Date
   updatedAt: Date
 }
@@ -42,6 +45,9 @@ const UnitSchema = new Schema<IUnitDocument>(
     currentTenantId: { type: Schema.Types.ObjectId, ref: 'Tenant' },
     currentLeaseId: { type: Schema.Types.ObjectId, ref: 'Lease' },
     notes: { type: String },
+    gridX: { type: Number },
+    gridY: { type: Number },
+    gridFloor: { type: Number, default: 1 },
   },
   { timestamps: true }
 )

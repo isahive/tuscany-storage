@@ -1,122 +1,608 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useCallback, DragEvent } from 'react'
 import {
+  Alert,
   Box,
+  Button,
   Card,
   CardContent,
-  Typography,
-  Button,
-  TextField,
-  Alert,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogContentText,
-  DialogActions,
-  Divider,
-  List,
-  ListItem,
-  ListItemIcon,
-  ListItemText,
+  Checkbox,
   Chip,
+  CircularProgress,
+  Divider,
+  FormControlLabel,
+  Step,
+  StepLabel,
+  Stepper,
+  Typography,
 } from '@mui/material'
-import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
-import CheckIcon from '@mui/icons-material/Check'
-import WarningAmberIcon from '@mui/icons-material/WarningAmber'
+import CheckCircleIcon from '@mui/icons-material/CheckCircle'
+import CreditCardIcon from '@mui/icons-material/CreditCard'
+import CloudUploadIcon from '@mui/icons-material/CloudUpload'
+import StorageIcon from '@mui/icons-material/Storage'
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth'
-import MoveToInboxIcon from '@mui/icons-material/MoveToInbox'
+import { formatMoney, formatDate } from '@/lib/utils'
 
-const formatMoney = (cents: number): string =>
-  new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(cents / 100)
+// ─── Placeholder upload function (Cloudflare R2 to be wired in later) ─────────
 
-const formatDate = (date: string | Date): string =>
-  new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(date))
-
-// ─── Mock data ────────────────────────────────────────────────────────────────
-
-const MOCK_LEASE = {
-  unitNumber: '14B',
-  monthlyRate: 16500,
-  billingDay: 15,
-  deposit: 16500,
-  startDate: '2024-11-01',
+async function uploadPhoto(_file: File): Promise<string> {
+  // TODO: replace with real Cloudflare R2 signed-upload flow
+  await new Promise((resolve) => setTimeout(resolve, 400))
+  return `https://storage.example.com/mock/${_file.name.replace(/\s+/g, '-')}`
 }
 
-// ─── Billing implications helper ──────────────────────────────────────────────
+// ─── Mock tenant/unit data ────────────────────────────────────────────────────
+// TODO: fetch real data from GET /api/leases?status=active and GET /api/units/:id
 
-function computeImplications(moveOutDate: string) {
-  if (!moveOutDate) return null
+const MOCK_UNIT = {
+  unitNumber: 'B-14',
+  size: '10×20',
+  monthlyRate: 16500, // cents — $165.00
+}
 
-  const date = new Date(moveOutDate)
-  const day = date.getDate()
-  const billingDay = MOCK_LEASE.billingDay
+const MOCK_CARD = {
+  last4: '4242',
+  brand: 'Visa',
+}
 
-  // Prorated amount: if move-out is before billing day, they get a refund for unused days;
-  // if after, they owe for days used since billing day.
-  const daysInMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate()
-  const dailyRate = MOCK_LEASE.monthlyRate / daysInMonth
+// ─── Move-out checklist guidelines ────────────────────────────────────────────
 
-  let proratedNote: string
-  let depositNote: string
+const GUIDELINES = [
+  'I will remove all belongings by the move-out date',
+  'I will clean the unit and return it in original condition',
+  'I understand final month may be prorated',
+  'I confirm there are no outstanding balances',
+] as const
 
-  if (day < billingDay) {
-    const unusedDays = billingDay - day
-    const credit = Math.round(dailyRate * unusedDays)
-    proratedNote = `Prorated credit of ${formatMoney(credit)} for ${unusedDays} unused days (before billing day).`
-  } else if (day === billingDay) {
-    proratedNote = 'Moving out on your billing day — no prorated adjustment needed.'
-  } else {
-    const usedDays = day - billingDay
-    const owed = Math.round(dailyRate * usedDays)
-    proratedNote = `Prorated charge of ${formatMoney(owed)} for ${usedDays} days used since last billing.`
+const STEPS = ['Confirm Your Information', 'Upload Unit Photos', 'Confirm Submission']
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function minMoveOutDate(): string {
+  const d = new Date()
+  d.setDate(d.getDate() + 30)
+  return d.toISOString().split('T')[0]
+}
+
+// ─── Step 1 ───────────────────────────────────────────────────────────────────
+
+interface Step1Props {
+  moveOutDate: string
+  cardConfirmed: boolean
+  checkedGuidelines: Record<string, boolean>
+  onDateChange: (v: string) => void
+  onCardConfirmedChange: (v: boolean) => void
+  onGuidelineChange: (label: string, v: boolean) => void
+  onNext: () => void
+}
+
+function Step1({
+  moveOutDate,
+  cardConfirmed,
+  checkedGuidelines,
+  onDateChange,
+  onCardConfirmedChange,
+  onGuidelineChange,
+  onNext,
+}: Step1Props) {
+  const allGuidelinesChecked = GUIDELINES.every((g) => checkedGuidelines[g])
+  const canProceed = moveOutDate !== '' && cardConfirmed && allGuidelinesChecked
+
+  return (
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+      {/* Unit info */}
+      <Card variant="outlined" sx={{ border: '1px solid #EDE5D8', boxShadow: 'none' }}>
+        <CardContent sx={{ p: 3 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+            <StorageIcon sx={{ color: 'primary.main' }} />
+            <Typography variant="subtitle1" fontWeight={600}>
+              Your Current Unit
+            </Typography>
+          </Box>
+          <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
+            <Box>
+              <Typography variant="caption" color="text.secondary">
+                Unit Number
+              </Typography>
+              <Typography variant="body1" fontWeight={600}>
+                {MOCK_UNIT.unitNumber}
+              </Typography>
+            </Box>
+            <Box>
+              <Typography variant="caption" color="text.secondary">
+                Size
+              </Typography>
+              <Typography variant="body1" fontWeight={600}>
+                {MOCK_UNIT.size} ft
+              </Typography>
+            </Box>
+            <Box>
+              <Typography variant="caption" color="text.secondary">
+                Monthly Rate
+              </Typography>
+              <Typography variant="body1" fontWeight={600}>
+                {formatMoney(MOCK_UNIT.monthlyRate)}
+              </Typography>
+            </Box>
+          </Box>
+        </CardContent>
+      </Card>
+
+      {/* Move-out date */}
+      <Card variant="outlined" sx={{ border: '1px solid #EDE5D8', boxShadow: 'none' }}>
+        <CardContent sx={{ p: 3 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+            <CalendarMonthIcon sx={{ color: 'primary.main' }} />
+            <Typography variant="subtitle1" fontWeight={600}>
+              Requested Move-Out Date
+            </Typography>
+          </Box>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+            Please give at least 30 days&apos; notice. Earliest available:{' '}
+            <strong>{formatDate(minMoveOutDate())}</strong>.
+          </Typography>
+          <input
+            type="date"
+            min={minMoveOutDate()}
+            value={moveOutDate}
+            onChange={(e) => onDateChange(e.target.value)}
+            style={{
+              padding: '10px 14px',
+              border: '1px solid #EDE5D8',
+              borderRadius: 4,
+              fontFamily: '"DM Sans", Arial, sans-serif',
+              fontSize: '0.9375rem',
+              color: '#1C0F06',
+              background: '#FFFFFF',
+              cursor: 'pointer',
+              outline: 'none',
+            }}
+          />
+        </CardContent>
+      </Card>
+
+      {/* Payment method */}
+      <Card variant="outlined" sx={{ border: '1px solid #EDE5D8', boxShadow: 'none' }}>
+        <CardContent sx={{ p: 3 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+            <CreditCardIcon sx={{ color: 'primary.main' }} />
+            <Typography variant="subtitle1" fontWeight={600}>
+              Payment Method on File
+            </Typography>
+          </Box>
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1.5,
+              p: 2,
+              bgcolor: '#FAF7F2',
+              borderRadius: 1,
+              border: '1px solid #EDE5D8',
+              mb: 2,
+            }}
+          >
+            <CreditCardIcon sx={{ color: 'text.secondary', fontSize: '1.25rem' }} />
+            <Typography variant="body2" fontWeight={500}>
+              {MOCK_CARD.brand} ••••{MOCK_CARD.last4}
+            </Typography>
+          </Box>
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={cardConfirmed}
+                onChange={(e) => onCardConfirmedChange(e.target.checked)}
+                color="primary"
+              />
+            }
+            label={
+              <Typography variant="body2">My payment information is up to date</Typography>
+            }
+          />
+        </CardContent>
+      </Card>
+
+      {/* Guidelines checklist */}
+      <Card variant="outlined" sx={{ border: '1px solid #EDE5D8', boxShadow: 'none' }}>
+        <CardContent sx={{ p: 3 }}>
+          <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 0.5 }}>
+            Move-Out Guidelines
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Please confirm each item before continuing.
+          </Typography>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+            {GUIDELINES.map((guideline) => (
+              <FormControlLabel
+                key={guideline}
+                control={
+                  <Checkbox
+                    checked={checkedGuidelines[guideline] ?? false}
+                    onChange={(e) => onGuidelineChange(guideline, e.target.checked)}
+                    color="primary"
+                  />
+                }
+                label={<Typography variant="body2">{guideline}</Typography>}
+                sx={{ alignItems: 'flex-start', '& .MuiCheckbox-root': { pt: 0.25 } }}
+              />
+            ))}
+          </Box>
+        </CardContent>
+      </Card>
+
+      <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+        <Button variant="contained" disabled={!canProceed} onClick={onNext} size="large">
+          Continue
+        </Button>
+      </Box>
+    </Box>
+  )
+}
+
+// ─── Step 2 ───────────────────────────────────────────────────────────────────
+
+interface Step2Props {
+  files: File[]
+  onFilesChange: (files: File[]) => void
+  onNext: () => void
+  onBack: () => void
+}
+
+function Step2({ files, onFilesChange, onNext, onBack }: Step2Props) {
+  const [dragOver, setDragOver] = useState(false)
+
+  const addFiles = useCallback(
+    (incoming: FileList | null) => {
+      if (!incoming) return
+      const imageFiles = Array.from(incoming).filter((f) => f.type.startsWith('image/'))
+      onFilesChange([...files, ...imageFiles])
+    },
+    [files, onFilesChange],
+  )
+
+  const handleDrop = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    setDragOver(false)
+    addFiles(e.dataTransfer.files)
   }
 
-  depositNote = `Security deposit of ${formatMoney(MOCK_LEASE.deposit)} will be returned within 30 days after move-out inspection, less any damages.`
+  const handleRemove = (index: number) => {
+    onFilesChange(files.filter((_, i) => i !== index))
+  }
 
-  return { proratedNote, depositNote }
+  const canProceed = files.length >= 1
+
+  return (
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+      <Alert severity="info" sx={{ borderRadius: 1 }}>
+        Please take at least 2 photos of your empty unit — front, back, and any corners with
+        damage. Photos will be uploaded when you submit the form.
+      </Alert>
+
+      {/* Drag-zone */}
+      <Box
+        onDragOver={(e) => {
+          e.preventDefault()
+          setDragOver(true)
+        }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={handleDrop}
+        sx={{
+          border: `2px dashed ${dragOver ? '#B8914A' : '#EDE5D8'}`,
+          borderRadius: 2,
+          p: 5,
+          textAlign: 'center',
+          bgcolor: dragOver ? 'rgba(184,145,74,0.06)' : '#FAF7F2',
+          transition: 'border-color 0.15s, background-color 0.15s',
+          cursor: 'pointer',
+        }}
+        onClick={() => document.getElementById('photo-upload-input')?.click()}
+        role="button"
+        aria-label="Upload photos"
+      >
+        <CloudUploadIcon sx={{ fontSize: 48, color: 'primary.main', mb: 1 }} />
+        <Typography variant="body1" fontWeight={500} color="secondary.main">
+          Drag &amp; drop photos here, or click to browse
+        </Typography>
+        <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
+          Accepts JPG, PNG, HEIC — multiple files allowed
+        </Typography>
+        <input
+          id="photo-upload-input"
+          type="file"
+          accept="image/*"
+          multiple
+          hidden
+          onChange={(e) => addFiles(e.target.files)}
+        />
+      </Box>
+
+      {/* Thumbnails */}
+      {files.length > 0 && (
+        <Box>
+          <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1.5 }}>
+            Selected Photos ({files.length})
+          </Typography>
+          <Box
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))',
+              gap: 1.5,
+            }}
+          >
+            {files.map((file, index) => (
+              <Box
+                key={`${file.name}-${index}`}
+                sx={{ position: 'relative', borderRadius: 1, overflow: 'hidden' }}
+              >
+                <Box
+                  component="img"
+                  src={URL.createObjectURL(file)}
+                  alt={file.name}
+                  sx={{
+                    width: '100%',
+                    aspectRatio: '1',
+                    objectFit: 'cover',
+                    display: 'block',
+                    border: '1px solid #EDE5D8',
+                    borderRadius: 1,
+                  }}
+                />
+                <Box
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleRemove(index)
+                  }}
+                  role="button"
+                  aria-label={`Remove ${file.name}`}
+                  sx={{
+                    position: 'absolute',
+                    top: 4,
+                    right: 4,
+                    bgcolor: 'rgba(28,15,6,0.7)',
+                    color: 'white',
+                    borderRadius: '50%',
+                    width: 22,
+                    height: 22,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '0.75rem',
+                    cursor: 'pointer',
+                    lineHeight: 1,
+                    '&:hover': { bgcolor: 'rgba(28,15,6,0.9)' },
+                  }}
+                >
+                  ✕
+                </Box>
+                <Typography
+                  variant="caption"
+                  display="block"
+                  sx={{
+                    mt: 0.5,
+                    fontSize: '0.7rem',
+                    color: 'text.secondary',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {file.name}
+                </Typography>
+              </Box>
+            ))}
+          </Box>
+        </Box>
+      )}
+
+      {!canProceed && (
+        <Typography variant="caption" color="error">
+          At least 1 photo is required to continue.
+        </Typography>
+      )}
+
+      <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+        <Button variant="text" onClick={onBack} sx={{ color: 'text.secondary' }}>
+          Back
+        </Button>
+        <Button variant="contained" disabled={!canProceed} onClick={onNext} size="large">
+          Continue
+        </Button>
+      </Box>
+    </Box>
+  )
+}
+
+// ─── Step 3 ───────────────────────────────────────────────────────────────────
+
+interface Step3Props {
+  moveOutDate: string
+  cardConfirmed: boolean
+  photoCount: number
+  submitting: boolean
+  onBack: () => void
+  onSubmit: () => void
+}
+
+function Step3({ moveOutDate, cardConfirmed, photoCount, submitting, onBack, onSubmit }: Step3Props) {
+  return (
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+      <Typography variant="body2" color="text.secondary">
+        Please review your submission details below before confirming.
+      </Typography>
+
+      <Card variant="outlined" sx={{ border: '1px solid #EDE5D8', boxShadow: 'none' }}>
+        <CardContent sx={{ p: 3 }}>
+          <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 2 }}>
+            Submission Summary
+          </Typography>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Typography variant="body2" color="text.secondary">
+                Unit
+              </Typography>
+              <Typography variant="body2" fontWeight={500}>
+                {MOCK_UNIT.unitNumber} ({MOCK_UNIT.size} ft)
+              </Typography>
+            </Box>
+            <Divider />
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Typography variant="body2" color="text.secondary">
+                Requested Move-Out Date
+              </Typography>
+              <Typography variant="body2" fontWeight={500}>
+                {moveOutDate ? formatDate(moveOutDate) : '—'}
+              </Typography>
+            </Box>
+            <Divider />
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Typography variant="body2" color="text.secondary">
+                Payment Info Confirmed
+              </Typography>
+              <Chip
+                label={cardConfirmed ? 'Yes' : 'No'}
+                size="small"
+                sx={{
+                  bgcolor: cardConfirmed ? '#D1FAE5' : '#FEE2E2',
+                  color: cardConfirmed ? '#065F46' : '#991B1B',
+                  fontWeight: 600,
+                }}
+              />
+            </Box>
+            <Divider />
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Typography variant="body2" color="text.secondary">
+                Photos Attached
+              </Typography>
+              <Typography variant="body2" fontWeight={500}>
+                {photoCount} {photoCount === 1 ? 'photo' : 'photos'}
+              </Typography>
+            </Box>
+          </Box>
+        </CardContent>
+      </Card>
+
+      <Alert severity="warning" sx={{ borderRadius: 1 }}>
+        Once submitted, the admin will review your request and respond within 24 hours.
+      </Alert>
+
+      <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+        <Button variant="text" onClick={onBack} disabled={submitting} sx={{ color: 'text.secondary' }}>
+          Back
+        </Button>
+        <Button
+          variant="contained"
+          size="large"
+          onClick={onSubmit}
+          disabled={submitting}
+          startIcon={submitting ? <CircularProgress size={16} color="inherit" /> : undefined}
+        >
+          {submitting ? 'Submitting…' : 'Submit Request'}
+        </Button>
+      </Box>
+    </Box>
+  )
+}
+
+// ─── Success screen ───────────────────────────────────────────────────────────
+
+function SuccessScreen() {
+  return (
+    <Box
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        textAlign: 'center',
+        py: 6,
+        px: 3,
+        gap: 2,
+      }}
+    >
+      <CheckCircleIcon sx={{ fontSize: 72, color: '#16A34A' }} />
+      <Typography
+        variant="h5"
+        sx={{ fontFamily: '"Playfair Display", serif', color: 'secondary.main', fontWeight: 700 }}
+      >
+        Request Submitted
+      </Typography>
+      <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 420 }}>
+        Your move-out request has been submitted. The admin will review it and respond within
+        24 hours. You will receive a confirmation email once a decision has been made.
+      </Typography>
+    </Box>
+  )
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function MoveOutPage() {
-  const today = new Date()
-  // Minimum move-out date: 30 days from today (notice period)
-  const minDate = new Date(today)
-  minDate.setDate(minDate.getDate() + 1)
-  const minDateStr = minDate.toISOString().split('T')[0]
+  const [activeStep, setActiveStep] = useState(0)
+  const [done, setDone] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
+  // Step 1 state
   const [moveOutDate, setMoveOutDate] = useState('')
-  const [confirmOpen, setConfirmOpen] = useState(false)
-  const [submitted, setSubmitted] = useState(false)
+  const [cardConfirmed, setCardConfirmed] = useState(false)
+  const [checkedGuidelines, setCheckedGuidelines] = useState<Record<string, boolean>>(
+    Object.fromEntries(GUIDELINES.map((g) => [g, false])),
+  )
 
-  const implications = moveOutDate ? computeImplications(moveOutDate) : null
-  const canSubmit = moveOutDate.length > 0
+  // Step 2 state
+  const [files, setFiles] = useState<File[]>([])
 
-  const handleSubmit = () => {
-    setConfirmOpen(false)
-    setSubmitted(true)
+  const handleGuidelineChange = (label: string, value: boolean) => {
+    setCheckedGuidelines((prev) => ({ ...prev, [label]: value }))
   }
 
-  if (submitted) {
+  const handleSubmit = async () => {
+    setSubmitting(true)
+    setError(null)
+
+    try {
+      // Upload photos using placeholder function, then collect mock URLs
+      // TODO: replace uploadPhoto() with real Cloudflare R2 signed upload
+      const photoUrls = await Promise.all(files.map((file) => uploadPhoto(file)))
+
+      const res = await fetch('/api/move-out', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          requestedMoveOutDate: new Date(moveOutDate).toISOString(),
+          stripePaymentMethodConfirmed: cardConfirmed,
+          lastFourDigits: MOCK_CARD.last4,
+          photoUrls,
+          guidelinesAccepted: true,
+        }),
+      })
+
+      const json = await res.json()
+      if (!json.success) {
+        throw new Error(json.error ?? 'Failed to submit move-out request.')
+      }
+
+      setDone(true)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  if (done) {
     return (
       <Box>
-        <Typography variant="h5" sx={{ fontFamily: '"Playfair Display", serif', color: 'secondary.main', mb: 3 }}>
-          Move-Out Notice
+        <Typography
+          variant="h5"
+          sx={{ fontFamily: '"Playfair Display", serif', color: 'secondary.main', mb: 3 }}
+        >
+          Move Out
         </Typography>
-        <Card>
-          <CardContent sx={{ p: 3, textAlign: 'center' }}>
-            <CheckIcon sx={{ fontSize: 64, color: '#16A34A', mb: 2 }} />
-            <Typography variant="h6" sx={{ fontFamily: '"Playfair Display", serif', mb: 1 }}>
-              Move-Out Notice Submitted
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              Your scheduled move-out date is <strong>{formatDate(moveOutDate)}</strong>. Our team will
-              reach out to confirm the inspection and deposit return process.
-            </Typography>
-            <Alert severity="info" sx={{ textAlign: 'left', mt: 2 }}>
-              Please ensure the unit is completely emptied, swept, and the lock is removed by your move-out date.
-            </Alert>
+        <Card sx={{ border: '1px solid #EDE5D8', boxShadow: 'none' }}>
+          <CardContent sx={{ p: 0 }}>
+            <SuccessScreen />
           </CardContent>
         </Card>
       </Box>
@@ -125,136 +611,62 @@ export default function MoveOutPage() {
 
   return (
     <Box>
-      <Typography variant="h5" sx={{ fontFamily: '"Playfair Display", serif', color: 'secondary.main', mb: 0.5 }}>
-        Move-Out Notice
+      <Typography
+        variant="h5"
+        sx={{ fontFamily: '"Playfair Display", serif', color: 'secondary.main', mb: 1 }}
+      >
+        Move Out
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-        Submit your move-out notice for Unit {MOCK_LEASE.unitNumber}. Please give at least 1 day&apos;s notice.
+        Complete the steps below to submit your move-out request.
       </Typography>
 
-      <Card sx={{ mb: 2 }}>
-        <CardContent sx={{ p: 3 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2.5 }}>
-            <CalendarMonthIcon sx={{ color: 'primary.main' }} />
-            <Typography variant="subtitle1" fontWeight={600}>Select Move-Out Date</Typography>
-          </Box>
+      {/* Stepper */}
+      <Stepper activeStep={activeStep} sx={{ mb: 4 }} alternativeLabel>
+        {STEPS.map((label) => (
+          <Step key={label}>
+            <StepLabel>{label}</StepLabel>
+          </Step>
+        ))}
+      </Stepper>
 
-          <TextField
-            label="Move-out date"
-            type="date"
-            value={moveOutDate}
-            onChange={(e) => setMoveOutDate(e.target.value)}
-            inputProps={{ min: minDateStr }}
-            InputLabelProps={{ shrink: true }}
-            sx={{ minWidth: 240, mb: 2 }}
-          />
-
-          <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1 }}>
-            Earliest available date: {formatDate(minDateStr)}
-          </Typography>
-        </CardContent>
-      </Card>
-
-      {/* Billing Implications */}
-      {implications && (
-        <Card sx={{ mb: 2 }}>
-          <CardContent sx={{ p: 3 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-              <InfoOutlinedIcon sx={{ color: 'primary.main' }} />
-              <Typography variant="subtitle1" fontWeight={600}>Billing Implications</Typography>
-            </Box>
-
-            <Box sx={{ mb: 2 }}>
-              <Chip
-                label={`Move-out: ${formatDate(moveOutDate)}`}
-                size="small"
-                sx={{ bgcolor: '#DBEAFE', color: '#1E3A5F', fontWeight: 500, mb: 2 }}
-              />
-            </Box>
-
-            <List dense disablePadding>
-              <ListItem disableGutters alignItems="flex-start">
-                <ListItemIcon sx={{ minWidth: 28, mt: 0.5 }}>
-                  <InfoOutlinedIcon sx={{ fontSize: 16, color: 'primary.main' }} />
-                </ListItemIcon>
-                <ListItemText
-                  primary="Prorated rent"
-                  secondary={implications.proratedNote}
-                  primaryTypographyProps={{ fontWeight: 600, fontSize: '0.875rem' }}
-                  secondaryTypographyProps={{ fontSize: '0.8rem' }}
-                />
-              </ListItem>
-              <ListItem disableGutters alignItems="flex-start">
-                <ListItemIcon sx={{ minWidth: 28, mt: 0.5 }}>
-                  <InfoOutlinedIcon sx={{ fontSize: 16, color: 'primary.main' }} />
-                </ListItemIcon>
-                <ListItemText
-                  primary="Security deposit"
-                  secondary={implications.depositNote}
-                  primaryTypographyProps={{ fontWeight: 600, fontSize: '0.875rem' }}
-                  secondaryTypographyProps={{ fontSize: '0.8rem' }}
-                />
-              </ListItem>
-            </List>
-
-            <Divider sx={{ my: 2 }} />
-
-            <Alert severity="warning" icon={<WarningAmberIcon />}>
-              Once submitted, this notice is binding. Contact us if you need to change your move-out date.
-            </Alert>
-          </CardContent>
-        </Card>
+      {error && (
+        <Alert severity="error" sx={{ mb: 3, borderRadius: 1 }} onClose={() => setError(null)}>
+          {error}
+        </Alert>
       )}
 
-      {/* Submit */}
-      <Card>
-        <CardContent sx={{ p: 3 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-            <MoveToInboxIcon sx={{ color: 'primary.main' }} />
-            <Typography variant="subtitle1" fontWeight={600}>Submit Notice</Typography>
-          </Box>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2.5 }}>
-            By submitting, you agree to vacate Unit {MOCK_LEASE.unitNumber} by the selected date and
-            understand the billing implications above.
-          </Typography>
-          <Button
-            variant="contained"
-            size="large"
-            disabled={!canSubmit}
-            onClick={() => setConfirmOpen(true)}
-            startIcon={<MoveToInboxIcon />}
-          >
-            Submit move-out notice
-          </Button>
-        </CardContent>
-      </Card>
+      {activeStep === 0 && (
+        <Step1
+          moveOutDate={moveOutDate}
+          cardConfirmed={cardConfirmed}
+          checkedGuidelines={checkedGuidelines}
+          onDateChange={setMoveOutDate}
+          onCardConfirmedChange={setCardConfirmed}
+          onGuidelineChange={handleGuidelineChange}
+          onNext={() => setActiveStep(1)}
+        />
+      )}
 
-      {/* Confirmation Dialog */}
-      <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ fontFamily: '"Playfair Display", serif' }}>
-          Confirm Move-Out Notice
-        </DialogTitle>
-        <DialogContent>
-          <DialogContentText sx={{ mb: 2 }}>
-            You are submitting a move-out notice for <strong>Unit {MOCK_LEASE.unitNumber}</strong> with
-            an effective date of <strong>{moveOutDate ? formatDate(moveOutDate) : ''}</strong>.
-          </DialogContentText>
-          {implications && (
-            <Alert severity="info">
-              {implications.proratedNote}
-            </Alert>
-          )}
-          <Alert severity="warning" sx={{ mt: 2 }}>
-            This action cannot be undone without contacting our office.
-          </Alert>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 3 }}>
-          <Button onClick={() => setConfirmOpen(false)}>Go back</Button>
-          <Button variant="contained" color="primary" onClick={handleSubmit} startIcon={<CheckIcon />}>
-            Confirm move-out
-          </Button>
-        </DialogActions>
-      </Dialog>
+      {activeStep === 1 && (
+        <Step2
+          files={files}
+          onFilesChange={setFiles}
+          onNext={() => setActiveStep(2)}
+          onBack={() => setActiveStep(0)}
+        />
+      )}
+
+      {activeStep === 2 && (
+        <Step3
+          moveOutDate={moveOutDate}
+          cardConfirmed={cardConfirmed}
+          photoCount={files.length}
+          submitting={submitting}
+          onBack={() => setActiveStep(1)}
+          onSubmit={handleSubmit}
+        />
+      )}
     </Box>
   )
 }

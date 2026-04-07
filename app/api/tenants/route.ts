@@ -102,6 +102,31 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Email already in use' }, { status: 409 })
     }
 
+    // Duplicate account check: warn admin if same physical address already exists
+    let duplicateWarning: { tenantId: string; name: string; address: string } | null = null
+    if (parsed.data.address && parsed.data.zip) {
+      const normalizeAddr = (s: string) => s.trim().toLowerCase().replace(/\s+/g, ' ')
+      const addrNorm = normalizeAddr(parsed.data.address)
+      const zipNorm = parsed.data.zip.trim()
+
+      const addressMatch = await Tenant.findOne({
+        zip: zipNorm,
+        status: { $ne: 'moved_out' },
+      })
+
+      if (
+        addressMatch &&
+        addressMatch.address &&
+        normalizeAddr(addressMatch.address) === addrNorm
+      ) {
+        duplicateWarning = {
+          tenantId: (addressMatch._id as { toString(): string }).toString(),
+          name: `${addressMatch.firstName} ${addressMatch.lastName}`,
+          address: `${addressMatch.address}, ${addressMatch.city ?? ''} ${addressMatch.state ?? ''} ${addressMatch.zip ?? ''}`.trim(),
+        }
+      }
+    }
+
     const hashedPassword = await bcrypt.hash(parsed.data.password, 12)
 
     const tenant = await Tenant.create({
@@ -113,7 +138,10 @@ export async function POST(req: NextRequest) {
     const tenantObj = tenant.toObject()
     delete (tenantObj as Record<string, unknown>).password
 
-    return NextResponse.json({ success: true, data: tenantObj }, { status: 201 })
+    return NextResponse.json(
+      { success: true, data: tenantObj, duplicateWarning },
+      { status: 201 },
+    )
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Internal server error'
     return NextResponse.json({ success: false, error: message }, { status: 500 })
