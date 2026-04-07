@@ -135,7 +135,7 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user, account }) {
       if (user) {
         token.id = user.id
-        token.role = (user as { role?: string }).role ?? 'tenant'
+        token.role = ((user as { role?: string }).role ?? 'tenant') as 'tenant' | 'admin'
       }
 
       // For social logins, fetch role from DB
