@@ -33,6 +33,7 @@ import WarningIcon from '@mui/icons-material/Warning'
 import TrendingUpIcon from '@mui/icons-material/TrendingUp'
 import ListAltIcon from '@mui/icons-material/ListAlt'
 import SettingsIcon from '@mui/icons-material/Settings'
+import ExitToAppIcon from '@mui/icons-material/ExitToApp'
 import LogoutIcon from '@mui/icons-material/Logout'
 import NavigateNextIcon from '@mui/icons-material/NavigateNext'
 import { usePathname, useRouter } from 'next/navigation'
@@ -48,7 +49,8 @@ const NAV_ITEMS = [
   { label: 'Delinquency',     href: '/admin/delinquency',       icon: <WarningIcon /> },
   { label: 'Rate Management', href: '/admin/rate-management',   icon: <TrendingUpIcon /> },
   { label: 'Waiting List',    href: '/admin/waiting-list',      icon: <ListAltIcon /> },
-  { label: 'Settings',        href: '/admin/settings',          icon: <SettingsIcon /> },
+  { label: 'Move Out',        href: '/admin/move-out',          icon: <ExitToAppIcon /> },
+  { label: 'Setup',           href: '/admin/settings',          icon: <SettingsIcon /> },
 ]
 
 function buildBreadcrumbs(pathname: string) {
