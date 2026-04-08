@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { signIn, getSession } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import {
@@ -47,7 +47,7 @@ function AppleIcon() {
   )
 }
 
-// ── Page ────────────────────────────────────────────────────────────────────
+// ── Error messages map ───────────────────────────────────────────────────────
 
 const AUTH_ERROR_MESSAGES: Record<string, string> = {
   OAuthSignin: 'Could not start sign-in with this provider. Check that it is configured in the dashboard.',
@@ -60,21 +60,28 @@ const AUTH_ERROR_MESSAGES: Record<string, string> = {
   Default: 'An unexpected error occurred. Please try again.',
 }
 
+// ── Reads ?error= from URL — must be in its own component under <Suspense> ──
+
+function OAuthErrorReader({ onError }: { onError: (msg: string) => void }) {
+  const searchParams = useSearchParams()
+  useEffect(() => {
+    const code = searchParams.get('error')
+    if (code) {
+      onError(AUTH_ERROR_MESSAGES[code] ?? AUTH_ERROR_MESSAGES.Default)
+    }
+  }, [searchParams, onError])
+  return null
+}
+
+// ── Page ────────────────────────────────────────────────────────────────────
+
 export default function LoginPage() {
   const router = useRouter()
-  const searchParams = useSearchParams()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [socialLoading, setSocialLoading] = useState<string | null>(null)
-
-  useEffect(() => {
-    const errorCode = searchParams.get('error')
-    if (errorCode) {
-      setError(AUTH_ERROR_MESSAGES[errorCode] ?? AUTH_ERROR_MESSAGES.Default)
-    }
-  }, [searchParams])
 
   const redirectAfterLogin = async () => {
     const session = await getSession()
@@ -113,6 +120,10 @@ export default function LoginPage() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
+      {/* Reads ?error= param without blocking static generation */}
+      <Suspense fallback={null}>
+        <OAuthErrorReader onError={setError} />
+      </Suspense>
       <Box
         sx={{
           minHeight: '100vh',
@@ -152,7 +163,7 @@ export default function LoginPage() {
             </Typography>
 
             {error && (
-              <Alert severity="error" sx={{ mb: 2 }}>
+              <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>
                 {error}
               </Alert>
             )}
