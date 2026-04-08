@@ -74,7 +74,7 @@ interface LeaseObj {
 
 // ── Unit with optional grid fields and possibly-populated refs ─────────────────
 
-interface UnitWithGrid extends Unit {
+interface UnitWithGrid extends Omit<Unit, 'currentTenantId' | 'currentLeaseId'> {
   gridX?: number
   gridY?: number
   gridFloor?: number
