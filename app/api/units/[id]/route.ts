@@ -4,6 +4,8 @@ import { z } from 'zod'
 import { authOptions } from '@/lib/auth'
 import { connectDB } from '@/lib/db'
 import Unit from '@/models/Unit'
+import '@/models/Lease'
+import '@/models/Tenant'
 
 interface RouteContext {
   params: Promise<{ id: string }>

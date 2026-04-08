@@ -2,7 +2,7 @@ import mongoose from 'mongoose'
 import bcrypt from 'bcryptjs'
 
 // Direct imports for script context (no @ alias in ts-node)
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/tuscany'
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/tuscany-storage'
 
 async function seed() {
   console.log('Connecting to MongoDB...')

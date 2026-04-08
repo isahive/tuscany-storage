@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
+import { useParams, useRouter } from 'next/navigation'
 import {
   Alert,
   Box,
@@ -8,13 +9,21 @@ import {
   Card,
   CardContent,
   Chip,
+  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
   Divider,
+  FormControl,
   Grid,
   IconButton,
+  InputAdornment,
+  InputLabel,
+  MenuItem,
+  Select,
+  Skeleton,
+  Snackbar,
   Table,
   TableBody,
   TableCell,
@@ -29,12 +38,12 @@ import EditIcon from '@mui/icons-material/Edit'
 import LockIcon from '@mui/icons-material/Lock'
 import LockOpenIcon from '@mui/icons-material/LockOpen'
 import NotificationsIcon from '@mui/icons-material/Notifications'
-import ExitToAppIcon from '@mui/icons-material/ExitToApp'
-import { useRouter } from 'next/navigation'
+import PaymentIcon from '@mui/icons-material/Payment'
+import RefreshIcon from '@mui/icons-material/Refresh'
 import { formatMoney, formatDate } from '@/lib/utils'
-import type { TenantStatus, PaymentStatus, EventType } from '@/types'
+import type { TenantStatus, PaymentStatus } from '@/types'
 
-// ── Status chip config ────────────────────────────────────────────────────────
+// ── Status config ─────────────────────────────────────────────────────────────
 
 const STATUS_COLORS: Record<TenantStatus, { bg: string; color: string }> = {
   active:      { bg: '#D1FAE5', color: '#065F46' },
@@ -57,172 +66,188 @@ const PAYMENT_STATUS_COLORS: Record<PaymentStatus, { bg: string; color: string }
   refunded:  { bg: '#F3F4F6', color: '#374151' },
 }
 
-// ── Mock data ─────────────────────────────────────────────────────────────────
-
-const MOCK_TENANT = {
-  id: '2',
-  firstName: 'Robert',
-  lastName: 'Chen',
-  email: 'r.chen@email.com',
-  phone: '(512) 555-0102',
-  alternatePhone: '(512) 555-0199',
-  address: '4821 Ridgecrest Dr',
-  city: 'Austin',
-  state: 'TX',
-  zip: '78731',
-  driversLicense: 'TX-DL-889921',
-  status: 'locked_out' as TenantStatus,
-  autopayEnabled: false,
-  smsOptIn: true,
-  referralSource: 'Google',
-  createdAt: '2025-08-14',
+const PAYMENT_TYPE_LABELS: Record<string, string> = {
+  rent:      'Rent',
+  late_fee:  'Late Fee',
+  deposit:   'Deposit',
+  prorated:  'Prorated',
+  other:     'Other',
 }
 
-const MOCK_LEASE = {
-  id: 'lease-1',
-  unitNumber: '12A',
-  unitSize: '10x15',
-  unitType: 'Climate Controlled',
-  startDate: '2025-08-14',
-  monthlyRate: 12500,
-  deposit: 12500,
-  billingDay: 14,
-  status: 'active',
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+interface TenantData {
+  _id: string
+  firstName: string
+  lastName: string
+  email: string
+  phone: string
+  alternatePhone?: string
+  alternateEmail?: string
+  address?: string
+  city?: string
+  state?: string
+  zip?: string
+  driversLicense?: string
+  status: TenantStatus
+  autopayEnabled: boolean
+  smsOptIn: boolean
+  referralSource?: string
+  defaultPaymentMethodId?: string
+  stripeCustomerId?: string
+  gateCode?: string
+  createdAt: string
 }
 
-interface PaymentRow {
-  id: string
-  date: string
+interface LeaseData {
+  _id: string
+  unitId: { _id: string; unitNumber: string; size: string; type: string } | string
+  startDate: string
+  endDate?: string
+  monthlyRate: number
+  deposit: number
+  billingDay: number
+  status: string
+  moveOutDate?: string
+}
+
+interface PaymentData {
+  _id: string
   amount: number
   type: string
   status: PaymentStatus
-  receiptUrl?: string
-}
-
-const MOCK_PAYMENTS: PaymentRow[] = [
-  { id: 'p1', date: '2026-03-14', amount: 12500, type: 'rent',     status: 'failed'    },
-  { id: 'p2', date: '2026-02-14', amount: 12500, type: 'rent',     status: 'succeeded', receiptUrl: '#' },
-  { id: 'p3', date: '2026-01-14', amount: 12500, type: 'rent',     status: 'succeeded', receiptUrl: '#' },
-  { id: 'p4', date: '2025-12-14', amount: 12500, type: 'rent',     status: 'succeeded', receiptUrl: '#' },
-  { id: 'p5', date: '2025-08-14', amount: 12500, type: 'deposit',  status: 'succeeded', receiptUrl: '#' },
-]
-
-interface AccessRow {
-  id: string
-  date: string
-  eventType: EventType
-  gate: string
-  source: string
-}
-
-const MOCK_ACCESS: AccessRow[] = [
-  { id: 'a1', date: '2026-03-24T09:14:00Z', eventType: 'denied',       gate: 'entrance', source: 'keypad' },
-  { id: 'a2', date: '2026-03-23T17:40:00Z', eventType: 'exit',         gate: 'exit',     source: 'keypad' },
-  { id: 'a3', date: '2026-03-23T14:22:00Z', eventType: 'entry',        gate: 'entrance', source: 'keypad' },
-  { id: 'a4', date: '2026-03-20T11:05:00Z', eventType: 'code_changed', gate: 'unknown',  source: 'admin'  },
-  { id: 'a5', date: '2026-03-19T16:30:00Z', eventType: 'exit',         gate: 'exit',     source: 'keypad' },
-]
-
-const EVENT_COLORS: Record<EventType, { bg: string; color: string }> = {
-  entry:        { bg: '#D1FAE5', color: '#065F46' },
-  exit:         { bg: '#DBEAFE', color: '#1E3A5F' },
-  denied:       { bg: '#FEE2E2', color: '#991B1B' },
-  code_changed: { bg: '#EDE9FE', color: '#3B0764' },
+  createdAt: string
+  description?: string
 }
 
 // ── Info row ──────────────────────────────────────────────────────────────────
 
-function InfoRow({ label, value }: { label: string; value: string | undefined }) {
+function InfoRow({ label, value }: { label: string; value: string | undefined | null }) {
   return (
     <Box sx={{ display: 'flex', py: 0.75 }}>
       <Typography variant="body2" sx={{ color: 'text.secondary', width: 160, flexShrink: 0 }}>
         {label}
       </Typography>
       <Typography variant="body2" sx={{ fontWeight: 500 }}>
-        {value ?? '—'}
+        {value || '—'}
       </Typography>
     </Box>
   )
 }
 
-// ── Edit dialog ───────────────────────────────────────────────────────────────
+// ── Make Payment dialog ───────────────────────────────────────────────────────
 
-function EditDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const t = MOCK_TENANT
-  const [form, setForm] = useState({
-    firstName: t.firstName,
-    lastName: t.lastName,
-    email: t.email,
-    phone: t.phone,
-    address: t.address ?? '',
-    city: t.city ?? '',
-    state: t.state ?? '',
-    zip: t.zip ?? '',
-  })
-  const handleChange = (field: string) => (e: React.ChangeEvent<HTMLInputElement>) =>
-    setForm((prev) => ({ ...prev, [field]: e.target.value }))
-
-  return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle sx={{ fontWeight: 600 }}>Edit Tenant Info</DialogTitle>
-      <DialogContent sx={{ pt: 2 }}>
-        <Grid container spacing={2} sx={{ mt: 0 }}>
-          <Grid item xs={6}>
-            <TextField label="First Name" fullWidth size="small" value={form.firstName} onChange={handleChange('firstName')} />
-          </Grid>
-          <Grid item xs={6}>
-            <TextField label="Last Name" fullWidth size="small" value={form.lastName} onChange={handleChange('lastName')} />
-          </Grid>
-          <Grid item xs={12}>
-            <TextField label="Email" fullWidth size="small" value={form.email} onChange={handleChange('email')} />
-          </Grid>
-          <Grid item xs={12}>
-            <TextField label="Phone" fullWidth size="small" value={form.phone} onChange={handleChange('phone')} />
-          </Grid>
-          <Grid item xs={12}>
-            <TextField label="Address" fullWidth size="small" value={form.address} onChange={handleChange('address')} />
-          </Grid>
-          <Grid item xs={5}>
-            <TextField label="City" fullWidth size="small" value={form.city} onChange={handleChange('city')} />
-          </Grid>
-          <Grid item xs={3}>
-            <TextField label="State" fullWidth size="small" value={form.state} onChange={handleChange('state')} />
-          </Grid>
-          <Grid item xs={4}>
-            <TextField label="ZIP" fullWidth size="small" value={form.zip} onChange={handleChange('zip')} />
-          </Grid>
-        </Grid>
-      </DialogContent>
-      <DialogActions sx={{ px: 3, pb: 2 }}>
-        <Button onClick={onClose} sx={{ color: 'text.secondary' }}>Cancel</Button>
-        <Button variant="contained" disableElevation onClick={onClose}>Save Changes</Button>
-      </DialogActions>
-    </Dialog>
-  )
+interface MakePaymentDialogProps {
+  open: boolean
+  tenantId: string
+  leaseId: string
+  defaultAmount: number // cents
+  onClose: () => void
+  onSuccess: () => void
 }
 
-// ── Notification dialog ───────────────────────────────────────────────────────
+function MakePaymentDialog({ open, tenantId, leaseId, defaultAmount, onClose, onSuccess }: MakePaymentDialogProps) {
+  const [amount, setAmount] = useState((defaultAmount / 100).toFixed(2))
+  const [type, setType] = useState<string>('rent')
+  const [note, setNote] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-function NotifyDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const [message, setMessage] = useState('')
+  // Reset when opened
+  useEffect(() => {
+    if (open) {
+      setAmount((defaultAmount / 100).toFixed(2))
+      setType('rent')
+      setNote('')
+      setError(null)
+    }
+  }, [open, defaultAmount])
+
+  const handleSubmit = async () => {
+    const parsed = parseFloat(amount)
+    if (isNaN(parsed) || parsed <= 0) {
+      setError('Please enter a valid amount.')
+      return
+    }
+
+    setLoading(true)
+    setError(null)
+
+    try {
+      const res = await fetch('/api/payments/admin-charge', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tenantId, leaseId, amount: parsed, type, note }),
+      })
+      const json = await res.json()
+      if (!json.success) throw new Error(json.error ?? 'Charge failed')
+      onSuccess()
+      onClose()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle sx={{ fontWeight: 600 }}>Send Notification</DialogTitle>
+    <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
+      <DialogTitle sx={{ fontWeight: 600, fontFamily: '"Playfair Display", serif' }}>
+        Make Customer Payment
+      </DialogTitle>
       <DialogContent sx={{ pt: 2 }}>
+        {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+
         <TextField
-          label="Message"
-          multiline
-          rows={4}
+          label="Amount"
           fullWidth
           size="small"
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          placeholder="Enter your message…"
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+          InputProps={{ startAdornment: <InputAdornment position="start">$</InputAdornment> }}
+          sx={{ mb: 2 }}
+          type="number"
+          inputProps={{ min: 0, step: '0.01' }}
         />
+
+        <FormControl fullWidth size="small" sx={{ mb: 2 }}>
+          <InputLabel>Payment Type</InputLabel>
+          <Select label="Payment Type" value={type} onChange={(e) => setType(e.target.value)}>
+            <MenuItem value="rent">Rent</MenuItem>
+            <MenuItem value="late_fee">Late Fee</MenuItem>
+            <MenuItem value="deposit">Deposit</MenuItem>
+            <MenuItem value="prorated">Prorated</MenuItem>
+            <MenuItem value="other">Other</MenuItem>
+          </Select>
+        </FormControl>
+
+        <TextField
+          label="Note (optional)"
+          fullWidth
+          size="small"
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          placeholder="e.g. August rent, partial payment…"
+          multiline
+          rows={2}
+        />
+
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1.5 }}>
+          This will charge the payment method on file immediately.
+        </Typography>
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 2 }}>
-        <Button onClick={onClose} sx={{ color: 'text.secondary' }}>Cancel</Button>
-        <Button variant="contained" disableElevation onClick={onClose}>Send via Email + SMS</Button>
+        <Button onClick={onClose} disabled={loading} sx={{ color: 'text.secondary' }}>
+          Cancel
+        </Button>
+        <Button
+          variant="contained"
+          onClick={handleSubmit}
+          disabled={loading}
+          startIcon={loading ? <CircularProgress size={16} color="inherit" /> : <PaymentIcon />}
+        >
+          {loading ? 'Processing…' : 'Charge Now'}
+        </Button>
       </DialogActions>
     </Dialog>
   )
@@ -231,36 +256,103 @@ function NotifyDialog({ open, onClose }: { open: boolean; onClose: () => void })
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function TenantDetailPage() {
+  const { id } = useParams<{ id: string }>()
   const router = useRouter()
-  const tenant = MOCK_TENANT
-  const lease = MOCK_LEASE
 
-  const [editOpen, setEditOpen] = useState(false)
-  const [notifyOpen, setNotifyOpen] = useState(false)
+  const [tenant, setTenant] = useState<TenantData | null>(null)
+  const [lease, setLease] = useState<LeaseData | null>(null)
+  const [payments, setPayments] = useState<PaymentData[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  const statusColors = STATUS_COLORS[tenant.status]
+  const [paymentOpen, setPaymentOpen] = useState(false)
+  const [snackbar, setSnackbar] = useState<string | null>(null)
+
+  const fetchData = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const [tenantRes, leasesRes] = await Promise.all([
+        fetch(`/api/tenants/${id}`),
+        fetch(`/api/leases?tenantId=${id}&status=active&limit=1`),
+      ])
+
+      const tenantJson = await tenantRes.json()
+      if (!tenantJson.success) throw new Error(tenantJson.error ?? 'Failed to load tenant')
+      const tenantData: TenantData = tenantJson.data
+      setTenant(tenantData)
+
+      const leasesJson = await leasesRes.json()
+      const activeLeases: LeaseData[] = leasesJson.success ? (leasesJson.data.items ?? []) : []
+      const activeLease = activeLeases[0] ?? null
+      setLease(activeLease)
+
+      if (activeLease) {
+        const paymentsRes = await fetch(`/api/payments?tenantId=${id}&limit=20`)
+        const paymentsJson = await paymentsRes.json()
+        setPayments(paymentsJson.success ? (paymentsJson.data.items ?? []) : [])
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load tenant')
+    } finally {
+      setLoading(false)
+    }
+  }, [id])
+
+  useEffect(() => { fetchData() }, [fetchData])
+
+  if (loading) {
+    return (
+      <Box>
+        <Skeleton width={200} height={40} sx={{ mb: 3 }} />
+        <Grid container spacing={3}>
+          {[1, 2].map((i) => (
+            <Grid item xs={12} md={6} key={i}>
+              <Skeleton variant="rectangular" height={280} sx={{ borderRadius: 1 }} />
+            </Grid>
+          ))}
+          <Grid item xs={12}>
+            <Skeleton variant="rectangular" height={200} sx={{ borderRadius: 1 }} />
+          </Grid>
+        </Grid>
+      </Box>
+    )
+  }
+
+  if (error || !tenant) {
+    return (
+      <Alert severity="error" action={<Button onClick={fetchData}>Retry</Button>}>
+        {error ?? 'Tenant not found'}
+      </Alert>
+    )
+  }
+
+  const sc = STATUS_COLORS[tenant.status]
+  const unitLabel = lease?.unitId && typeof lease.unitId === 'object'
+    ? `${lease.unitId.unitNumber} — ${lease.unitId.size}`
+    : '—'
 
   return (
     <Box>
       {/* Header */}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3, flexWrap: 'wrap' }}>
         <IconButton onClick={() => router.push('/admin/tenants')} size="small">
           <ArrowBackIcon />
         </IconButton>
-        <Typography variant="h5" sx={{ fontWeight: 700 }}>
+        <Typography
+          variant="h5"
+          sx={{ fontFamily: '"Playfair Display", serif', color: 'secondary.main', fontWeight: 700 }}
+        >
           {tenant.firstName} {tenant.lastName}
         </Typography>
         <Chip
           label={STATUS_LABELS[tenant.status]}
           size="small"
-          sx={{
-            bgcolor: statusColors.bg,
-            color: statusColors.color,
-            fontWeight: 600,
-            fontSize: '0.7rem',
-            ml: 0.5,
-          }}
+          sx={{ bgcolor: sc.bg, color: sc.color, fontWeight: 600, fontSize: '0.7rem', ml: 0.5 }}
         />
+        <IconButton size="small" onClick={fetchData} sx={{ ml: 'auto' }} title="Refresh">
+          <RefreshIcon fontSize="small" />
+        </IconButton>
       </Box>
 
       {/* Locked-out alert */}
@@ -272,63 +364,48 @@ export default function TenantDetailPage() {
 
       {/* Action buttons */}
       <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 3 }}>
+        <Button
+          variant="contained"
+          startIcon={<PaymentIcon />}
+          onClick={() => setPaymentOpen(true)}
+          disabled={!lease}
+        >
+          Make Payment
+        </Button>
         {tenant.status === 'locked_out' ? (
-          <Button
-            variant="outlined"
-            startIcon={<LockOpenIcon />}
-            color="success"
-            onClick={() => {}}
-          >
+          <Button variant="outlined" startIcon={<LockOpenIcon />} color="success">
             Restore Access
           </Button>
         ) : (
-          <Button
-            variant="outlined"
-            startIcon={<LockIcon />}
-            color="error"
-            onClick={() => {}}
-          >
+          <Button variant="outlined" startIcon={<LockIcon />} color="error">
             Lock Out
           </Button>
         )}
-        <Button
-          variant="outlined"
-          startIcon={<NotificationsIcon />}
-          onClick={() => setNotifyOpen(true)}
-        >
+        <Button variant="outlined" startIcon={<NotificationsIcon />}>
           Send Notification
         </Button>
-        <Button
-          variant="outlined"
-          startIcon={<ExitToAppIcon />}
-          color="warning"
-          onClick={() => {}}
-        >
-          Move Out
+        <Button variant="outlined" startIcon={<EditIcon />} onClick={() => router.push(`/admin/tenants/${id}/edit`)}>
+          Edit
         </Button>
       </Box>
 
       <Grid container spacing={3}>
         {/* Personal info */}
         <Grid item xs={12} md={6}>
-          <Card>
+          <Card sx={{ border: '1px solid #EDE5D8', boxShadow: 'none' }}>
             <CardContent>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                  Personal Information
-                </Typography>
-                <IconButton size="small" onClick={() => setEditOpen(true)}>
-                  <EditIcon fontSize="small" />
-                </IconButton>
-              </Box>
+              <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1.5 }}>
+                Personal Information
+              </Typography>
               <Divider sx={{ mb: 1.5 }} />
-              <InfoRow label="Full Name"      value={`${tenant.firstName} ${tenant.lastName}`} />
               <InfoRow label="Email"          value={tenant.email} />
               <InfoRow label="Phone"          value={tenant.phone} />
               <InfoRow label="Alt Phone"      value={tenant.alternatePhone} />
+              <InfoRow label="Alt Email"      value={tenant.alternateEmail} />
               <InfoRow label="Address"        value={tenant.address} />
-              <InfoRow label="City / State"   value={`${tenant.city ?? ''}, ${tenant.state ?? ''} ${tenant.zip ?? ''}`} />
+              <InfoRow label="City / State"   value={[tenant.city, tenant.state, tenant.zip].filter(Boolean).join(', ')} />
               <InfoRow label="Driver License" value={tenant.driversLicense} />
+              <InfoRow label="Gate Code"      value={tenant.gateCode} />
               <InfoRow label="Referral"       value={tenant.referralSource} />
               <InfoRow label="SMS Opt-In"     value={tenant.smsOptIn ? 'Yes' : 'No'} />
               <InfoRow label="Autopay"        value={tenant.autopayEnabled ? 'Enabled' : 'Disabled'} />
@@ -339,31 +416,45 @@ export default function TenantDetailPage() {
 
         {/* Lease info */}
         <Grid item xs={12} md={6}>
-          <Card>
+          <Card sx={{ border: '1px solid #EDE5D8', boxShadow: 'none' }}>
             <CardContent>
-              <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2 }}>
-                Lease Information
+              <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1.5 }}>
+                Active Lease
               </Typography>
               <Divider sx={{ mb: 1.5 }} />
-              <InfoRow label="Unit"          value={`${lease.unitNumber} — ${lease.unitSize} ${lease.unitType}`} />
-              <InfoRow label="Lease Start"   value={formatDate(lease.startDate)} />
-              <InfoRow label="Lease Type"    value="Month-to-Month" />
-              <InfoRow label="Monthly Rate"  value={formatMoney(lease.monthlyRate)} />
-              <InfoRow label="Deposit Paid"  value={formatMoney(lease.deposit)} />
-              <InfoRow label="Billing Day"   value={`${lease.billingDay}th of the month`} />
-              <InfoRow label="Lease Status"  value="Active" />
+              {lease ? (
+                <>
+                  <InfoRow label="Unit"         value={unitLabel} />
+                  <InfoRow label="Lease Start"  value={formatDate(lease.startDate)} />
+                  {lease.endDate && <InfoRow label="Lease End" value={formatDate(lease.endDate)} />}
+                  <InfoRow label="Monthly Rate" value={formatMoney(lease.monthlyRate)} />
+                  <InfoRow label="Deposit"      value={formatMoney(lease.deposit)} />
+                  <InfoRow label="Billing Day"  value={`${lease.billingDay}th of the month`} />
+                  <InfoRow label="Status"       value={lease.status} />
+                  {lease.moveOutDate && <InfoRow label="Move-Out Date" value={formatDate(lease.moveOutDate)} />}
+                </>
+              ) : (
+                <Typography variant="body2" color="text.secondary" sx={{ py: 2, textAlign: 'center' }}>
+                  No active lease
+                </Typography>
+              )}
             </CardContent>
           </Card>
         </Grid>
 
         {/* Payment history */}
         <Grid item xs={12}>
-          <Card>
+          <Card sx={{ border: '1px solid #EDE5D8', boxShadow: 'none' }}>
             <CardContent sx={{ p: 0 }}>
-              <Box sx={{ px: 3, py: 2, borderBottom: '1px solid #EDE5D8' }}>
+              <Box sx={{ px: 3, py: 2, borderBottom: '1px solid #EDE5D8', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
                   Payment History
                 </Typography>
+                {lease && (
+                  <Button size="small" variant="outlined" startIcon={<PaymentIcon />} onClick={() => setPaymentOpen(true)} sx={{ borderColor: '#EDE5D8' }}>
+                    Make Payment
+                  </Button>
+                )}
               </Box>
               <TableContainer>
                 <Table size="small">
@@ -371,112 +462,48 @@ export default function TenantDetailPage() {
                     <TableRow>
                       <TableCell>Date</TableCell>
                       <TableCell>Type</TableCell>
+                      <TableCell>Note</TableCell>
                       <TableCell align="right">Amount</TableCell>
                       <TableCell align="center">Status</TableCell>
-                      <TableCell align="right">Receipt</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {MOCK_PAYMENTS.map((p) => {
-                      const sc = PAYMENT_STATUS_COLORS[p.status]
-                      return (
-                        <TableRow key={p.id} hover>
-                          <TableCell>{formatDate(p.date)}</TableCell>
-                          <TableCell sx={{ textTransform: 'capitalize', color: 'text.secondary' }}>
-                            {p.type}
-                          </TableCell>
-                          <TableCell align="right" sx={{ fontWeight: 500 }}>
-                            {formatMoney(p.amount)}
-                          </TableCell>
-                          <TableCell align="center">
-                            <Chip
-                              label={p.status}
-                              size="small"
-                              sx={{
-                                bgcolor: sc.bg,
-                                color: sc.color,
-                                fontWeight: 600,
-                                fontSize: '0.7rem',
-                                textTransform: 'capitalize',
-                                borderRadius: 1,
-                              }}
-                            />
-                          </TableCell>
-                          <TableCell align="right">
-                            {p.receiptUrl ? (
-                              <Button size="small" href={p.receiptUrl} sx={{ fontSize: '0.75rem' }}>
-                                Download
-                              </Button>
-                            ) : (
-                              <Typography variant="caption" sx={{ color: 'text.secondary' }}>—</Typography>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      )
-                    })}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        {/* Gate access log */}
-        <Grid item xs={12}>
-          <Card>
-            <CardContent sx={{ p: 0 }}>
-              <Box sx={{ px: 3, py: 2, borderBottom: '1px solid #EDE5D8' }}>
-                <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                  Gate Access Log
-                </Typography>
-              </Box>
-              <TableContainer>
-                <Table size="small">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Date / Time</TableCell>
-                      <TableCell align="center">Event</TableCell>
-                      <TableCell>Gate</TableCell>
-                      <TableCell>Source</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {MOCK_ACCESS.map((a) => {
-                      const ec = EVENT_COLORS[a.eventType]
-                      const label = a.eventType.replace('_', ' ')
-                      return (
-                        <TableRow key={a.id} hover>
-                          <TableCell sx={{ color: 'text.secondary' }}>
-                            {new Intl.DateTimeFormat('en-US', {
-                              month: 'short',
-                              day: 'numeric',
-                              hour: 'numeric',
-                              minute: '2-digit',
-                            }).format(new Date(a.date))}
-                          </TableCell>
-                          <TableCell align="center">
-                            <Chip
-                              label={label}
-                              size="small"
-                              sx={{
-                                bgcolor: ec.bg,
-                                color: ec.color,
-                                fontWeight: 600,
-                                fontSize: '0.7rem',
-                                textTransform: 'capitalize',
-                                borderRadius: 1,
-                              }}
-                            />
-                          </TableCell>
-                          <TableCell sx={{ color: 'text.secondary', textTransform: 'capitalize' }}>
-                            {a.gate}
-                          </TableCell>
-                          <TableCell sx={{ color: 'text.secondary', textTransform: 'capitalize' }}>
-                            {a.source}
-                          </TableCell>
-                        </TableRow>
-                      )
-                    })}
+                    {payments.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={5} align="center" sx={{ py: 4, color: 'text.secondary' }}>
+                          No payments found
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      payments.map((p) => {
+                        const psc = PAYMENT_STATUS_COLORS[p.status]
+                        return (
+                          <TableRow key={p._id} hover>
+                            <TableCell sx={{ color: 'text.secondary' }}>{formatDate(p.createdAt)}</TableCell>
+                            <TableCell sx={{ textTransform: 'capitalize', color: 'text.secondary' }}>
+                              {PAYMENT_TYPE_LABELS[p.type] ?? p.type}
+                            </TableCell>
+                            <TableCell sx={{ color: 'text.secondary', fontSize: '0.8rem' }}>
+                              {p.description ?? '—'}
+                            </TableCell>
+                            <TableCell align="right" sx={{ fontWeight: 500 }}>
+                              {formatMoney(p.amount)}
+                            </TableCell>
+                            <TableCell align="center">
+                              <Chip
+                                label={p.status}
+                                size="small"
+                                sx={{
+                                  bgcolor: psc.bg, color: psc.color,
+                                  fontWeight: 600, fontSize: '0.7rem',
+                                  textTransform: 'capitalize', borderRadius: 1,
+                                }}
+                              />
+                            </TableCell>
+                          </TableRow>
+                        )
+                      })
+                    )}
                   </TableBody>
                 </Table>
               </TableContainer>
@@ -485,8 +512,28 @@ export default function TenantDetailPage() {
         </Grid>
       </Grid>
 
-      <EditDialog open={editOpen} onClose={() => setEditOpen(false)} />
-      <NotifyDialog open={notifyOpen} onClose={() => setNotifyOpen(false)} />
+      {/* Make Payment dialog */}
+      {lease && (
+        <MakePaymentDialog
+          open={paymentOpen}
+          tenantId={tenant._id}
+          leaseId={lease._id}
+          defaultAmount={lease.monthlyRate}
+          onClose={() => setPaymentOpen(false)}
+          onSuccess={() => {
+            setSnackbar('Payment processed successfully')
+            fetchData()
+          }}
+        />
+      )}
+
+      <Snackbar
+        open={!!snackbar}
+        autoHideDuration={4000}
+        onClose={() => setSnackbar(null)}
+        message={snackbar}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      />
     </Box>
   )
 }
