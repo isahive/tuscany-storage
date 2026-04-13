@@ -16,19 +16,29 @@ const dmSans = DM_Sans({
 
 export const metadata: Metadata = {
   title: {
-    default: 'Tuscany Village Self Storage | Florence, SC',
+    default: 'Tuscany Village Self Storage | Caryville, TN',
     template: '%s | Tuscany Village Self Storage',
   },
   description:
-    'Safe, clean, and affordable storage units in Florence, SC. Climate-controlled, drive-up, and vehicle storage available. Reserve online today.',
-  keywords: ['self storage', 'Florence SC', 'storage units', 'climate controlled storage', 'storage near me'],
+    'Safe, clean, and affordable storage units in Caryville, TN. Climate-controlled, drive-up, and vehicle storage available. Reserve online today.',
+  keywords: ['self storage', 'Caryville TN', 'storage units', 'climate controlled storage', 'storage near me'],
   authors: [{ name: 'Tuscany Village Self Storage' }],
   manifest: '/manifest.json',
   openGraph: {
-    title: 'Tuscany Village Self Storage',
-    description: 'Safe, clean, and affordable storage in Florence, SC.',
     type: 'website',
     locale: 'en_US',
+    url: 'https://tuscanystorage.com',
+    siteName: 'Tuscany Village Self Storage',
+    title: 'Tuscany Village Self Storage | Caryville, TN',
+    description: 'Storage Units, Boat, Camper, RV & Trailer Storage in RockyTop/Caryville, TN 37714. Fully automated, 24/7 gate access.',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Tuscany Village Self Storage',
+    description: 'Storage Units, Boat, Camper, RV & Trailer Storage in Caryville, TN',
+  },
+  alternates: {
+    canonical: 'https://tuscanystorage.com',
   },
 }
 
@@ -62,39 +72,82 @@ export default function RootLayout({
               '@id': 'https://tuscanystorage.com',
               name: 'Tuscany Village Self Storage',
               description:
-                'Safe, clean, and affordable storage units in Florence, SC. Climate-controlled, drive-up, and vehicle storage available.',
+                'Safe, clean, and affordable storage units in Caryville, TN. Climate-controlled, drive-up, and vehicle storage available.',
               url: 'https://tuscanystorage.com',
-              telephone: '+1-843-555-0100',
+              telephone: '+1-865-426-2100',
               address: {
                 '@type': 'PostalAddress',
-                streetAddress: '1234 Tuscany Blvd',
-                addressLocality: 'Florence',
-                addressRegion: 'SC',
-                postalCode: '29501',
+                streetAddress: '2519 Highway 116',
+                addressLocality: 'Caryville',
+                addressRegion: 'TN',
+                postalCode: '37714',
                 addressCountry: 'US',
               },
               geo: {
                 '@type': 'GeoCoordinates',
-                latitude: 34.1954,
-                longitude: -79.7626,
+                latitude: 36.297,
+                longitude: -84.223,
               },
               openingHoursSpecification: [
                 {
                   '@type': 'OpeningHoursSpecification',
-                  dayOfWeek: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
-                  opens: '09:00',
-                  closes: '18:00',
+                  dayOfWeek: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
+                  opens: '00:00',
+                  closes: '23:59',
+                  description: 'Gate access 24/7',
                 },
                 {
                   '@type': 'OpeningHoursSpecification',
-                  dayOfWeek: 'Saturday',
+                  dayOfWeek: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
                   opens: '09:00',
-                  closes: '14:00',
+                  closes: '17:00',
+                  description: 'Office by appointment only',
                 },
               ],
               image: 'https://tuscanystorage.com/images/facility.jpg',
               priceRange: '$$',
-              sameAs: [],
+              sameAs: ['https://tuscanystorage.com'],
+              hasOfferCatalog: {
+                '@type': 'OfferCatalog',
+                name: 'Storage Services',
+                itemListElement: [
+                  {
+                    '@type': 'OfferCatalog',
+                    name: 'Standard Storage Units',
+                    itemListElement: [
+                      { '@type': 'Offer', itemOffered: { '@type': 'Service', name: 'Standard Storage Units' } },
+                    ],
+                  },
+                  {
+                    '@type': 'OfferCatalog',
+                    name: 'Climate Controlled Storage',
+                    itemListElement: [
+                      { '@type': 'Offer', itemOffered: { '@type': 'Service', name: 'Climate Controlled Storage' } },
+                    ],
+                  },
+                  {
+                    '@type': 'OfferCatalog',
+                    name: 'Drive-Up Storage',
+                    itemListElement: [
+                      { '@type': 'Offer', itemOffered: { '@type': 'Service', name: 'Drive-Up Storage' } },
+                    ],
+                  },
+                  {
+                    '@type': 'OfferCatalog',
+                    name: 'Vehicle, Boat, RV & Trailer Storage',
+                    itemListElement: [
+                      { '@type': 'Offer', itemOffered: { '@type': 'Service', name: 'Vehicle, Boat, RV & Trailer Storage' } },
+                    ],
+                  },
+                ],
+              },
+              aggregateRating: {
+                '@type': 'AggregateRating',
+                ratingValue: '5',
+                reviewCount: '1',
+                bestRating: '5',
+                worstRating: '1',
+              },
             }),
           }}
         />

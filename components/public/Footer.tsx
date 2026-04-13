@@ -32,17 +32,17 @@ export default function Footer() {
               <p className="text-xs tracking-widest text-cream/60 uppercase">Self Storage</p>
             </div>
             <p className="text-sm leading-relaxed text-cream/70">
-              Florence&apos;s premier self storage facility. Clean, secure, and
+              Caryville&apos;s premier self storage facility. Clean, secure, and
               conveniently located with 24/7 gate access.
             </p>
             <div className="space-y-1 text-sm text-cream/70">
-              <p>1234 Storage Lane</p>
-              <p>Florence, SC 29501</p>
-              <a href="tel:+18435551234" className="block hover:text-tan transition-colors">
-                (843) 555-1234
+              <p>2519 Highway 116</p>
+              <p>Caryville, TN 37714</p>
+              <a href="tel:+18654262100" className="block hover:text-tan transition-colors">
+                (865) 426-2100
               </a>
-              <a href="mailto:info@tuscanystorage.com" className="block hover:text-tan transition-colors">
-                info@tuscanystorage.com
+              <a href="mailto:Tuscanystorage@gmail.com" className="block hover:text-tan transition-colors">
+                Tuscanystorage@gmail.com
               </a>
             </div>
           </div>

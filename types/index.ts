@@ -144,7 +144,7 @@ export interface INotification {
   sentAt?: Date
   failureReason?: string
   twilioMessageSid?: string
-  sendgridMessageId?: string
+  resendMessageId?: string
   createdAt: Date
   updatedAt: Date
 }

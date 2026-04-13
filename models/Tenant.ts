@@ -13,12 +13,14 @@ export interface ITenantDocument extends Document {
   state?: string
   zip?: string
   driversLicense?: string
+  idPhotoUrl?: string
   password: string
   role: TenantRole
   gateCode?: string
   stripeCustomerId?: string
   defaultPaymentMethodId?: string
   autopayEnabled: boolean
+  balance: number
   status: TenantStatus
   smsOptIn: boolean
   referralSource?: string
@@ -39,12 +41,14 @@ const TenantSchema = new Schema<ITenantDocument>(
     state: { type: String },
     zip: { type: String },
     driversLicense: { type: String },
+    idPhotoUrl: { type: String },
     password: { type: String, required: true, select: false },
     role: { type: String, enum: ['tenant', 'admin'], default: 'tenant' },
     gateCode: { type: String },
     stripeCustomerId: { type: String },
     defaultPaymentMethodId: { type: String },
     autopayEnabled: { type: Boolean, default: false },
+    balance: { type: Number, default: 0 },
     status: {
       type: String,
       enum: ['active', 'delinquent', 'locked_out', 'moved_out'],

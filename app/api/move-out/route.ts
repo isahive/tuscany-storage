@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { authOptions } from '@/lib/auth'
 import { connectDB } from '@/lib/db'
 import MoveOutRequest from '@/models/MoveOutRequest'
+import { sendAdminNotification } from '@/lib/email'
 import Lease from '@/models/Lease'
 
 // ─── GET: Admin — list all move-out requests ──────────────────────────────────
@@ -122,7 +123,28 @@ export async function POST(req: NextRequest) {
       status: 'pending',
     })
 
-    // TODO: send email notification to admin alerting them of a new move-out request
+    // Notify admin of new move-out request
+    const tenant = { firstName: session.user.name?.split(' ')[0] || 'Tenant', lastName: session.user.name?.split(' ').slice(1).join(' ') || '' }
+    const unit = { unitNumber: activeLease.unitId?.toString() || 'N/A' }
+
+    // Try to get richer tenant/unit info if populated
+    try {
+      const populatedLease = await Lease.findById(activeLease._id).populate('unitId', 'unitNumber')
+      if (populatedLease?.unitId && typeof populatedLease.unitId === 'object' && 'unitNumber' in populatedLease.unitId) {
+        unit.unitNumber = (populatedLease.unitId as { unitNumber: string }).unitNumber
+      }
+    } catch { /* use fallback */ }
+
+    await sendAdminNotification(
+      `Move-Out Request: ${tenant.firstName} ${tenant.lastName}`,
+      `
+        <h2>New Move-Out Request</h2>
+        <p><strong>Tenant:</strong> ${tenant.firstName} ${tenant.lastName}</p>
+        <p><strong>Unit:</strong> ${unit.unitNumber}</p>
+        <p><strong>Requested Date:</strong> ${new Date(requestedMoveOutDate).toLocaleDateString('en-US')}</p>
+        <p><a href="https://tuscanystorage.com/admin/move-out">Review in Admin Panel</a></p>
+      `
+    ).catch(() => {})
 
     return NextResponse.json({ success: true, data: moveOutRequest }, { status: 201 })
   } catch (error) {

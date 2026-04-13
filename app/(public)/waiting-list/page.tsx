@@ -53,13 +53,18 @@ export default function WaitingListPage() {
     e.preventDefault();
     setState("submitting");
 
-    // TODO: swap for real POST /api/waiting-list when Dev 1 has it ready
-    // const result = await apiCall('/waiting-list', {
-    //   method: 'POST',
-    //   body: JSON.stringify(form),
-    // })
-    await new Promise((r) => setTimeout(r, 1200));
-    setState("success");
+    try {
+      const res = await fetch('/api/public/waiting-list', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      })
+      const json = await res.json()
+      if (!res.ok || !json.success) throw new Error(json.error ?? 'Failed to submit')
+      setState('success')
+    } catch (err) {
+      setState('error')
+    }
   }
 
   return (
@@ -145,10 +150,10 @@ export default function WaitingListPage() {
             <div className="text-sm text-muted">
               <p>Have an urgent need?</p>
               <a
-                href="tel:+18435551234"
+                href="tel:+18654262100"
                 className="font-semibold text-tan hover:underline"
               >
-                Call us at (843) 555-1234
+                Call us at (865) 426-2100
               </a>
               <p className="mt-0.5">and we&apos;ll do our best to help.</p>
             </div>
@@ -237,7 +242,7 @@ export default function WaitingListPage() {
                           required
                           value={form.phone}
                           onChange={(e) => update("phone", e.target.value)}
-                          placeholder="(843) 555-0000"
+                          placeholder="(865) 426-0000"
                           className="w-full rounded-lg border border-mid px-4 py-2.5 text-sm text-brown placeholder-muted focus:border-tan focus:outline-none"
                         />
                       </div>

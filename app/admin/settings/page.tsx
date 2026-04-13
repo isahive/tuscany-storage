@@ -4,7 +4,13 @@ import { Box, Card, CardContent, Grid, Typography } from '@mui/material'
 import DescriptionIcon from '@mui/icons-material/Description'
 import BusinessIcon from '@mui/icons-material/Business'
 import ReceiptIcon from '@mui/icons-material/Receipt'
+import GavelIcon from '@mui/icons-material/Gavel'
 import NotificationsIcon from '@mui/icons-material/Notifications'
+import LanguageIcon from '@mui/icons-material/Language'
+import HomeWorkIcon from '@mui/icons-material/HomeWork'
+import SensorsIcon from '@mui/icons-material/Sensors'
+import LocalOfferIcon from '@mui/icons-material/LocalOffer'
+import AssignmentIcon from '@mui/icons-material/Assignment'
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos'
 import { useRouter } from 'next/navigation'
 
@@ -19,10 +25,10 @@ interface HubCard {
 
 const HUB_CARDS: HubCard[] = [
   {
-    title: 'Storage Agreement',
-    description: 'Edit the rental agreement template with dynamic placeholders',
-    icon: <DescriptionIcon sx={{ color: 'white', fontSize: 28 }} />,
-    href: '/admin/settings/agreement',
+    title: 'General',
+    description: 'Locale, timezone, date format, phone & dimension display',
+    icon: <LanguageIcon sx={{ color: 'white', fontSize: 28 }} />,
+    href: '/admin/settings/general',
   },
   {
     title: 'Facility Info',
@@ -31,10 +37,46 @@ const HUB_CARDS: HubCard[] = [
     href: '/admin/settings/facility',
   },
   {
+    title: 'Rental Settings',
+    description: 'Billing period, customer permissions, prorating, reservations, lockout approval, new renter instructions',
+    icon: <HomeWorkIcon sx={{ color: 'white', fontSize: 28 }} />,
+    href: '/admin/settings/rental',
+  },
+  {
     title: 'Fees & Charges',
     description: 'Late fees, NSF fee, auction fee configuration',
     icon: <ReceiptIcon sx={{ color: 'white', fontSize: 28 }} />,
     href: '/admin/settings/fees',
+  },
+  {
+    title: 'Late / Lien Settings',
+    description: 'Escalation timeline, auto-fees, lockouts, notifications & auction rules',
+    icon: <GavelIcon sx={{ color: 'white', fontSize: 28 }} />,
+    href: '/admin/settings/late-lien',
+  },
+  {
+    title: 'Storage Agreement',
+    description: 'Edit the rental agreement template with dynamic placeholders',
+    icon: <DescriptionIcon sx={{ color: 'white', fontSize: 28 }} />,
+    href: '/admin/settings/agreement',
+  },
+  {
+    title: 'Gate Settings',
+    description: 'Gate controller integration, access codes, groups & text-to-open',
+    icon: <SensorsIcon sx={{ color: 'white', fontSize: 28 }} />,
+    href: '/admin/settings/gate',
+  },
+  {
+    title: 'Promotions',
+    description: 'Create and manage discounts, promo codes & automatic offers',
+    icon: <LocalOfferIcon sx={{ color: 'white', fontSize: 28 }} />,
+    href: '/admin/settings/promotions',
+  },
+  {
+    title: 'Form Fields',
+    description: 'Configure which fields are shown & required on signup and waiting list forms',
+    icon: <AssignmentIcon sx={{ color: 'white', fontSize: 28 }} />,
+    href: '/admin/settings/form-fields',
   },
   {
     title: 'Notifications',

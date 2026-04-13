@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import {
   Box,
   Card,
@@ -16,6 +16,7 @@ import {
   Tooltip,
   Alert,
   Stack,
+  CircularProgress,
 } from '@mui/material'
 import { DataGrid, GridColDef, GridRenderCellParams } from '@mui/x-data-grid'
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney'
@@ -35,219 +36,6 @@ const STATUS_CHIP_COLORS: Record<PaymentStatus, { bg: string; color: string }> =
   pending:   { bg: '#FEF3C7', color: '#92400E' },
   refunded:  { bg: '#F3F4F6', color: '#374151' },
 }
-
-// ── Mock data ───────────────────────────────────────────────────────────────
-
-const MOCK_PAYMENTS: Payment[] = [
-  {
-    _id: 'pay_001',
-    tenantId: 'ten_001',
-    leaseId: 'lea_001',
-    unitId: 'unit_12A',
-    stripePaymentIntentId: 'pi_3Px001',
-    stripeChargeId: 'ch_3Px001',
-    amount: 18500,
-    currency: 'usd',
-    type: 'rent',
-    status: 'succeeded',
-    periodStart: '2026-03-01',
-    periodEnd: '2026-03-31',
-    attemptCount: 1,
-    lastAttemptAt: '2026-03-01T08:00:00Z',
-    receiptUrl: '#',
-    createdAt: '2026-03-01T08:00:00Z',
-    updatedAt: '2026-03-01T08:00:05Z',
-  },
-  {
-    _id: 'pay_002',
-    tenantId: 'ten_002',
-    leaseId: 'lea_002',
-    unitId: 'unit_07C',
-    stripePaymentIntentId: 'pi_3Px002',
-    amount: 24000,
-    currency: 'usd',
-    type: 'rent',
-    status: 'failed',
-    periodStart: '2026-03-01',
-    periodEnd: '2026-03-31',
-    attemptCount: 3,
-    lastAttemptAt: '2026-03-05T14:30:00Z',
-    failureReason: 'Card declined — insufficient funds',
-    createdAt: '2026-03-01T08:00:00Z',
-    updatedAt: '2026-03-05T14:30:05Z',
-  },
-  {
-    _id: 'pay_003',
-    tenantId: 'ten_003',
-    leaseId: 'lea_003',
-    unitId: 'unit_31B',
-    stripePaymentIntentId: 'pi_3Px003',
-    stripeChargeId: 'ch_3Px003',
-    amount: 15500,
-    currency: 'usd',
-    type: 'rent',
-    status: 'succeeded',
-    periodStart: '2026-03-01',
-    periodEnd: '2026-03-31',
-    attemptCount: 1,
-    lastAttemptAt: '2026-03-01T08:00:00Z',
-    receiptUrl: '#',
-    createdAt: '2026-03-01T08:00:00Z',
-    updatedAt: '2026-03-01T08:00:04Z',
-  },
-  {
-    _id: 'pay_004',
-    tenantId: 'ten_004',
-    leaseId: 'lea_004',
-    unitId: 'unit_19D',
-    stripePaymentIntentId: 'pi_3Px004',
-    amount: 10000,
-    currency: 'usd',
-    type: 'late_fee',
-    status: 'pending',
-    periodStart: '2026-03-01',
-    periodEnd: '2026-03-31',
-    attemptCount: 0,
-    createdAt: '2026-03-10T12:00:00Z',
-    updatedAt: '2026-03-10T12:00:00Z',
-  },
-  {
-    _id: 'pay_005',
-    tenantId: 'ten_005',
-    leaseId: 'lea_005',
-    unitId: 'unit_04A',
-    stripePaymentIntentId: 'pi_3Px005',
-    stripeChargeId: 'ch_3Px005',
-    amount: 22000,
-    currency: 'usd',
-    type: 'rent',
-    status: 'refunded',
-    periodStart: '2026-02-01',
-    periodEnd: '2026-02-28',
-    attemptCount: 1,
-    lastAttemptAt: '2026-02-01T08:00:00Z',
-    receiptUrl: '#',
-    createdAt: '2026-02-01T08:00:00Z',
-    updatedAt: '2026-02-15T10:00:00Z',
-  },
-  {
-    _id: 'pay_006',
-    tenantId: 'ten_006',
-    leaseId: 'lea_006',
-    unitId: 'unit_22B',
-    stripePaymentIntentId: 'pi_3Px006',
-    stripeChargeId: 'ch_3Px006',
-    amount: 5000,
-    currency: 'usd',
-    type: 'deposit',
-    status: 'succeeded',
-    periodStart: '2026-03-15',
-    periodEnd: '2026-03-15',
-    attemptCount: 1,
-    lastAttemptAt: '2026-03-15T10:00:00Z',
-    receiptUrl: '#',
-    createdAt: '2026-03-15T10:00:00Z',
-    updatedAt: '2026-03-15T10:00:03Z',
-  },
-  {
-    _id: 'pay_007',
-    tenantId: 'ten_007',
-    leaseId: 'lea_007',
-    unitId: 'unit_09C',
-    stripePaymentIntentId: 'pi_3Px007',
-    amount: 17500,
-    currency: 'usd',
-    type: 'rent',
-    status: 'failed',
-    periodStart: '2026-03-01',
-    periodEnd: '2026-03-31',
-    attemptCount: 2,
-    lastAttemptAt: '2026-03-03T09:00:00Z',
-    failureReason: 'Card expired',
-    createdAt: '2026-03-01T08:00:00Z',
-    updatedAt: '2026-03-03T09:00:04Z',
-  },
-  {
-    _id: 'pay_008',
-    tenantId: 'ten_008',
-    leaseId: 'lea_008',
-    unitId: 'unit_15A',
-    stripePaymentIntentId: 'pi_3Px008',
-    stripeChargeId: 'ch_3Px008',
-    amount: 8750,
-    currency: 'usd',
-    type: 'prorated',
-    status: 'succeeded',
-    periodStart: '2026-03-15',
-    periodEnd: '2026-03-31',
-    attemptCount: 1,
-    lastAttemptAt: '2026-03-15T08:00:00Z',
-    receiptUrl: '#',
-    createdAt: '2026-03-15T08:00:00Z',
-    updatedAt: '2026-03-15T08:00:04Z',
-  },
-  {
-    _id: 'pay_009',
-    tenantId: 'ten_009',
-    leaseId: 'lea_009',
-    unitId: 'unit_28D',
-    stripePaymentIntentId: 'pi_3Px009',
-    stripeChargeId: 'ch_3Px009',
-    amount: 19500,
-    currency: 'usd',
-    type: 'rent',
-    status: 'succeeded',
-    periodStart: '2026-03-01',
-    periodEnd: '2026-03-31',
-    attemptCount: 1,
-    lastAttemptAt: '2026-03-01T08:00:00Z',
-    receiptUrl: '#',
-    createdAt: '2026-03-01T08:00:00Z',
-    updatedAt: '2026-03-01T08:00:06Z',
-  },
-  {
-    _id: 'pay_010',
-    tenantId: 'ten_010',
-    leaseId: 'lea_010',
-    unitId: 'unit_33A',
-    stripePaymentIntentId: 'pi_3Px010',
-    amount: 12000,
-    currency: 'usd',
-    type: 'rent',
-    status: 'pending',
-    periodStart: '2026-04-01',
-    periodEnd: '2026-04-30',
-    attemptCount: 0,
-    createdAt: '2026-04-01T08:00:00Z',
-    updatedAt: '2026-04-01T08:00:00Z',
-  },
-]
-
-// ── Tenant name lookup (in production this comes from the API) ──────────────
-
-const TENANT_NAMES: Record<string, string> = {
-  ten_001: 'Robert Chen',
-  ten_002: 'Maria Santos',
-  ten_003: 'David Kim',
-  ten_004: 'Angela Torres',
-  ten_005: 'James Wilson',
-  ten_006: 'Lisa Nakamura',
-  ten_007: 'Tom Bradley',
-  ten_008: 'Sarah Patel',
-  ten_009: 'Marcus Johnson',
-  ten_010: 'Emily Rodriguez',
-}
-
-// ── Revenue chart data (last 6 months) ──────────────────────────────────────
-
-const MONTHLY_REVENUE = [
-  { month: 'Nov', amount: 156000 },
-  { month: 'Dec', amount: 162500 },
-  { month: 'Jan', amount: 171000 },
-  { month: 'Feb', amount: 168000 },
-  { month: 'Mar', amount: 183250 },
-  { month: 'Apr', amount: 31500 },
-]
 
 // ── Summary card component ──────────────────────────────────────────────────
 
@@ -299,8 +87,8 @@ function SummaryCard({ label, value, icon, iconBg, subLabel }: SummaryCardProps)
 
 // ── Revenue bar chart (MUI Box-based) ───────────────────────────────────────
 
-function RevenueChart() {
-  const maxAmount = Math.max(...MONTHLY_REVENUE.map((d) => d.amount))
+function RevenueChart({ data }: { data: { month: string; amount: number }[] }) {
+  const maxAmount = Math.max(...data.map((d) => d.amount), 1)
 
   return (
     <Card>
@@ -315,7 +103,7 @@ function RevenueChart() {
         </Box>
         <Box sx={{ px: 3, py: 3 }}>
           <Box sx={{ display: 'flex', alignItems: 'flex-end', gap: 1.5, height: 180 }}>
-            {MONTHLY_REVENUE.map((d) => {
+            {data.map((d) => {
               const heightPct = maxAmount > 0 ? (d.amount / maxAmount) * 100 : 0
               return (
                 <Tooltip
@@ -382,44 +170,143 @@ const TYPE_LABELS: Record<PaymentType, string> = {
   other: 'Other',
 }
 
+// ── Map API status to PaymentStatus ─────────────────────────────────────────
+
+function mapApiStatus(apiStatus: string): PaymentStatus {
+  if (apiStatus === 'completed') return 'succeeded'
+  if (['succeeded', 'failed', 'pending', 'refunded'].includes(apiStatus)) return apiStatus as PaymentStatus
+  return 'pending'
+}
+
+// ── Map API type to PaymentType ─────────────────────────────────────────────
+
+function mapApiType(apiType: string): PaymentType {
+  if (['rent', 'late_fee', 'deposit', 'prorated', 'other'].includes(apiType)) return apiType as PaymentType
+  return 'other'
+}
+
+// ── API row type ────────────────────────────────────────────────────────────
+
+interface ApiRow {
+  date: string
+  tenant: string
+  type: string
+  method: string
+  status: string
+  amount: number
+  description: string
+  stripeId: string
+}
+
 // ── Page ────────────────────────────────────────────────────────────────────
 
 export default function AdminPaymentsPage() {
+  const [payments, setPayments] = useState<Payment[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [statusFilter, setStatusFilter] = useState<PaymentStatus | 'all'>('all')
   const [typeFilter, setTypeFilter] = useState<PaymentType | 'all'>('all')
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
   const [retryingId, setRetryingId] = useState<string | null>(null)
 
+  // ── Fetch data on mount ─────────────────────────────────────────────────
+
+  useEffect(() => {
+    async function fetchPayments() {
+      try {
+        setLoading(true)
+        setError(null)
+        const res = await fetch('/api/reports?type=transactions')
+        if (!res.ok) throw new Error(`Failed to fetch payments: ${res.status}`)
+        const json = await res.json()
+        if (!json.success) throw new Error(json.error || 'Unknown error')
+
+        const rows: ApiRow[] = json.data.rows
+        const mapped: Payment[] = rows.map((row, index) => ({
+          _id: `pay_${index}`,
+          tenantId: row.tenant,
+          leaseId: '',
+          unitId: '\u2014',
+          stripePaymentIntentId: row.stripeId || '',
+          amount: row.amount,
+          currency: 'usd' as const,
+          type: mapApiType(row.type),
+          status: mapApiStatus(row.status),
+          periodStart: row.date,
+          periodEnd: row.date,
+          attemptCount: row.status === 'failed' ? 1 : row.status === 'completed' || row.status === 'succeeded' ? 1 : 0,
+          lastAttemptAt: row.date,
+          failureReason: row.status === 'failed' ? (row.description || 'Payment failed') : undefined,
+          receiptUrl: (row.status === 'completed' || row.status === 'succeeded') && row.stripeId ? `#${row.stripeId}` : undefined,
+          createdAt: row.date,
+          updatedAt: row.date,
+        }))
+
+        setPayments(mapped)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load payments')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchPayments()
+  }, [])
+
   // ── Summaries ───────────────────────────────────────────────────────────
 
   const summary = useMemo(() => {
-    const totalRevenue = MOCK_PAYMENTS
+    const totalRevenue = payments
       .filter((p) => p.status === 'succeeded')
       .reduce((sum, p) => sum + p.amount, 0)
-    const succeeded = MOCK_PAYMENTS.filter((p) => p.status === 'succeeded').length
-    const failed = MOCK_PAYMENTS.filter((p) => p.status === 'failed').length
-    const pending = MOCK_PAYMENTS.filter((p) => p.status === 'pending').length
+    const succeeded = payments.filter((p) => p.status === 'succeeded').length
+    const failed = payments.filter((p) => p.status === 'failed').length
+    const pending = payments.filter((p) => p.status === 'pending').length
     return { totalRevenue, succeeded, failed, pending }
-  }, [])
+  }, [payments])
+
+  // ── Monthly revenue chart data ────────────────────────────────────────
+
+  const monthlyRevenue = useMemo(() => {
+    const succeededPayments = payments.filter((p) => p.status === 'succeeded')
+    const byMonth: Record<string, number> = {}
+
+    succeededPayments.forEach((p) => {
+      const d = new Date(p.createdAt)
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+      byMonth[key] = (byMonth[key] || 0) + p.amount
+    })
+
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+    const sorted = Object.entries(byMonth)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .slice(-6)
+      .map(([key, amount]) => {
+        const [, monthStr] = key.split('-')
+        return { month: monthNames[parseInt(monthStr, 10) - 1], amount }
+      })
+
+    return sorted
+  }, [payments])
 
   // ── Filtered payments ───────────────────────────────────────────────────
 
   const filteredPayments = useMemo(() => {
-    return MOCK_PAYMENTS.filter((p) => {
+    return payments.filter((p) => {
       if (statusFilter !== 'all' && p.status !== statusFilter) return false
       if (typeFilter !== 'all' && p.type !== typeFilter) return false
       if (dateFrom && p.createdAt < dateFrom) return false
       if (dateTo && p.createdAt > dateTo + 'T23:59:59Z') return false
       return true
     })
-  }, [statusFilter, typeFilter, dateFrom, dateTo])
+  }, [payments, statusFilter, typeFilter, dateFrom, dateTo])
 
   // ── Failed payments ─────────────────────────────────────────────────────
 
   const failedPayments = useMemo(
-    () => MOCK_PAYMENTS.filter((p) => p.status === 'failed'),
-    [],
+    () => payments.filter((p) => p.status === 'failed'),
+    [payments],
   )
 
   // ── Retry handler (mock) ────────────────────────────────────────────────
@@ -447,13 +334,11 @@ export default function AdminPaymentsPage() {
       headerName: 'Tenant',
       flex: 1.2,
       minWidth: 140,
-      valueGetter: (value: string) => TENANT_NAMES[value] ?? value,
     },
     {
       field: 'unitId',
       headerName: 'Unit',
       width: 100,
-      valueGetter: (value: string) => value.replace('unit_', ''),
     },
     {
       field: 'type',
@@ -485,16 +370,17 @@ export default function AdminPaymentsPage() {
       headerAlign: 'center',
     },
     {
-      field: 'receiptUrl',
+      field: '_id',
       headerName: 'Receipt',
       width: 80,
       align: 'center',
       headerAlign: 'center',
       sortable: false,
-      renderCell: (params: GridRenderCellParams) =>
-        params.value ? (
+      renderCell: (params: GridRenderCellParams) => {
+        const row = params.row as Payment
+        return row.status === 'succeeded' ? (
           <Tooltip title="View receipt">
-            <IconButton size="small" href={params.value as string} target="_blank">
+            <IconButton size="small" href={`/api/payments/${params.value}/receipt`} target="_blank">
               <ReceiptLongIcon fontSize="small" sx={{ color: '#B8914A' }} />
             </IconButton>
           </Tooltip>
@@ -502,9 +388,35 @@ export default function AdminPaymentsPage() {
           <Typography variant="caption" sx={{ color: 'text.disabled' }}>
             —
           </Typography>
-        ),
+        )
+      },
     },
   ]
+
+  // ── Loading state ─────────────────────────────────────────────────────
+
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 400 }}>
+        <CircularProgress sx={{ color: '#B8914A' }} />
+      </Box>
+    )
+  }
+
+  // ── Error state ───────────────────────────────────────────────────────
+
+  if (error) {
+    return (
+      <Box>
+        <Typography variant="h5" sx={{ fontWeight: 700, mb: 3, color: 'text.primary' }}>
+          Payments
+        </Typography>
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      </Box>
+    )
+  }
 
   // ── Render ──────────────────────────────────────────────────────────────
 
@@ -556,7 +468,7 @@ export default function AdminPaymentsPage() {
 
       {/* Revenue chart */}
       <Box sx={{ mb: 4 }}>
-        <RevenueChart />
+        <RevenueChart data={monthlyRevenue} />
       </Box>
 
       {/* Filters */}
@@ -706,7 +618,7 @@ export default function AdminPaymentsPage() {
                 >
                   <Box sx={{ flex: 1, minWidth: 200 }}>
                     <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                      {TENANT_NAMES[payment.tenantId] ?? payment.tenantId} — Unit {payment.unitId.replace('unit_', '')}
+                      {payment.tenantId} — Unit {payment.unitId}
                     </Typography>
                     <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
                       {formatDate(payment.createdAt)} &middot; {TYPE_LABELS[payment.type]} &middot; {payment.attemptCount} attempt{payment.attemptCount !== 1 ? 's' : ''}

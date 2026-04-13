@@ -49,6 +49,7 @@ const updateTenantSchema = z.object({
   state: z.string().optional(),
   zip: z.string().optional(),
   driversLicense: z.string().optional(),
+  idPhotoUrl: z.string().optional(),
   role: z.enum(['tenant', 'admin']).optional(),
   status: z.enum(['active', 'delinquent', 'locked_out', 'moved_out']).optional(),
   smsOptIn: z.boolean().optional(),

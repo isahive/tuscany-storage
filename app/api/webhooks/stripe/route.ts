@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
 import Payment from "@/models/Payment";
 import Notification from "@/models/Notification";
+import Tenant from "@/models/Tenant";
 
 export async function POST(req: NextRequest) {
   try {
@@ -94,6 +95,50 @@ export async function POST(req: NextRequest) {
           }
 
           await payment.save();
+        }
+        break;
+      }
+
+      case "charge.refunded": {
+        const charge = event.data.object;
+        const paymentIntentId = charge.payment_intent as string;
+        if (paymentIntentId) {
+          const payment = await Payment.findOne({
+            stripePaymentIntentId: paymentIntentId,
+          });
+          if (payment && payment.status !== "refunded") {
+            payment.status = "refunded";
+            await payment.save();
+
+            // Reduce tenant balance
+            await Tenant.findByIdAndUpdate(payment.tenantId, {
+              $inc: { balance: -payment.amount },
+            });
+          }
+        }
+        break;
+      }
+
+      case "charge.dispute.created": {
+        const dispute = event.data.object;
+        const paymentIntentId = dispute.payment_intent as string;
+        if (paymentIntentId) {
+          const payment = await Payment.findOne({
+            stripePaymentIntentId: paymentIntentId,
+          });
+          if (payment) {
+            payment.failureReason = `Dispute: ${dispute.reason ?? "unknown"}`;
+            await payment.save();
+
+            await Notification.create({
+              tenantId: payment.tenantId,
+              type: "payment_reminder",
+              channel: "email",
+              subject: "Payment Dispute Received",
+              body: `A dispute has been filed for your payment of $${(payment.amount / 100).toFixed(2)}. Please contact us immediately.`,
+              status: "pending",
+            });
+          }
         }
         break;
       }

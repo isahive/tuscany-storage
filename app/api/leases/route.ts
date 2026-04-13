@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
     if (status) filter.status = status
 
     const [items, total] = await Promise.all([
-      Lease.find(filter).skip(skip).limit(limit).sort({ createdAt: -1 }),
+      Lease.find(filter).populate('unitId', 'unitNumber size').skip(skip).limit(limit).sort({ createdAt: -1 }),
       Lease.countDocuments(filter),
     ])
 
