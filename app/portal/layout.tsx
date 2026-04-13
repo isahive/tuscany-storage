@@ -1,10 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { SessionProvider, useSession, signOut } from 'next-auth/react'
 import { ThemeProvider } from '@mui/material/styles'
 import CssBaseline from '@mui/material/CssBaseline'
 import {
+  Alert,
   AppBar,
   Box,
   Drawer,
@@ -27,22 +28,35 @@ import DashboardIcon from '@mui/icons-material/Dashboard'
 import PaymentIcon from '@mui/icons-material/Payment'
 import LockIcon from '@mui/icons-material/Lock'
 import MoveToInboxIcon from '@mui/icons-material/MoveToInbox'
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
+import PersonIcon from '@mui/icons-material/Person'
+import CreditCardIcon from '@mui/icons-material/CreditCard'
 import LogoutIcon from '@mui/icons-material/Logout'
+import WarningAmberIcon from '@mui/icons-material/WarningAmber'
 import { usePathname, useRouter } from 'next/navigation'
 import { theme } from '@/lib/theme'
 
 const DRAWER_WIDTH = 240
 
-const NAV_ITEMS = [
-  { label: 'Dashboard', href: '/portal', icon: <DashboardIcon /> },
-  { label: 'Payments', href: '/portal/payments', icon: <PaymentIcon /> },
-  { label: 'Gate Code', href: '/portal/gate-code', icon: <LockIcon /> },
-  { label: 'Move Out', href: '/portal/move-out', icon: <MoveToInboxIcon /> },
+const BASE_NAV_ITEMS = [
+  { label: 'Dashboard',    href: '/portal',              icon: <DashboardIcon /> },
+  { label: 'Payments',     href: '/portal/payments',     icon: <PaymentIcon /> },
+  { label: 'Gate Code',    href: '/portal/gate-code',    icon: <LockIcon />, key: 'gateCode' },
+  { label: 'My Profile',   href: '/portal/profile',      icon: <PersonIcon /> },
+  { label: 'Billing',      href: '/portal/billing',      icon: <CreditCardIcon /> },
+  { label: 'Instructions', href: '/portal/instructions', icon: <InfoOutlinedIcon /> },
+  { label: 'Move Out',     href: '/portal/move-out',     icon: <MoveToInboxIcon />, key: 'moveOut' },
 ]
 
-function DrawerContent() {
+function DrawerContent({ canScheduleMoveOuts, leaseSigned }: { canScheduleMoveOuts: boolean; leaseSigned: boolean }) {
   const pathname = usePathname()
   const router = useRouter()
+
+  const navItems = BASE_NAV_ITEMS.filter(
+    (item) =>
+      (item.key !== 'moveOut' || canScheduleMoveOuts) &&
+      (item.key !== 'gateCode' || leaseSigned),
+  )
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -65,7 +79,7 @@ function DrawerContent() {
       </Toolbar>
       <Divider />
       <List sx={{ flex: 1, pt: 1 }}>
-        {NAV_ITEMS.map((item) => {
+        {navItems.map((item) => {
           const selected = pathname === item.href
           return (
             <ListItem key={item.href} disablePadding>
@@ -115,6 +129,33 @@ function PortalShell({ children }: { children: React.ReactNode }) {
   const muiTheme = useTheme()
   const isDesktop = useMediaQuery(muiTheme.breakpoints.up('md'))
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [canScheduleMoveOuts, setCanScheduleMoveOuts] = useState(true)
+  const [leaseInfo, setLeaseInfo] = useState<{ signedAt: string | null; leaseId: string; unitId: string } | null>(null)
+
+  useEffect(() => {
+    fetch('/api/settings/public')
+      .then((r) => r.json())
+      .then((j) => {
+        if (j.success) {
+          setCanScheduleMoveOuts(j.data.customersCanScheduleMoveOuts ?? true)
+        }
+      })
+      .catch(() => {/* keep default true */})
+  }, [])
+
+  useEffect(() => {
+    if (!session?.user?.id) return
+    fetch('/api/portal/active-lease')
+      .then((r) => r.json())
+      .then((j) => {
+        if (j.success) {
+          setLeaseInfo({ signedAt: j.data.signedAt ?? null, leaseId: j.data.leaseId, unitId: j.data.unitId ?? '' })
+        }
+      })
+      .catch(() => {/* ignore */})
+  }, [session?.user?.id])
+
+  const leaseSigned = leaseInfo?.signedAt != null
 
   const tenantName = session?.user?.name ?? 'Tenant'
   const initials = tenantName
@@ -176,7 +217,7 @@ function PortalShell({ children }: { children: React.ReactNode }) {
           '& .MuiDrawer-paper': { width: DRAWER_WIDTH, boxSizing: 'border-box' },
         }}
       >
-        <DrawerContent />
+        <DrawerContent canScheduleMoveOuts={canScheduleMoveOuts} leaseSigned={leaseSigned} />
       </Drawer>
 
       {/* Desktop drawer */}
@@ -192,7 +233,7 @@ function PortalShell({ children }: { children: React.ReactNode }) {
         }}
         open
       >
-        <DrawerContent />
+        <DrawerContent canScheduleMoveOuts={canScheduleMoveOuts} leaseSigned={leaseSigned} />
       </Drawer>
 
       {/* Page content */}
@@ -206,6 +247,25 @@ function PortalShell({ children }: { children: React.ReactNode }) {
           minWidth: 0,
         }}
       >
+        {leaseInfo && !leaseSigned && (
+          <Alert
+            severity="warning"
+            icon={<WarningAmberIcon />}
+            sx={{ mb: 3 }}
+            action={
+              <Button
+                color="inherit"
+                size="small"
+                href={`/reserve/${leaseInfo.unitId}`}
+                sx={{ fontWeight: 600, whiteSpace: 'nowrap' }}
+              >
+                Sign now →
+              </Button>
+            }
+          >
+            <strong>Your lease is not signed yet.</strong> Please sign your storage agreement to activate your access.
+          </Alert>
+        )}
         {children}
       </Box>
     </Box>

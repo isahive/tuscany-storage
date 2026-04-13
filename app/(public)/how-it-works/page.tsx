@@ -4,7 +4,7 @@ import Link from 'next/link'
 
 export const metadata: Metadata = {
   title: 'How It Works',
-  description: 'Learn how easy it is to rent a storage unit at Tuscany Village Self Storage in Florence, SC.',
+  description: 'Learn how easy it is to rent a storage unit at Tuscany Village Self Storage in Caryville, TN.',
 }
 
 const STEPS = [
@@ -68,6 +68,18 @@ const FAQS = [
 export default function HowItWorksPage() {
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify({
+          '@context': 'https://schema.org',
+          '@type': 'FAQPage',
+          mainEntity: FAQS.map(faq => ({
+            '@type': 'Question',
+            name: faq.q,
+            acceptedAnswer: { '@type': 'Answer', text: faq.a }
+          }))
+        }) }}
+      />
       {/* Header */}
       <div className="bg-brown py-12 sm:py-16">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">

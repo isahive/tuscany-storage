@@ -1,10 +1,12 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import {
   Box,
   Card,
   CardContent,
   Chip,
+  CircularProgress,
   Grid,
   Table,
   TableBody,
@@ -13,7 +15,6 @@ import {
   TableHead,
   TableRow,
   Typography,
-  Paper,
 } from '@mui/material'
 import HomeWorkIcon from '@mui/icons-material/HomeWork'
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney'
@@ -23,15 +24,15 @@ import LockIcon from '@mui/icons-material/Lock'
 import PeopleOutlineIcon from '@mui/icons-material/PeopleOutline'
 import { formatMoney, formatDate } from '@/lib/utils'
 
-// ── Mock data ────────────────────────────────────────────────────────────────
+// ── Types ────────────────────────────────────────────────────────────────────
 
-const MOCK_KPIS = {
-  occupancyPct: 87,
-  revenueMtd: 2341500,       // cents
-  availableUnits: 8,
-  delinquentCount: 4,
-  lockedOutCount: 2,
-  waitingListCount: 11,
+interface KpiData {
+  occupancyPct: number
+  revenueMtd: number
+  availableUnits: number
+  delinquentCount: number
+  lockedOutCount: number
+  waitingListCount: number
 }
 
 interface DelinquentRow {
@@ -39,30 +40,17 @@ interface DelinquentRow {
   name: string
   unit: string
   daysPastDue: number
-  balance: number            // cents
+  balance: number
   stage: string
 }
-
-const MOCK_DELINQUENT: DelinquentRow[] = [
-  { id: '1', name: 'Robert Chen',    unit: '12A', daysPastDue: 22, balance: 18500, stage: 'Locked Out' },
-  { id: '2', name: 'Maria Santos',   unit: '07C', daysPastDue: 14, balance: 24000, stage: 'Locked Out' },
-  { id: '3', name: 'David Kim',      unit: '31B', daysPastDue:  8, balance: 15500, stage: 'Late' },
-  { id: '4', name: 'Angela Torres',  unit: '19D', daysPastDue:  6, balance: 10000, stage: 'Late' },
-]
 
 interface MoveOutRow {
   id: string
   name: string
   unit: string
   moveOutDate: string
-  balance: number  // cents
+  balance: number
 }
-
-const MOCK_MOVEOUTS: MoveOutRow[] = [
-  { id: '1', name: 'James Wilson',    unit: '04A', moveOutDate: '2026-04-15', balance: 0 },
-  { id: '2', name: 'Lisa Nakamura',   unit: '22B', moveOutDate: '2026-04-20', balance: 10000 },
-  { id: '3', name: 'Tom Bradley',     unit: '09C', moveOutDate: '2026-04-30', balance: 0 },
-]
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -120,7 +108,42 @@ function KpiCard({ label, value, icon, iconBg, subLabel }: KpiCardProps) {
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function AdminDashboard() {
-  const kpi = MOCK_KPIS
+  const [kpi, setKpi] = useState<KpiData | null>(null)
+  const [delinquent, setDelinquent] = useState<DelinquentRow[]>([])
+  const [moveOuts, setMoveOuts] = useState<MoveOutRow[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const res = await fetch('/api/admin/dashboard')
+        const json = await res.json()
+        if (json.success) {
+          setKpi(json.data.kpis)
+          setDelinquent(json.data.delinquent)
+          setMoveOuts(json.data.moveOuts)
+        }
+      } catch {
+        // silently fail — KPIs will show 0
+      } finally {
+        setLoading(false)
+      }
+    }
+    load()
+  }, [])
+
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', py: 16 }}>
+        <CircularProgress />
+      </Box>
+    )
+  }
+
+  const k = kpi ?? {
+    occupancyPct: 0, revenueMtd: 0, availableUnits: 0,
+    delinquentCount: 0, lockedOutCount: 0, waitingListCount: 0,
+  }
 
   return (
     <Box>
@@ -133,7 +156,7 @@ export default function AdminDashboard() {
         <Grid item xs={12} sm={6} lg={4}>
           <KpiCard
             label="Occupancy Rate"
-            value={`${kpi.occupancyPct}%`}
+            value={`${k.occupancyPct}%`}
             icon={<HomeWorkIcon sx={{ color: '#B8914A' }} />}
             iconBg="#FEF3C7"
             subLabel="of total units"
@@ -142,7 +165,7 @@ export default function AdminDashboard() {
         <Grid item xs={12} sm={6} lg={4}>
           <KpiCard
             label="Revenue MTD"
-            value={formatMoney(kpi.revenueMtd)}
+            value={formatMoney(k.revenueMtd)}
             icon={<AttachMoneyIcon sx={{ color: '#16A34A' }} />}
             iconBg="#D1FAE5"
             subLabel="month to date"
@@ -151,7 +174,7 @@ export default function AdminDashboard() {
         <Grid item xs={12} sm={6} lg={4}>
           <KpiCard
             label="Available Units"
-            value={kpi.availableUnits}
+            value={k.availableUnits}
             icon={<MeetingRoomIcon sx={{ color: '#1E3A5F' }} />}
             iconBg="#DBEAFE"
             subLabel="ready to rent"
@@ -160,7 +183,7 @@ export default function AdminDashboard() {
         <Grid item xs={12} sm={6} lg={4}>
           <KpiCard
             label="Delinquent"
-            value={kpi.delinquentCount}
+            value={k.delinquentCount}
             icon={<WarningAmberIcon sx={{ color: '#92400E' }} />}
             iconBg="#FEF3C7"
             subLabel="past due tenants"
@@ -169,7 +192,7 @@ export default function AdminDashboard() {
         <Grid item xs={12} sm={6} lg={4}>
           <KpiCard
             label="Locked Out"
-            value={kpi.lockedOutCount}
+            value={k.lockedOutCount}
             icon={<LockIcon sx={{ color: '#991B1B' }} />}
             iconBg="#FEE2E2"
             subLabel="access revoked"
@@ -178,7 +201,7 @@ export default function AdminDashboard() {
         <Grid item xs={12} sm={6} lg={4}>
           <KpiCard
             label="Waiting List"
-            value={kpi.waitingListCount}
+            value={k.waitingListCount}
             icon={<PeopleOutlineIcon sx={{ color: '#3B0764' }} />}
             iconBg="#EDE9FE"
             subLabel="prospects queued"
@@ -211,30 +234,38 @@ export default function AdminDashboard() {
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {MOCK_DELINQUENT.map((row) => (
-                      <TableRow key={row.id} hover>
-                        <TableCell sx={{ fontWeight: 500 }}>{row.name}</TableCell>
-                        <TableCell sx={{ color: 'text.secondary' }}>{row.unit}</TableCell>
-                        <TableCell align="right" sx={{ fontWeight: 600, color: '#DC2626' }}>
-                          {row.daysPastDue}
-                        </TableCell>
-                        <TableCell align="right" sx={{ fontWeight: 500 }}>
-                          {formatMoney(row.balance)}
-                        </TableCell>
-                        <TableCell align="center">
-                          <Chip
-                            label={row.stage}
-                            size="small"
-                            sx={{
-                              bgcolor: STATUS_COLORS[row.stage]?.bg ?? '#F3F4F6',
-                              color: STATUS_COLORS[row.stage]?.color ?? '#374151',
-                              fontWeight: 600,
-                              fontSize: '0.7rem',
-                            }}
-                          />
+                    {delinquent.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={5} sx={{ textAlign: 'center', py: 4, color: 'text.secondary' }}>
+                          No delinquent tenants
                         </TableCell>
                       </TableRow>
-                    ))}
+                    ) : (
+                      delinquent.map((row) => (
+                        <TableRow key={row.id} hover>
+                          <TableCell sx={{ fontWeight: 500 }}>{row.name}</TableCell>
+                          <TableCell sx={{ color: 'text.secondary' }}>{row.unit}</TableCell>
+                          <TableCell align="right" sx={{ fontWeight: 600, color: '#DC2626' }}>
+                            {row.daysPastDue}
+                          </TableCell>
+                          <TableCell align="right" sx={{ fontWeight: 500 }}>
+                            {formatMoney(row.balance)}
+                          </TableCell>
+                          <TableCell align="center">
+                            <Chip
+                              label={row.stage}
+                              size="small"
+                              sx={{
+                                bgcolor: STATUS_COLORS[row.stage]?.bg ?? '#F3F4F6',
+                                color: STATUS_COLORS[row.stage]?.color ?? '#374151',
+                                fontWeight: 600,
+                                fontSize: '0.7rem',
+                              }}
+                            />
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
                   </TableBody>
                 </Table>
               </TableContainer>
@@ -265,21 +296,29 @@ export default function AdminDashboard() {
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {MOCK_MOVEOUTS.map((row) => (
-                      <TableRow key={row.id} hover>
-                        <TableCell sx={{ fontWeight: 500 }}>{row.name}</TableCell>
-                        <TableCell sx={{ color: 'text.secondary' }}>{row.unit}</TableCell>
-                        <TableCell align="right" sx={{ color: 'text.secondary' }}>
-                          {formatDate(row.moveOutDate)}
-                        </TableCell>
-                        <TableCell
-                          align="right"
-                          sx={{ fontWeight: 500, color: row.balance > 0 ? '#DC2626' : '#16A34A' }}
-                        >
-                          {formatMoney(row.balance)}
+                    {moveOuts.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={4} sx={{ textAlign: 'center', py: 4, color: 'text.secondary' }}>
+                          No upcoming move-outs
                         </TableCell>
                       </TableRow>
-                    ))}
+                    ) : (
+                      moveOuts.map((row) => (
+                        <TableRow key={row.id} hover>
+                          <TableCell sx={{ fontWeight: 500 }}>{row.name}</TableCell>
+                          <TableCell sx={{ color: 'text.secondary' }}>{row.unit}</TableCell>
+                          <TableCell align="right" sx={{ color: 'text.secondary' }}>
+                            {formatDate(row.moveOutDate)}
+                          </TableCell>
+                          <TableCell
+                            align="right"
+                            sx={{ fontWeight: 500, color: row.balance > 0 ? '#DC2626' : '#16A34A' }}
+                          >
+                            {formatMoney(row.balance)}
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
                   </TableBody>
                 </Table>
               </TableContainer>

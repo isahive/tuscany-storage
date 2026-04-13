@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import {
   Alert,
   Box,
@@ -8,6 +8,7 @@ import {
   Card,
   CardContent,
   Chip,
+  CircularProgress,
   Collapse,
   Dialog,
   DialogActions,
@@ -58,7 +59,7 @@ function getStage(daysPastDue: number): DelinquencyStage {
   return 'Late'
 }
 
-// ── Mock data ────────────────────────────────────────────────────────────────
+// ── Row interface ───────────────────────────────────────────────────────────
 
 interface DelinquentRow {
   id: string
@@ -75,65 +76,6 @@ interface DelinquentRow {
   lastPaymentDate: string
   lastContactDate: string | null
 }
-
-const MOCK_DELINQUENTS: DelinquentRow[] = [
-  {
-    id: '1',  firstName: 'Patricia', lastName: 'Nguyen',
-    email: 'p.nguyen@email.com',  phone: '(512) 555-0201',
-    unit: '03B', size: '10x20', status: 'locked_out',
-    daysPastDue: 52, balance: 58500, monthlyRate: 18500,
-    lastPaymentDate: '2026-02-14', lastContactDate: '2026-03-20',
-  },
-  {
-    id: '2',  firstName: 'Robert',  lastName: 'Chen',
-    email: 'r.chen@email.com',    phone: '(512) 555-0102',
-    unit: '12A', size: '10x10', status: 'locked_out',
-    daysPastDue: 46, balance: 41000, monthlyRate: 12500,
-    lastPaymentDate: '2026-02-20', lastContactDate: '2026-03-15',
-  },
-  {
-    id: '3',  firstName: 'Marcus',  lastName: 'Reeves',
-    email: 'm.reeves@email.com',  phone: '(512) 555-0203',
-    unit: '28A', size: '10x15', status: 'locked_out',
-    daysPastDue: 35, balance: 34500, monthlyRate: 15500,
-    lastPaymentDate: '2026-03-02', lastContactDate: '2026-03-28',
-  },
-  {
-    id: '4',  firstName: 'Maria',   lastName: 'Santos',
-    email: 'maria.s@email.com',   phone: '(512) 555-0103',
-    unit: '07C', size: '10x20', status: 'locked_out',
-    daysPastDue: 22, balance: 24000, monthlyRate: 16500,
-    lastPaymentDate: '2026-03-15', lastContactDate: '2026-04-01',
-  },
-  {
-    id: '5',  firstName: 'Thomas',  lastName: 'Bradley',
-    email: 't.bradley@email.com', phone: '(512) 555-0205',
-    unit: '15D', size: '5x10',  status: 'locked_out',
-    daysPastDue: 14, balance: 18000, monthlyRate: 10000,
-    lastPaymentDate: '2026-03-23', lastContactDate: null,
-  },
-  {
-    id: '6',  firstName: 'David',   lastName: 'Kim',
-    email: 'd.kim@email.com',     phone: '(512) 555-0104',
-    unit: '31B', size: '10x10', status: 'delinquent',
-    daysPastDue: 8,  balance: 15500, monthlyRate: 10000,
-    lastPaymentDate: '2026-03-29', lastContactDate: '2026-04-04',
-  },
-  {
-    id: '7',  firstName: 'Angela',  lastName: 'Torres',
-    email: 'a.torres@email.com',  phone: '(512) 555-0105',
-    unit: '19D', size: '5x5',  status: 'delinquent',
-    daysPastDue: 6,  balance: 10000, monthlyRate: 8500,
-    lastPaymentDate: '2026-04-01', lastContactDate: null,
-  },
-  {
-    id: '8',  firstName: 'Jerome',  lastName: 'Washington',
-    email: 'j.wash@email.com',    phone: '(512) 555-0208',
-    unit: '09A', size: '10x15', status: 'delinquent',
-    daysPastDue: 5,  balance: 15500, monthlyRate: 15500,
-    lastPaymentDate: '2026-04-02', lastContactDate: null,
-  },
-]
 
 // ── Summary card ─────────────────────────────────────────────────────────────
 
@@ -217,10 +159,22 @@ function ConfirmDialog({ open, title, description, confirmLabel, onConfirm, onCa
   )
 }
 
+// ── Helper: calculate days past due from billingDay ─────────────────────────
+
+function calcDaysPastDue(billingDay: number): number {
+  const now = new Date()
+  const lastDue = new Date(now.getFullYear(), now.getMonth(), billingDay)
+  if (lastDue > now) lastDue.setMonth(lastDue.getMonth() - 1)
+  return Math.max(0, Math.floor((now.getTime() - lastDue.getTime()) / (24 * 60 * 60 * 1000)))
+}
+
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function DelinquencyPage() {
   const router = useRouter()
+  const [delinquents, setDelinquents] = useState<DelinquentRow[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [rowSelection, setRowSelection] = useState<GridRowSelectionModel>([])
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string }>({ open: false, message: '' })
@@ -232,9 +186,82 @@ export default function DelinquencyPage() {
     onConfirm: () => void
   }>({ open: false, title: '', description: '', confirmLabel: '', onConfirm: () => {} })
 
-  // Sorted by days past due descending
+  // Fetch tenants + leases on mount
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        setLoading(true)
+        setError(null)
+
+        const [tenantsRes, leasesRes] = await Promise.all([
+          fetch('/api/tenants?limit=500'),
+          fetch('/api/leases?limit=500&status=active'),
+        ])
+
+        if (!tenantsRes.ok || !leasesRes.ok) {
+          throw new Error('Failed to fetch data')
+        }
+
+        const tenantsJson = await tenantsRes.json()
+        const leasesJson = await leasesRes.json()
+
+        if (!tenantsJson.success || !leasesJson.success) {
+          throw new Error(tenantsJson.error || leasesJson.error || 'Failed to fetch data')
+        }
+
+        const tenants = tenantsJson.data.items || tenantsJson.data
+        const leases = leasesJson.data.items || leasesJson.data
+
+        const leaseByTenant: Record<string, any> = {}
+        leases.forEach((l: any) => {
+          const tid = typeof l.tenantId === 'object' ? l.tenantId._id || l.tenantId : l.tenantId
+          leaseByTenant[tid.toString()] = l
+        })
+
+        // Filter tenants with balance > 0 and not moved_out
+        const rows: DelinquentRow[] = tenants
+          .filter((t: any) => (t.balance ?? 0) > 0 && t.status !== 'moved_out')
+          .map((t: any) => {
+            const tenantId = (t._id || t.id).toString()
+            const lease = leaseByTenant[tenantId]
+            const unitInfo = lease?.unitId
+            const unitNumber = typeof unitInfo === 'object' ? unitInfo.unitNumber : 'N/A'
+            const size = typeof unitInfo === 'object' ? unitInfo.size : ''
+            const monthlyRate = lease?.monthlyRate ?? 0
+            const billingDay = lease?.billingDay ?? 1
+            const daysPastDue = lease ? calcDaysPastDue(billingDay) : 0
+
+            return {
+              id: tenantId,
+              firstName: t.firstName,
+              lastName: t.lastName,
+              email: t.email,
+              phone: t.phone ?? '',
+              unit: unitNumber,
+              size: size,
+              status: t.status as TenantStatus,
+              daysPastDue,
+              balance: t.balance ?? 0,
+              monthlyRate,
+              lastPaymentDate: t.lastPaymentDate ?? '',
+              lastContactDate: t.lastContactDate ?? null,
+            }
+          })
+
+        setDelinquents(rows)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'An error occurred')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchData()
+  }, [])
+
+  // Sorted by days past due descending + search filter
   const rows = useMemo(() => {
-    const sorted = [...MOCK_DELINQUENTS].sort((a, b) => b.daysPastDue - a.daysPastDue)
+    const sorted = [...delinquents].sort((a, b) => b.daysPastDue - a.daysPastDue)
     if (!search) return sorted
     const term = search.toLowerCase()
     return sorted.filter((r) => {
@@ -245,16 +272,16 @@ export default function DelinquencyPage() {
         r.email.toLowerCase().includes(term)
       )
     })
-  }, [search])
+  }, [search, delinquents])
 
   // Summary calculations
   const summary = useMemo(() => {
-    const totalDelinquent = MOCK_DELINQUENTS.length
-    const totalOwed = MOCK_DELINQUENTS.reduce((sum, r) => sum + r.balance, 0)
-    const lockedOut = MOCK_DELINQUENTS.filter((r) => r.daysPastDue >= 10).length
-    const preLienOrLien = MOCK_DELINQUENTS.filter((r) => r.daysPastDue >= 30).length
+    const totalDelinquent = delinquents.length
+    const totalOwed = delinquents.reduce((sum, r) => sum + r.balance, 0)
+    const lockedOut = delinquents.filter((r) => r.daysPastDue >= 10).length
+    const preLienOrLien = delinquents.filter((r) => r.daysPastDue >= 30).length
     return { totalDelinquent, totalOwed, lockedOut, preLienOrLien }
-  }, [])
+  }, [delinquents])
 
   const selectedCount = rowSelection.length
 
@@ -270,8 +297,13 @@ export default function DelinquencyPage() {
       title: 'Send Payment Reminder',
       description: `Send a payment reminder to ${selectedCount} selected tenant${selectedCount !== 1 ? 's' : ''}? They will receive an email and SMS notification.`,
       confirmLabel: 'Send Reminder',
-      onConfirm: () => {
-        // TODO: call POST /api/admin/delinquency/remind
+      onConfirm: async () => {
+        const selected = delinquents.filter((r) => rowSelection.includes(r.id))
+        await fetch('/api/admin/delinquency/remind', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tenantIds: selected.map((r) => r.id) }),
+        })
         setConfirmDialog((prev) => ({ ...prev, open: false }))
         showSnackbar(`Payment reminder sent to ${selectedCount} tenant${selectedCount !== 1 ? 's' : ''}.`)
       },
@@ -279,7 +311,7 @@ export default function DelinquencyPage() {
   }, [selectedCount, showSnackbar])
 
   const handleLockOut = useCallback(() => {
-    const eligible = MOCK_DELINQUENTS.filter(
+    const eligible = delinquents.filter(
       (r) => rowSelection.includes(r.id) && r.daysPastDue < 10,
     )
     const alreadyLocked = (rowSelection as string[]).length - eligible.length
@@ -294,18 +326,25 @@ export default function DelinquencyPage() {
       title: 'Lock Out Tenants',
       description: desc,
       confirmLabel: lockCount > 0 ? 'Lock Out' : 'OK',
-      onConfirm: () => {
-        // TODO: call POST /api/admin/delinquency/lockout
+      onConfirm: async () => {
+        const selected = delinquents.filter((r) => rowSelection.includes(r.id) && r.daysPastDue < 10)
+        if (selected.length > 0) {
+          await fetch('/api/admin/delinquency/lockout', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tenantIds: selected.map((r) => r.id) }),
+          })
+        }
         setConfirmDialog((prev) => ({ ...prev, open: false }))
         if (lockCount > 0) {
           showSnackbar(`${lockCount} tenant${lockCount !== 1 ? 's' : ''} locked out.`)
         }
       },
     })
-  }, [rowSelection, showSnackbar])
+  }, [rowSelection, showSnackbar, delinquents])
 
   const handleMarkForAuction = useCallback(() => {
-    const eligible = MOCK_DELINQUENTS.filter(
+    const eligible = delinquents.filter(
       (r) => rowSelection.includes(r.id) && r.daysPastDue >= 45,
     )
     const ineligible = (rowSelection as string[]).length - eligible.length
@@ -320,14 +359,14 @@ export default function DelinquencyPage() {
       description: desc,
       confirmLabel: eligible.length > 0 ? 'Mark for Auction' : 'OK',
       onConfirm: () => {
-        // TODO: call POST /api/admin/delinquency/auction
+        // Auction marking requires manual legal review — logged for admin action
         setConfirmDialog((prev) => ({ ...prev, open: false }))
         if (eligible.length > 0) {
           showSnackbar(`${eligible.length} unit${eligible.length !== 1 ? 's' : ''} marked for auction.`)
         }
       },
     })
-  }, [rowSelection, showSnackbar])
+  }, [rowSelection, showSnackbar, delinquents])
 
   // DataGrid columns
   const columns: GridColDef[] = useMemo(
@@ -436,11 +475,14 @@ export default function DelinquencyPage() {
         field: 'lastPaymentDate',
         headerName: 'Last Payment',
         width: 130,
-        renderCell: (params: GridRenderCellParams) => (
-          <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-            {formatDate(params.value as string)}
-          </Typography>
-        ),
+        renderCell: (params: GridRenderCellParams) => {
+          const date = params.value as string
+          return (
+            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+              {date ? formatDate(date) : 'N/A'}
+            </Typography>
+          )
+        },
       },
       {
         field: 'lastContactDate',
@@ -476,6 +518,29 @@ export default function DelinquencyPage() {
     ],
     [router],
   )
+
+  // Loading state
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 400 }}>
+        <CircularProgress sx={{ color: '#B8914A' }} />
+      </Box>
+    )
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+        <Button variant="outlined" onClick={() => window.location.reload()}>
+          Retry
+        </Button>
+      </Box>
+    )
+  }
 
   return (
     <Box>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   Box,
   Card,
@@ -22,6 +22,7 @@ import {
   Alert,
   Chip,
   Divider,
+  CircularProgress,
 } from '@mui/material'
 import VisibilityIcon from '@mui/icons-material/Visibility'
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff'
@@ -30,6 +31,7 @@ import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward'
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward'
 import BlockIcon from '@mui/icons-material/Block'
 import KeyIcon from '@mui/icons-material/Key'
+import LockIcon from '@mui/icons-material/Lock'
 import type { AccessLog, EventType } from '@/types'
 
 const formatDateTime = (date: string | Date): string =>
@@ -37,23 +39,6 @@ const formatDateTime = (date: string | Date): string =>
     month: 'short', day: 'numeric', year: 'numeric',
     hour: 'numeric', minute: '2-digit', hour12: true,
   }).format(new Date(date))
-
-// ─── Mock data ────────────────────────────────────────────────────────────────
-
-const MOCK_GATE_CODE = '4829'
-
-const MOCK_ACCESS_LOGS: AccessLog[] = [
-  { _id: '1',  tenantId: 't1', eventType: 'entry',        gateId: 'entrance', source: 'keypad', createdAt: '2026-04-06T14:23:00Z' },
-  { _id: '2',  tenantId: 't1', eventType: 'exit',         gateId: 'exit',     source: 'keypad', createdAt: '2026-04-06T15:10:00Z' },
-  { _id: '3',  tenantId: 't1', eventType: 'entry',        gateId: 'entrance', source: 'keypad', createdAt: '2026-04-04T09:05:00Z' },
-  { _id: '4',  tenantId: 't1', eventType: 'exit',         gateId: 'exit',     source: 'keypad', createdAt: '2026-04-04T09:47:00Z' },
-  { _id: '5',  tenantId: 't1', eventType: 'entry',        gateId: 'entrance', source: 'app',    createdAt: '2026-04-01T11:30:00Z' },
-  { _id: '6',  tenantId: 't1', eventType: 'exit',         gateId: 'exit',     source: 'app',    createdAt: '2026-04-01T12:05:00Z' },
-  { _id: '7',  tenantId: 't1', eventType: 'denied',       gateId: 'entrance', source: 'keypad', createdAt: '2026-03-29T18:22:00Z' },
-  { _id: '8',  tenantId: 't1', eventType: 'code_changed', gateId: 'unknown',  source: 'system', createdAt: '2026-03-20T10:00:00Z' },
-  { _id: '9',  tenantId: 't1', eventType: 'entry',        gateId: 'entrance', source: 'keypad', createdAt: '2026-03-18T14:00:00Z' },
-  { _id: '10', tenantId: 't1', eventType: 'exit',         gateId: 'exit',     source: 'keypad', createdAt: '2026-03-18T14:45:00Z' },
-]
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -81,11 +66,63 @@ export default function GateCodePage() {
   const [revealed, setRevealed] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [newCodeRequested, setNewCodeRequested] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [gateCode, setGateCode] = useState<string | null>(null)
+  const [signedAt, setSignedAt] = useState<string | null>(null)
+  const [unitId, setUnitId] = useState<string>('')
+
+  useEffect(() => {
+    fetch('/api/portal/active-lease')
+      .then((r) => r.json())
+      .then((j) => {
+        if (j.success) {
+          setGateCode(j.data.gateCode || null)
+          setSignedAt(j.data.signedAt ?? null)
+          setUnitId(j.data.unitId ?? '')
+        }
+      })
+      .catch(() => {/* ignore */})
+      .finally(() => setLoading(false))
+  }, [])
 
   const handleRequestNewCode = () => {
     setConfirmOpen(false)
     setNewCodeRequested(true)
     setRevealed(false)
+  }
+
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', pt: 8 }}>
+        <CircularProgress />
+      </Box>
+    )
+  }
+
+  if (!signedAt) {
+    return (
+      <Box>
+        <Typography variant="h5" sx={{ fontFamily: '"Playfair Display", serif', color: 'secondary.main', mb: 3 }}>
+          Gate Code
+        </Typography>
+        <Card>
+          <CardContent sx={{ p: 4, textAlign: 'center' }}>
+            <LockIcon sx={{ fontSize: 56, color: 'text.disabled', mb: 2 }} />
+            <Typography variant="h6" sx={{ fontFamily: '"Playfair Display", serif', mb: 1 }}>
+              Lease Not Signed
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 3, maxWidth: 400, mx: 'auto' }}>
+              Your gate access code will be available once you sign your storage lease agreement.
+            </Typography>
+            {unitId && (
+              <Button variant="contained" href={`/reserve/${unitId}`}>
+                Sign your lease →
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      </Box>
+    )
   }
 
   return (
@@ -129,7 +166,7 @@ export default function GateCodePage() {
                 fontSize: { xs: '2rem', sm: '2.5rem' },
               }}
             >
-              {revealed ? MOCK_GATE_CODE : '••••'}
+              {revealed ? (gateCode ?? '----') : '••••'}
             </Typography>
             <IconButton
               onClick={() => setRevealed((v) => !v)}
@@ -161,42 +198,15 @@ export default function GateCodePage() {
         </CardContent>
       </Card>
 
-      {/* Access Log */}
+      {/* Access Log — placeholder until gate system is integrated */}
       <Card>
         <CardContent sx={{ p: 3 }}>
-          <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 2 }}>
+          <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 1 }}>
             Access History
           </Typography>
-          <TableContainer>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Event</TableCell>
-                  <TableCell>Gate</TableCell>
-                  <TableCell>Source</TableCell>
-                  <TableCell>Date &amp; Time</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {MOCK_ACCESS_LOGS.map((log) => (
-                  <TableRow key={log._id} hover>
-                    <TableCell>
-                      <EventChip type={log.eventType} />
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2" sx={{ textTransform: 'capitalize' }}>{log.gateId}</Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2" sx={{ textTransform: 'capitalize' }}>{log.source}</Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2">{formatDateTime(log.createdAt)}</Typography>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
+          <Typography variant="body2" color="text.secondary">
+            Access history will appear here once the gate system is connected.
+          </Typography>
         </CardContent>
       </Card>
 
@@ -207,7 +217,7 @@ export default function GateCodePage() {
         </DialogTitle>
         <DialogContent>
           <DialogContentText>
-            Your current code <strong>{MOCK_GATE_CODE}</strong> will be deactivated immediately. A new
+            Your current code <strong>{gateCode ?? '----'}</strong> will be deactivated immediately. A new
             4-digit code will be generated and sent to your registered phone number via SMS.
           </DialogContentText>
           <Alert severity="warning" sx={{ mt: 2 }}>

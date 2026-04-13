@@ -1,12 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   Alert,
   Box,
   Button,
   Card,
   CardContent,
+  CircularProgress,
   Divider,
   Step,
   StepLabel,
@@ -20,31 +21,86 @@ import { formatMoney, formatDate } from '@/lib/utils'
 
 const STEPS = ['Review Lease', 'Sign', 'Confirmation']
 
-const MOCK_LEASE = {
-  id: 'lease-1',
-  unitNumber: '14B',
-  unitSize: '10x10',
-  unitType: 'Climate Controlled',
-  monthlyRate: 12500,
-  deposit: 12500,
-  startDate: '2026-04-15',
-  billingDay: 15,
-  tenantName: 'Emily Johnson',
+interface LeaseData {
+  id: string
+  unitNumber: string
+  unitSize: string
+  unitType: string
+  monthlyRate: number
+  deposit: number
+  startDate: string
+  billingDay: number
+  tenantName: string
 }
 
 export default function LeaseSignPage() {
   const [activeStep, setActiveStep] = useState(0)
   const [signatureData, setSignatureData] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
-  const lease = MOCK_LEASE
+  const [lease, setLease] = useState<LeaseData | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetch('/api/portal/dashboard')
+      .then((r) => r.json())
+      .then((j) => {
+        if (j.success && j.data) {
+          const { lease: l, unit: u, tenant: t } = j.data
+          setLease({
+            id: l._id,
+            unitNumber: u.unitNumber,
+            unitSize: u.size,
+            unitType: u.type,
+            monthlyRate: l.monthlyRate,
+            deposit: l.deposit,
+            startDate: l.startDate,
+            billingDay: l.billingDay,
+            tenantName: t.name,
+          })
+        }
+      })
+      .catch(() => setError('Failed to load lease information.'))
+      .finally(() => setLoading(false))
+  }, [])
 
   const handleSign = async () => {
-    if (!signatureData) return
+    if (!signatureData || !lease) return
     setSubmitting(true)
-    // TODO: call POST /api/leases/[id]/sign with { signatureData }
-    await new Promise((r) => setTimeout(r, 1500))
-    setSubmitting(false)
-    setActiveStep(2)
+    setError(null)
+    try {
+      const res = await fetch(`/api/leases/${lease.id}/sign`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ signatureData }),
+      })
+      const json = await res.json()
+      if (!res.ok || !json.success) throw new Error(json.error ?? 'Failed to sign lease')
+      setActiveStep(2)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to sign lease. Please try again.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 10 }}>
+        <CircularProgress />
+      </Box>
+    )
+  }
+
+  if (!lease) {
+    return (
+      <Box sx={{ maxWidth: 700, mx: 'auto' }}>
+        <Typography variant="h5" sx={{ fontWeight: 700, mb: 3 }}>
+          Lease Agreement
+        </Typography>
+        <Alert severity="error">{error ?? 'Unable to load lease information. Please try again later.'}</Alert>
+      </Box>
+    )
   }
 
   return (
@@ -60,6 +116,12 @@ export default function LeaseSignPage() {
           </Step>
         ))}
       </Stepper>
+
+      {error && (
+        <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
+          {error}
+        </Alert>
+      )}
 
       {/* Step 0: Review */}
       {activeStep === 0 && (

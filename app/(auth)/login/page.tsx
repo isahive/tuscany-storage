@@ -243,8 +243,8 @@ export default function LoginPage() {
 
             <Typography variant="caption" color="text.secondary" display="block" textAlign="center">
               Need help? Call us at{' '}
-              <Box component="a" href="tel:+18435551234" sx={{ color: 'primary.main', textDecoration: 'none' }}>
-                (843) 555-1234
+              <Box component="a" href="tel:+18654262100" sx={{ color: 'primary.main', textDecoration: 'none' }}>
+                (865) 426-2100
               </Box>
             </Typography>
           </CardContent>

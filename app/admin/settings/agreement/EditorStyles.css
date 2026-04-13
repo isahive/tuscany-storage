@@ -1,0 +1,153 @@
+/* ── Agreement Editor Canvas ───────────────────────────────────────────────── */
+
+.agreement-editor-scroll-wrapper {
+  overflow-y: auto;
+  background: #e8e8e8;
+  padding: 2rem 1rem;
+  border-radius: 0 0 8px 8px;
+  min-height: 600px;
+}
+
+.agreement-editor-canvas {
+  width: 820px;
+  max-width: 100%;
+  margin: 0 auto;
+  background: white;
+  padding: 3rem 2.5rem;
+  min-height: 1056px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.14);
+  border-radius: 2px;
+  font-family: 'Georgia', serif;
+  font-size: 11pt;
+  line-height: 1.75;
+  color: #1c0f06;
+}
+
+/* ── ProseMirror core ─────────────────────────────────────────────────────── */
+
+.agreement-editor-canvas .ProseMirror {
+  outline: none;
+  min-height: 800px;
+}
+
+.agreement-editor-canvas .ProseMirror p.is-editor-empty:first-child::before {
+  color: #adb5bd;
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+/* ── Typography ──────────────────────────────────────────────────────────── */
+
+.agreement-editor-canvas h1 {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 1.5rem 0 0.75rem;
+  color: #1c0f06;
+  line-height: 1.3;
+}
+
+.agreement-editor-canvas h2 {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 1.25rem 0 0.6rem;
+  color: #1c0f06;
+  line-height: 1.3;
+}
+
+.agreement-editor-canvas h3 {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin: 1rem 0 0.5rem;
+  color: #1c0f06;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.agreement-editor-canvas p {
+  margin: 0 0 0.75rem;
+}
+
+.agreement-editor-canvas strong {
+  font-weight: 700;
+}
+
+.agreement-editor-canvas em {
+  font-style: italic;
+}
+
+.agreement-editor-canvas u {
+  text-decoration: underline;
+}
+
+.agreement-editor-canvas s {
+  text-decoration: line-through;
+}
+
+/* ── Lists ───────────────────────────────────────────────────────────────── */
+
+.agreement-editor-canvas ul,
+.agreement-editor-canvas ol {
+  padding-left: 1.5rem;
+  margin: 0 0 0.75rem;
+}
+
+.agreement-editor-canvas li {
+  margin-bottom: 0.25rem;
+}
+
+.agreement-editor-canvas li p {
+  margin: 0;
+}
+
+/* ── Blockquote ──────────────────────────────────────────────────────────── */
+
+.agreement-editor-canvas blockquote {
+  border-left: 3px solid #b8914a;
+  padding-left: 1rem;
+  margin: 0.75rem 0;
+  color: #5a4a3a;
+  font-style: italic;
+}
+
+/* ── Horizontal rule ─────────────────────────────────────────────────────── */
+
+.agreement-editor-canvas hr {
+  border: none;
+  border-top: 1px solid #ede5d8;
+  margin: 1.5rem 0;
+}
+
+/* ── Highlight ───────────────────────────────────────────────────────────── */
+
+.agreement-editor-canvas mark {
+  background: #fef3c7;
+  color: #92400e;
+  border-radius: 2px;
+  padding: 0 2px;
+}
+
+/* ── Images ──────────────────────────────────────────────────────────────── */
+
+.agreement-editor-canvas img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 0.75rem 0;
+  border-radius: 2px;
+}
+
+.agreement-editor-canvas img.ProseMirror-selectednode {
+  outline: 2px solid #b8914a;
+  outline-offset: 2px;
+}
+
+/* ── Selection ───────────────────────────────────────────────────────────── */
+
+.agreement-editor-canvas .ProseMirror ::selection {
+  background: rgba(184, 145, 74, 0.2);
+}

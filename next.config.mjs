@@ -3,7 +3,7 @@ const nextConfig = {
   output: 'standalone',
   reactStrictMode: true,
   experimental: {
-    serverComponentsExternalPackages: ['mongoose', 'pdfkit', 'twilio', '@sendgrid/mail'],
+    serverComponentsExternalPackages: ['mongoose', 'pdfkit', 'twilio', 'resend'],
   },
   images: {
     remotePatterns: [

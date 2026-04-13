@@ -292,10 +292,10 @@ export default function SizeGuidePage() {
           </p>
           <div className="mt-6 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
             <a
-              href="tel:+18435551234"
+              href="tel:+18654262100"
               className="w-full rounded bg-tan px-6 py-3 font-semibold text-brown hover:bg-tan-light transition-colors sm:w-auto"
             >
-              Call (843) 555-1234
+              Call (865) 426-2100
             </a>
             <Link
               href="/contact"

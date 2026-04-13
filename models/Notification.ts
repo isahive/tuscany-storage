@@ -11,7 +11,7 @@ export interface INotificationDocument extends Document {
   sentAt?: Date
   failureReason?: string
   twilioMessageSid?: string
-  sendgridMessageId?: string
+  resendMessageId?: string
   createdAt: Date
   updatedAt: Date
 }
@@ -44,7 +44,7 @@ const NotificationSchema = new Schema<INotificationDocument>(
     sentAt: { type: Date },
     failureReason: { type: String },
     twilioMessageSid: { type: String },
-    sendgridMessageId: { type: String },
+    resendMessageId: { type: String },
   },
   { timestamps: true }
 )

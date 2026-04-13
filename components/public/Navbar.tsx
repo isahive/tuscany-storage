@@ -43,10 +43,10 @@ export default function Navbar() {
           {/* Right side */}
           <div className="hidden md:flex items-center gap-4">
             <a
-              href="tel:+18435551234"
+              href="tel:+18654262100"
               className="text-sm font-medium text-cream/80 hover:text-tan transition-colors"
             >
-              (843) 555-1234
+              (865) 426-2100
             </a>
             <Link
               href="/waiting-list"
@@ -98,10 +98,10 @@ export default function Navbar() {
             ))}
             <div className="mt-3 flex flex-col gap-2 border-t border-cream/10 pt-3">
               <a
-                href="tel:+18435551234"
+                href="tel:+18654262100"
                 className="px-3 py-2 text-sm font-medium text-cream/70"
               >
-                (843) 555-1234
+                (865) 426-2100
               </a>
               <Link
                 href="/waiting-list"

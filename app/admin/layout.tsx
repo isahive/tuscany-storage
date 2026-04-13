@@ -34,6 +34,10 @@ import TrendingUpIcon from '@mui/icons-material/TrendingUp'
 import ListAltIcon from '@mui/icons-material/ListAlt'
 import SettingsIcon from '@mui/icons-material/Settings'
 import ExitToAppIcon from '@mui/icons-material/ExitToApp'
+import StorefrontIcon from '@mui/icons-material/Storefront'
+import RequestQuoteIcon from '@mui/icons-material/RequestQuote'
+import AssessmentIcon from '@mui/icons-material/Assessment'
+import EmailIcon from '@mui/icons-material/Email'
 import LogoutIcon from '@mui/icons-material/Logout'
 import NavigateNextIcon from '@mui/icons-material/NavigateNext'
 import { usePathname, useRouter } from 'next/navigation'
@@ -49,7 +53,11 @@ const NAV_ITEMS = [
   { label: 'Delinquency',     href: '/admin/delinquency',       icon: <WarningIcon /> },
   { label: 'Rate Management', href: '/admin/rate-management',   icon: <TrendingUpIcon /> },
   { label: 'Waiting List',    href: '/admin/waiting-list',      icon: <ListAltIcon /> },
+  { label: 'Retail Sale',     href: '/admin/retail',            icon: <StorefrontIcon /> },
+  { label: 'New Quote',       href: '/admin/quotes',            icon: <RequestQuoteIcon /> },
   { label: 'Move Out',        href: '/admin/move-out',          icon: <ExitToAppIcon /> },
+  { label: 'Email, Txt & Print', href: '/admin/communications',  icon: <EmailIcon /> },
+  { label: 'Reports',         href: '/admin/reports',           icon: <AssessmentIcon /> },
   { label: 'Setup',           href: '/admin/settings',          icon: <SettingsIcon /> },
 ]
 

@@ -105,6 +105,11 @@ export async function POST(req: NextRequest) {
       ...(note ? { description: note } : {}),
     })
 
+    // Update tenant balance
+    await Tenant.findByIdAndUpdate(tenantId, {
+      $inc: { balance: amountCents },
+    })
+
     return NextResponse.json({ success: true, data: payment }, { status: 201 })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Internal server error'

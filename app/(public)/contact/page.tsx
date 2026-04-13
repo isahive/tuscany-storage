@@ -10,8 +10,8 @@ const CONTACT_ITEMS = [
       </svg>
     ),
     label: 'Phone',
-    value: '(843) 555-1234',
-    href: 'tel:+18435551234',
+    value: '(865) 426-2100',
+    href: 'tel:+18654262100',
   },
   {
     icon: (
@@ -20,8 +20,8 @@ const CONTACT_ITEMS = [
       </svg>
     ),
     label: 'Email',
-    value: 'info@tuscanystorage.com',
-    href: 'mailto:info@tuscanystorage.com',
+    value: 'Tuscanystorage@gmail.com',
+    href: 'mailto:Tuscanystorage@gmail.com',
   },
   {
     icon: (
@@ -31,8 +31,8 @@ const CONTACT_ITEMS = [
       </svg>
     ),
     label: 'Address',
-    value: '1234 Storage Lane, Florence, SC 29501',
-    href: 'https://maps.google.com',
+    value: '2519 Highway 116, Caryville, TN 37714',
+    href: 'https://www.google.com/maps/search/?api=1&query=2519+Highway+116+Caryville+TN+37714',
   },
 ]
 
@@ -45,9 +45,18 @@ export default function ContactPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setState('submitting')
-    // TODO: wire to API when Dev 1 builds notification endpoint
-    await new Promise((r) => setTimeout(r, 1000))
-    setState('success')
+    try {
+      const res = await fetch('/api/public/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      })
+      const json = await res.json()
+      if (!res.ok || !json.success) throw new Error(json.error ?? 'Failed to send')
+      setState('success')
+    } catch {
+      setState('error')
+    }
   }
 
   return (
@@ -90,6 +99,20 @@ export default function ContactPage() {
                   </div>
                 </a>
               ))}
+            </div>
+
+            {/* Map embed */}
+            <div className="overflow-hidden rounded-xl border border-mid">
+              <iframe
+                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3229.5!2d-84.223!3d36.297!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2s2519+Highway+116+Caryville+TN+37714!5e0!3m2!1sen!2sus!4v1"
+                width="100%"
+                height="300"
+                style={{ border: 0, borderRadius: '0.75rem' }}
+                allowFullScreen
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+                title="Tuscany Village Self Storage Location"
+              />
             </div>
 
             {/* Hours */}
@@ -162,7 +185,7 @@ export default function ContactPage() {
                         type="tel"
                         value={form.phone}
                         onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
-                        placeholder="(843) 555-0000"
+                        placeholder="(865) 426-0000"
                         className="w-full rounded-lg border border-mid px-4 py-2.5 text-sm text-brown placeholder-muted focus:border-tan focus:outline-none"
                       />
                     </div>

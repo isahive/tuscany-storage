@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import {
   Alert,
   Box,
@@ -8,6 +8,7 @@ import {
   Card,
   CardContent,
   Chip,
+  CircularProgress,
   Collapse,
   Dialog,
   DialogActions,
@@ -61,128 +62,160 @@ interface RateIncreaseBatch {
   units: RateChangeUnit[]
 }
 
-// ── Mock data ────────────────────────────────────────────────────────────────
-// Simulates GET /api/admin/rate-management response
+// ── Unit type display labels ─────────────────────────────────────────────────
 
-const MOCK_BATCHES: RateIncreaseBatch[] = [
-  {
-    id: 'batch-001',
-    name: 'Climate Controlled Q2 2026',
-    unitType: 'Climate Controlled',
-    occupancyRate: 94,
-    effectiveDate: '2026-06-01',
-    noticeDate: '2026-05-01',
-    createdAt: '2026-04-05',
-    status: 'pending',
-    units: [
-      {
-        unitNumber: '04A',
-        size: '10x10',
-        tenantName: 'James Wilson',
-        tenantSince: '2024-11-01',
-        monthsWithoutIncrease: 17,
-        currentRate: 12500,
-        proposedRate: 13200,
-      },
-      {
-        unitNumber: '05A',
-        size: '10x15',
-        tenantName: 'Emily Johnson',
-        tenantSince: '2024-08-15',
-        monthsWithoutIncrease: 20,
-        currentRate: 15500,
-        proposedRate: 16300,
-      },
-      {
-        unitNumber: '12A',
-        size: '10x15',
-        tenantName: 'Robert Chen',
-        tenantSince: '2025-01-10',
-        monthsWithoutIncrease: 15,
-        currentRate: 18000,
-        proposedRate: 18900,
-      },
-    ],
-  },
-  {
-    id: 'batch-002',
-    name: 'Standard Units Q2 2026',
-    unitType: 'Standard',
-    occupancyRate: 91,
-    effectiveDate: '2026-06-01',
-    noticeDate: '2026-05-01',
-    createdAt: '2026-04-05',
-    status: 'pending',
-    units: [
-      {
-        unitNumber: '02A',
-        size: '5x10',
-        tenantName: 'Sarah Lee',
-        tenantSince: '2024-06-01',
-        monthsWithoutIncrease: 24,
-        currentRate: 7500,
-        proposedRate: 7900,
-      },
-      {
-        unitNumber: '03A',
-        size: '10x10',
-        tenantName: 'Mike Torres',
-        tenantSince: '2024-09-15',
-        monthsWithoutIncrease: 19,
-        currentRate: 10000,
-        proposedRate: 10500,
-      },
-      {
-        unitNumber: '06A',
-        size: '10x20',
-        tenantName: 'Lisa Nakamura',
-        tenantSince: '2025-03-01',
-        monthsWithoutIncrease: 13,
-        currentRate: 13000,
-        proposedRate: 13700,
-      },
-      {
-        unitNumber: '06B',
-        size: '10x20',
-        tenantName: 'Kevin Murphy',
-        tenantSince: '2024-12-01',
-        monthsWithoutIncrease: 16,
-        currentRate: 13000,
-        proposedRate: 13700,
-      },
-    ],
-  },
-  {
-    id: 'batch-003',
-    name: 'Drive-Up Units Q2 2026',
-    unitType: 'Drive-Up',
-    occupancyRate: 92,
-    effectiveDate: '2026-07-01',
-    noticeDate: '2026-06-01',
-    createdAt: '2026-04-06',
-    status: 'pending',
-    units: [
-      {
-        unitNumber: '07B',
-        size: '10x20',
-        tenantName: 'Sandra Hayes',
-        tenantSince: '2024-05-01',
-        monthsWithoutIncrease: 23,
-        currentRate: 15000,
-        proposedRate: 15800,
-      },
-      {
-        unitNumber: '08A',
-        size: '10x30',
-        tenantName: 'Michael Patel',
-        tenantSince: '2024-10-15',
-        monthsWithoutIncrease: 18,
-        currentRate: 20000,
-        proposedRate: 21000,
-      },
-    ],
-  },
-]
+const UNIT_TYPE_LABELS: Record<string, string> = {
+  standard: 'Standard',
+  climate_controlled: 'Climate Controlled',
+  drive_up: 'Drive-Up',
+  vehicle_outdoor: 'Vehicle / Outdoor',
+}
+
+// ── Batch generation from real data ──────────────────────────────────────────
+
+interface LeaseItem {
+  _id: string
+  tenantId: string
+  unitId: { _id: string; unitNumber: string; size: string }
+  startDate: string
+  monthlyRate: number
+  status: string
+  lastRateChangeDate?: string
+}
+
+interface UnitItem {
+  _id: string
+  unitNumber: string
+  size: string
+  type: string
+  status: string
+}
+
+interface TenantItem {
+  _id: string
+  firstName: string
+  lastName: string
+}
+
+function buildBatches(
+  leases: LeaseItem[],
+  units: UnitItem[],
+  tenants: TenantItem[],
+): RateIncreaseBatch[] {
+  const now = new Date()
+  const today = now.toISOString().slice(0, 10)
+
+  // Effective date: first of next month + 30 days (rounded to month)
+  const effectiveDate = new Date(now.getFullYear(), now.getMonth() + 2, 1)
+  const effectiveDateStr = effectiveDate.toISOString().slice(0, 10)
+
+  // Notice date: 30 days before effective
+  const noticeDate = new Date(effectiveDate)
+  noticeDate.setDate(noticeDate.getDate() - 30)
+  const noticeDateStr = noticeDate.toISOString().slice(0, 10)
+
+  // Build lookup maps
+  const tenantMap = new Map(tenants.map((t) => [t._id, t]))
+  const unitMap = new Map(units.map((u) => [u._id, u]))
+
+  // Compute occupancy per unit type
+  const typeCounts: Record<string, { total: number; occupied: number }> = {}
+  for (const unit of units) {
+    if (!typeCounts[unit.type]) {
+      typeCounts[unit.type] = { total: 0, occupied: 0 }
+    }
+    typeCounts[unit.type].total++
+    if (unit.status === 'occupied') {
+      typeCounts[unit.type].occupied++
+    }
+  }
+
+  // Filter active leases and group by unit type
+  const activeLeases = leases.filter((l) => l.status === 'active')
+  const leasesByType: Record<string, LeaseItem[]> = {}
+
+  for (const lease of activeLeases) {
+    // The unitId is populated with { _id, unitNumber, size } from the leases API
+    const unitIdStr = typeof lease.unitId === 'object' ? lease.unitId._id : lease.unitId
+    const unit = unitMap.get(unitIdStr)
+    if (!unit) continue
+
+    if (!leasesByType[unit.type]) {
+      leasesByType[unit.type] = []
+    }
+    leasesByType[unit.type].push(lease)
+  }
+
+  const batches: RateIncreaseBatch[] = []
+  let batchIndex = 0
+
+  for (const [unitType, typeLeases] of Object.entries(leasesByType)) {
+    const counts = typeCounts[unitType]
+    if (!counts || counts.total === 0) continue
+
+    const occupancyRate = Math.round((counts.occupied / counts.total) * 100)
+
+    // Only create batches for types with >= 90% occupancy
+    if (occupancyRate < 90) continue
+
+    // Filter to tenants who haven't had a rate change in 12+ months
+    // Use lastRateChangeDate if available, otherwise fall back to startDate
+    const eligibleUnits: RateChangeUnit[] = []
+
+    for (const lease of typeLeases) {
+      const referenceDate = lease.lastRateChangeDate
+        ? new Date(lease.lastRateChangeDate)
+        : new Date(lease.startDate)
+
+      const monthsSinceChange =
+        (now.getFullYear() - referenceDate.getFullYear()) * 12 +
+        (now.getMonth() - referenceDate.getMonth())
+
+      if (monthsSinceChange < 12) continue
+
+      const tenant = tenantMap.get(lease.tenantId)
+      const tenantName = tenant
+        ? `${tenant.firstName} ${tenant.lastName}`
+        : 'Unknown Tenant'
+
+      // 5% increase, rounded to nearest dollar (100 cents)
+      const proposedRate = Math.round((lease.monthlyRate * 1.05) / 100) * 100
+
+      const unitIdObj = typeof lease.unitId === 'object' ? lease.unitId : null
+
+      eligibleUnits.push({
+        unitNumber: unitIdObj?.unitNumber ?? 'N/A',
+        size: unitIdObj?.size ?? 'N/A',
+        tenantName,
+        tenantSince: lease.startDate.slice(0, 10),
+        monthsWithoutIncrease: monthsSinceChange,
+        currentRate: lease.monthlyRate,
+        proposedRate,
+      })
+    }
+
+    if (eligibleUnits.length === 0) continue
+
+    batchIndex++
+    const label = UNIT_TYPE_LABELS[unitType] ?? unitType
+    const quarter = `Q${Math.ceil((effectiveDate.getMonth() + 1) / 3)}`
+    const year = effectiveDate.getFullYear()
+
+    batches.push({
+      id: `batch-${String(batchIndex).padStart(3, '0')}`,
+      name: `${label} ${quarter} ${year}`,
+      unitType: label,
+      occupancyRate,
+      effectiveDate: effectiveDateStr,
+      noticeDate: noticeDateStr,
+      createdAt: today,
+      status: 'pending',
+      units: eligibleUnits.sort((a, b) => a.unitNumber.localeCompare(b.unitNumber)),
+    })
+  }
+
+  return batches.sort((a, b) => a.unitType.localeCompare(b.unitType))
+}
 
 // ── Theme tokens ─────────────────────────────────────────────────────────────
 
@@ -702,8 +735,10 @@ function ConfirmationDialog({
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function RateManagementPage() {
-  const [batches, setBatches] = useState<RateIncreaseBatch[]>(MOCK_BATCHES)
-  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set([MOCK_BATCHES[0]?.id]))
+  const [batches, setBatches] = useState<RateIncreaseBatch[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
   const [dialogOpen, setDialogOpen] = useState(false)
   const [dialogAction, setDialogAction] = useState<'approve' | 'reject'>('approve')
   const [dialogBatch, setDialogBatch] = useState<RateIncreaseBatch | null>(null)
@@ -712,6 +747,55 @@ export default function RateManagementPage() {
     message: '',
     severity: 'success',
   })
+
+  // ── Fetch real data and build batches ──────────────────────────────────────
+
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const [leasesRes, unitsRes, tenantsRes] = await Promise.all([
+          fetch('/api/leases?status=active&limit=100'),
+          fetch('/api/units?limit=100'),
+          fetch('/api/tenants?limit=100'),
+        ])
+
+        if (!leasesRes.ok || !unitsRes.ok || !tenantsRes.ok) {
+          throw new Error('Failed to load data')
+        }
+
+        const [leasesJson, unitsJson, tenantsJson] = await Promise.all([
+          leasesRes.json(),
+          unitsRes.json(),
+          tenantsRes.json(),
+        ])
+
+        if (!leasesJson.success || !unitsJson.success || !tenantsJson.success) {
+          throw new Error(
+            leasesJson.error || unitsJson.error || tenantsJson.error || 'Failed to load data',
+          )
+        }
+
+        const generatedBatches = buildBatches(
+          leasesJson.data.items,
+          unitsJson.data.items,
+          tenantsJson.data.items,
+        )
+
+        setBatches(generatedBatches)
+
+        // Auto-expand first batch
+        if (generatedBatches.length > 0) {
+          setExpandedIds(new Set([generatedBatches[0].id]))
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load rate management data')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadData()
+  }, [])
 
   const toggleExpand = useCallback((id: string) => {
     setExpandedIds((prev) => {
@@ -768,6 +852,34 @@ export default function RateManagementPage() {
       (sum, b) => sum + b.units.reduce((s, u) => s + (u.proposedRate - u.currentRate), 0),
       0,
     )
+
+  // ── Loading state ──────────────────────────────────────────────────────────
+
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 300, gap: 2 }}>
+        <CircularProgress sx={{ color: COLORS.primary }} />
+        <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+          Analyzing leases and occupancy data...
+        </Typography>
+      </Box>
+    )
+  }
+
+  // ── Error state ────────────────────────────────────────────────────────────
+
+  if (error) {
+    return (
+      <Box>
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="h5" sx={{ fontWeight: 700, color: COLORS.secondary, mb: 0.5 }}>
+            Rate Management
+          </Typography>
+        </Box>
+        <Alert severity="error" sx={{ borderRadius: 2 }}>{error}</Alert>
+      </Box>
+    )
+  }
 
   return (
     <Box>
@@ -871,7 +983,8 @@ export default function RateManagementPage() {
       {batches.length === 0 && (
         <Box sx={{ textAlign: 'center', py: 8 }}>
           <Typography variant="body1" sx={{ color: 'text.secondary' }}>
-            No rate increase batches to display.
+            No rate increase batches to display. This means either no unit types have 90%+
+            occupancy, or all eligible tenants have had a rate change within the last 12 months.
           </Typography>
         </Box>
       )}

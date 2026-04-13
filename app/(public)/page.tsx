@@ -1,59 +1,41 @@
 import type { Metadata } from 'next'
 import Image from 'next/image'
 import Link from 'next/link'
+import { connectDB } from '@/lib/db'
+import Unit from '@/models/Unit'
 
 export const metadata: Metadata = {
-  title: 'Tuscany Village Self Storage | Florence, SC',
+  title: 'Tuscany Village Self Storage | Caryville, TN',
   description:
-    'Safe, clean, and affordable storage units in Florence, SC. Climate-controlled, drive-up, and vehicle storage. Reserve online today.',
+    'Safe, clean, and affordable storage units in Caryville, TN. Climate-controlled, drive-up, and vehicle storage. Reserve online today.',
 }
 
-// ─── Mock unit preview data ────────────────────────────────────────────────
-const FEATURED_UNITS = [
-  {
-    id: '1',
-    size: '5×5',
-    sqft: 25,
-    type: 'Standard',
-    price: 4500,
-    features: ['Ground floor', 'LED lighting'],
-    available: true,
-  },
-  {
-    id: '2',
-    size: '10×10',
-    sqft: 100,
-    type: 'Climate Controlled',
-    price: 10000,
-    features: ['Climate controlled', 'Indoor access', 'LED lighting'],
-    available: true,
-  },
-  {
-    id: '3',
-    size: '10×20',
-    sqft: 200,
-    type: 'Drive-Up',
-    price: 16500,
-    features: ['Drive-up access', 'Ground floor', 'Wide doors'],
-    available: true,
-  },
-  {
-    id: '4',
-    size: '10×30',
-    sqft: 300,
-    type: 'Drive-Up',
-    price: 22000,
-    features: ['Drive-up access', 'Ground floor', 'Extra height'],
-    available: false,
-  },
-]
+const TYPE_LABELS: Record<string, string> = {
+  standard: 'Standard',
+  climate_controlled: 'Climate Controlled',
+  drive_up: 'Drive-Up',
+  vehicle_outdoor: 'Vehicle Storage',
+}
+
+async function getFeaturedUnits() {
+  try {
+    await connectDB()
+    const units = await Unit.find({})
+      .sort({ price: 1 })
+      .limit(4)
+      .lean()
+    return units
+  } catch {
+    return []
+  }
+}
 
 const TRUST_ITEMS = [
   { icon: '🔒', label: 'Electronic Gate Access', sub: '24/7 security monitoring' },
   { icon: '🌡️', label: 'Climate Controlled', sub: 'Protect temperature-sensitive items' },
   { icon: '📱', label: 'Manage Online', sub: 'Pay rent & get gate code from your phone' },
   { icon: '🚚', label: 'Drive-Up Units', sub: 'Load & unload with ease' },
-  { icon: '⭐', label: '5-Star Rated', sub: '100+ happy customers in Florence' },
+  { icon: '⭐', label: '5-Star Rated', sub: '100+ happy customers in Caryville' },
 ]
 
 const HOW_IT_WORKS = [
@@ -115,7 +97,8 @@ function StarRating({ count }: { count: number }) {
   )
 }
 
-export default function HomePage() {
+export default async function HomePage() {
+  const featuredUnits = await getFeaturedUnits()
   return (
     <>
       {/* ── Hero ─────────────────────────────────────────────────────────── */}
@@ -137,7 +120,7 @@ export default function HomePage() {
             <div className="space-y-6">
               <div className="inline-flex items-center gap-2 rounded-full border border-tan/30 bg-tan/10 px-4 py-1.5 text-sm font-medium text-tan">
                 <span className="h-2 w-2 rounded-full bg-tan animate-pulse" />
-                Now accepting reservations in Florence, SC
+                Now accepting reservations in Caryville, TN
               </div>
               <h1 className="font-serif text-4xl font-bold leading-tight text-cream sm:text-5xl lg:text-6xl">
                 Storage you can
@@ -168,7 +151,7 @@ export default function HomePage() {
                   ))}
                 </div>
                 <p className="text-sm text-cream/60">
-                  Trusted by <span className="font-semibold text-cream">100+ Florence families</span>
+                  Trusted by <span className="font-semibold text-cream">100+ Caryville families</span>
                 </p>
               </div>
             </div>
@@ -308,7 +291,11 @@ export default function HomePage() {
               <h2 className="font-serif text-3xl font-bold text-brown sm:text-4xl">
                 Available Units
               </h2>
-              <p className="mt-2 text-muted">Starting from $45/month. No hidden fees.</p>
+              <p className="mt-2 text-muted">
+              {featuredUnits.length > 0
+                ? `Starting from ${formatMoney(Math.min(...featuredUnits.map((u) => u.price)))}/month. No hidden fees.`
+                : 'No hidden fees. Month-to-month.'}
+            </p>
             </div>
             <Link
               href="/units"
@@ -319,62 +306,53 @@ export default function HomePage() {
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {FEATURED_UNITS.map((unit) => (
-              <div
-                key={unit.id}
-                className="rounded-xl border border-mid bg-white p-6 shadow-sm transition-shadow hover:shadow-md"
-              >
-                <div className="mb-4 flex items-start justify-between">
-                  <div>
-                    <p className="font-serif text-2xl font-bold text-brown">{unit.size}</p>
-                    <p className="text-xs text-muted">{unit.sqft} sq ft</p>
-                  </div>
-                  <span
-                    className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                      unit.available
-                        ? 'bg-olive/10 text-olive'
-                        : 'bg-muted/10 text-muted'
-                    }`}
-                  >
-                    {unit.available ? 'Available' : 'Waitlist'}
-                  </span>
-                </div>
-
-                <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-tan">
-                  {unit.type}
-                </p>
-
-                <ul className="mb-5 space-y-1">
-                  {unit.features.map((f) => (
-                    <li key={f} className="flex items-center gap-1.5 text-xs text-muted">
-                      <svg className="h-3.5 w-3.5 flex-shrink-0 text-olive" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                      </svg>
-                      {f}
-                    </li>
-                  ))}
-                </ul>
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <span className="font-serif text-xl font-bold text-brown">
-                      {formatMoney(unit.price)}
+            {featuredUnits.map((unit) => {
+              const available = unit.status === 'available'
+              return (
+                <div
+                  key={unit._id.toString()}
+                  className="rounded-xl border border-mid bg-white p-6 shadow-sm transition-shadow hover:shadow-md"
+                >
+                  <div className="mb-4 flex items-start justify-between">
+                    <div>
+                      <p className="font-serif text-2xl font-bold text-brown">{unit.size}</p>
+                      <p className="text-xs text-muted">{unit.sqft} sq ft</p>
+                    </div>
+                    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${available ? 'bg-olive/10 text-olive' : 'bg-muted/10 text-muted'}`}>
+                      {available ? 'Available' : 'Waitlist'}
                     </span>
-                    <span className="text-xs text-muted">/mo</span>
                   </div>
-                  <Link
-                    href={unit.available ? '/waiting-list' : '/waiting-list'}
-                    className={`rounded px-3 py-1.5 text-xs font-semibold transition-colors ${
-                      unit.available
-                        ? 'bg-tan text-brown hover:bg-tan-light'
-                        : 'bg-mid text-muted hover:bg-mid/80'
-                    }`}
-                  >
-                    {unit.available ? 'Reserve' : 'Waitlist'}
-                  </Link>
+
+                  <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-tan">
+                    {TYPE_LABELS[unit.type] ?? unit.type}
+                  </p>
+
+                  <ul className="mb-5 space-y-1">
+                    {unit.features.slice(0, 3).map((f: string) => (
+                      <li key={f} className="flex items-center gap-1.5 text-xs text-muted">
+                        <svg className="h-3.5 w-3.5 flex-shrink-0 text-olive" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                        </svg>
+                        {f}
+                      </li>
+                    ))}
+                  </ul>
+
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="font-serif text-xl font-bold text-brown">{formatMoney(unit.price)}</span>
+                      <span className="text-xs text-muted">/mo</span>
+                    </div>
+                    <Link
+                      href={`/units/${unit._id.toString()}`}
+                      className={`rounded px-3 py-1.5 text-xs font-semibold transition-colors ${available ? 'bg-tan text-brown hover:bg-tan-light' : 'bg-mid text-muted hover:bg-mid/80'}`}
+                    >
+                      {available ? 'View Unit' : 'Waitlist'}
+                    </Link>
+                  </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
 
           <div className="mt-8 text-center sm:hidden">
@@ -482,8 +460,8 @@ export default function HomePage() {
           </div>
           <p className="mt-4 text-sm text-brown/60">
             Questions?{' '}
-            <a href="tel:+18435551234" className="font-medium underline hover:text-brown">
-              Call us at (843) 555-1234
+            <a href="tel:+18654262100" className="font-medium underline hover:text-brown">
+              Call us at (865) 426-2100
             </a>
           </p>
         </div>
