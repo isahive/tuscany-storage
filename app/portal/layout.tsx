@@ -185,7 +185,7 @@ function PortalShell({ children }: { children: React.ReactNode }) {
               edge="start"
               onClick={() => setMobileOpen(true)}
               sx={{ mr: 1, color: 'secondary.main' }}
-              aria-label="open navigation"
+              aria-label="Toggle navigation"
             >
               <MenuIcon />
             </IconButton>

@@ -309,7 +309,7 @@ export default function TenantDetailPage() {
     <Box>
       {/* Header */}
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
-        <IconButton onClick={() => router.push('/admin/tenants')}>
+        <IconButton aria-label="Back to tenants list" onClick={() => router.push('/admin/tenants')}>
           <ArrowBackIcon />
         </IconButton>
         <Box sx={{ flex: 1 }}>

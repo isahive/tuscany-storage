@@ -86,7 +86,7 @@ export default function TemplatesPage() {
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
-        <CircularProgress sx={{ color: '#C17B4A' }} />
+        <CircularProgress sx={{ color: '#B8914A' }} />
       </Box>
     )
   }
@@ -116,7 +116,7 @@ export default function TemplatesPage() {
           startIcon={<AddIcon />}
           onClick={() => router.push('/admin/communications/templates/new')}
           sx={{
-            bgcolor: '#C17B4A',
+            bgcolor: '#B8914A',
             '&:hover': { bgcolor: '#A5653A' },
             textTransform: 'none',
             fontWeight: 600,
@@ -223,7 +223,7 @@ export default function TemplatesPage() {
                         size="small"
                         sx={{
                           bgcolor: '#FAF7F2',
-                          color: '#C17B4A',
+                          color: '#B8914A',
                           fontWeight: 600,
                           border: '1px solid #EDE5D8',
                         }}
@@ -239,13 +239,15 @@ export default function TemplatesPage() {
                   <TableCell align="right">
                     <IconButton
                       size="small"
+                      aria-label="Edit template"
                       onClick={() => router.push(`/admin/communications/templates/${t._id}`)}
-                      sx={{ color: '#C17B4A' }}
+                      sx={{ color: '#B8914A' }}
                     >
                       <EditIcon fontSize="small" />
                     </IconButton>
                     <IconButton
                       size="small"
+                      aria-label="Delete template"
                       onClick={() => handleDelete(t._id)}
                       sx={{ color: '#d32f2f', ml: 0.5 }}
                     >

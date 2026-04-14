@@ -815,12 +815,12 @@ export default function ReportViewPage() {
     <Box>
       {/* Header */}
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
-        <IconButton onClick={() => router.push('/admin/reports')}>
+        <IconButton aria-label="Back to reports" onClick={() => router.push('/admin/reports')}>
           <ArrowBackIcon />
         </IconButton>
         <Typography
           variant="h5"
-          sx={{ fontWeight: 700, color: '#C17B4A', fontFamily: '"Playfair Display", serif', flex: 1 }}
+          sx={{ fontWeight: 700, color: '#B8914A', fontFamily: '"Playfair Display", serif', flex: 1 }}
         >
           {config.title}
         </Typography>

@@ -151,7 +151,7 @@ function UpdateCardForm({
           options={{
             style: {
               base: {
-                fontSize: '15px',
+                fontSize: '16px',
                 color: '#1C0F06',
                 fontFamily: '"DM Sans", sans-serif',
                 '::placeholder': { color: '#9CA3AF' },
@@ -253,6 +253,7 @@ function Step1({
             min={minMoveOutDate()}
             value={moveOutDate}
             onChange={(e) => onDateChange(e.target.value)}
+            aria-label="Requested move-out date"
             style={{
               padding: '10px 14px',
               border: '1px solid #EDE5D8',
@@ -307,13 +308,13 @@ function Step1({
                 </Box>
               </Box>
               <Button
-                size="small"
                 startIcon={<EditIcon fontSize="small" />}
                 onClick={onUpdateCard}
                 sx={{
                   textTransform: 'none',
                   color: '#B8914A',
                   fontWeight: 500,
+                  minHeight: 44,
                   '&:hover': { bgcolor: 'rgba(184,145,74,0.08)' },
                   whiteSpace: 'nowrap',
                 }}
@@ -339,7 +340,6 @@ function Step1({
                 No payment method on file. Please add a card to continue.
               </Typography>
               <Button
-                size="small"
                 startIcon={<AddIcon fontSize="small" />}
                 onClick={onUpdateCard}
                 sx={{
@@ -347,6 +347,7 @@ function Step1({
                   bgcolor: '#B8914A',
                   color: 'white',
                   fontWeight: 600,
+                  minHeight: 44,
                   '&:hover': { bgcolor: '#9A7A3E' },
                   whiteSpace: 'nowrap',
                 }}

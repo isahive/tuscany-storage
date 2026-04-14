@@ -213,6 +213,7 @@ export default function TenantsPage() {
           <Tooltip title="View tenant">
             <IconButton
               size="small"
+              aria-label="View tenant details"
               onClick={() => router.push(`/admin/tenants/${params.row.id}`)}
               sx={{ color: 'text.secondary' }}
             >
@@ -221,7 +222,7 @@ export default function TenantsPage() {
           </Tooltip>
           {(params.row.status === 'active' || params.row.status === 'delinquent') && (
             <Tooltip title="Lock out">
-              <IconButton size="small" sx={{ color: '#DC2626' }}>
+              <IconButton size="small" aria-label="Lock out tenant" sx={{ color: '#DC2626' }}>
                 <LockIcon fontSize="small" />
               </IconButton>
             </Tooltip>
@@ -252,6 +253,7 @@ export default function TenantsPage() {
         <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
           <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
             <TextField
+              label="Search tenants"
               placeholder="Search by name, unit, or email..."
               size="small"
               value={search}

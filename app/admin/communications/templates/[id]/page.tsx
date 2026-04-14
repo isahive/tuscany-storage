@@ -170,7 +170,7 @@ export default function TemplateEditorPage() {
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
-        <CircularProgress sx={{ color: '#C17B4A' }} />
+        <CircularProgress sx={{ color: '#B8914A' }} />
       </Box>
     )
   }
@@ -184,7 +184,7 @@ export default function TemplateEditorPage() {
         <Button
           startIcon={<ArrowBackIcon />}
           onClick={() => router.push('/admin/communications/templates')}
-          sx={{ color: '#C17B4A', textTransform: 'none' }}
+          sx={{ color: '#B8914A', textTransform: 'none' }}
         >
           Back to Templates
         </Button>
@@ -208,7 +208,7 @@ export default function TemplateEditorPage() {
               size="small"
               sx={{
                 bgcolor: '#FAF7F2',
-                color: '#C17B4A',
+                color: '#B8914A',
                 fontWeight: 600,
                 border: '1px solid #EDE5D8',
               }}
@@ -237,7 +237,7 @@ export default function TemplateEditorPage() {
             onClick={handleSave}
             disabled={saving}
             sx={{
-              bgcolor: '#C17B4A',
+              bgcolor: '#B8914A',
               '&:hover': { bgcolor: '#A5653A' },
               textTransform: 'none',
               fontWeight: 600,
@@ -318,7 +318,7 @@ export default function TemplateEditorPage() {
                   <Switch
                     checked={form.channels.email}
                     onChange={(e) => updateChannel('email', e.target.checked)}
-                    sx={{ '& .MuiSwitch-switchBase.Mui-checked': { color: '#C17B4A' }, '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': { bgcolor: '#C17B4A' } }}
+                    sx={{ '& .MuiSwitch-switchBase.Mui-checked': { color: '#B8914A' }, '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': { bgcolor: '#B8914A' } }}
                   />
                 }
                 label="Email"
@@ -328,7 +328,7 @@ export default function TemplateEditorPage() {
                   <Switch
                     checked={form.channels.text}
                     onChange={(e) => updateChannel('text', e.target.checked)}
-                    sx={{ '& .MuiSwitch-switchBase.Mui-checked': { color: '#C17B4A' }, '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': { bgcolor: '#C17B4A' } }}
+                    sx={{ '& .MuiSwitch-switchBase.Mui-checked': { color: '#B8914A' }, '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': { bgcolor: '#B8914A' } }}
                   />
                 }
                 label="Text"
@@ -338,7 +338,7 @@ export default function TemplateEditorPage() {
                   <Switch
                     checked={form.channels.print}
                     onChange={(e) => updateChannel('print', e.target.checked)}
-                    sx={{ '& .MuiSwitch-switchBase.Mui-checked': { color: '#C17B4A' }, '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': { bgcolor: '#C17B4A' } }}
+                    sx={{ '& .MuiSwitch-switchBase.Mui-checked': { color: '#B8914A' }, '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': { bgcolor: '#B8914A' } }}
                   />
                 }
                 label="Print"
@@ -418,7 +418,7 @@ export default function TemplateEditorPage() {
                 bgcolor: '#FAF7F2',
                 border: '1px solid #EDE5D8',
                 cursor: 'pointer',
-                '&:hover': { bgcolor: '#EDE5D8', borderColor: '#C17B4A' },
+                '&:hover': { bgcolor: '#EDE5D8', borderColor: '#B8914A' },
               }}
             />
           ))}

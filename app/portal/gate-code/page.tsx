@@ -170,8 +170,8 @@ export default function GateCodePage() {
             </Typography>
             <IconButton
               onClick={() => setRevealed((v) => !v)}
-              sx={{ ml: 'auto', color: 'primary.main' }}
-              aria-label={revealed ? 'Hide code' : 'Reveal code'}
+              sx={{ ml: 'auto', color: 'primary.main', minWidth: 44, minHeight: 44 }}
+              aria-label={revealed ? 'Hide gate code' : 'Reveal gate code'}
             >
               {revealed ? <VisibilityOffIcon /> : <VisibilityIcon />}
             </IconButton>

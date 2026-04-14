@@ -507,6 +507,7 @@ export default function DelinquencyPage() {
           <Tooltip title="View tenant">
             <IconButton
               size="small"
+              aria-label="View tenant details"
               onClick={() => router.push(`/admin/tenants/${params.row.id}`)}
               sx={{ color: 'text.secondary' }}
             >
@@ -599,6 +600,7 @@ export default function DelinquencyPage() {
         <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
           <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
             <TextField
+              label="Search delinquent tenants"
               placeholder="Search by name, unit, or email..."
               size="small"
               value={search}

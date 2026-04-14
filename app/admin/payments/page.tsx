@@ -380,7 +380,7 @@ export default function AdminPaymentsPage() {
         const row = params.row as Payment
         return row.status === 'succeeded' ? (
           <Tooltip title="View receipt">
-            <IconButton size="small" href={`/api/payments/${params.value}/receipt`} target="_blank">
+            <IconButton size="small" aria-label="View receipt" href={`/api/payments/${params.value}/receipt`} target="_blank">
               <ReceiptLongIcon fontSize="small" sx={{ color: '#B8914A' }} />
             </IconButton>
           </Tooltip>

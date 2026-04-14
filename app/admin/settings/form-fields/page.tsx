@@ -198,12 +198,12 @@ export default function FormFieldSettingsPage() {
     <Box>
       {/* Header */}
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
-        <IconButton onClick={() => router.push('/admin/settings')}>
+        <IconButton aria-label="Back to settings" onClick={() => router.push('/admin/settings')}>
           <ArrowBackIcon />
         </IconButton>
         <Typography
           variant="h5"
-          sx={{ fontWeight: 700, color: '#C17B4A', fontFamily: '"Playfair Display", serif' }}
+          sx={{ fontWeight: 700, color: '#B8914A', fontFamily: '"Playfair Display", serif' }}
         >
           Form Field Settings for Customers
         </Typography>
@@ -218,7 +218,7 @@ export default function FormFieldSettingsPage() {
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
       {/* ── Defaults table ──────────────────────────────────────────── */}
-      <Typography variant="h6" sx={{ color: '#C17B4A', fontWeight: 700, mb: 1 }}>
+      <Typography variant="h6" sx={{ color: '#B8914A', fontWeight: 700, mb: 1 }}>
         Defaults
       </Typography>
 
@@ -246,7 +246,7 @@ export default function FormFieldSettingsPage() {
                   <TableCell align="center">{renderYesNo(f.showOnWaitingList)}</TableCell>
                   <TableCell align="center">{renderYesNo(f.requiredOnWaitingList)}</TableCell>
                   <TableCell align="right">
-                    <Button size="small" sx={{ textTransform: 'none', color: '#C17B4A', fontWeight: 500 }}
+                    <Button size="small" sx={{ textTransform: 'none', color: '#B8914A', fontWeight: 500 }}
                       onClick={() => setEditField(f)}>
                       Edit
                     </Button>
@@ -259,7 +259,7 @@ export default function FormFieldSettingsPage() {
       </Card>
 
       {/* ── Custom fields table ──────────────────────────────────────── */}
-      <Typography variant="h6" sx={{ color: '#C17B4A', fontWeight: 700, mb: 0.5 }}>
+      <Typography variant="h6" sx={{ color: '#B8914A', fontWeight: 700, mb: 0.5 }}>
         Custom
       </Typography>
       <Typography variant="body2" sx={{ color: 'text.secondary', mb: 1 }}>
@@ -303,12 +303,12 @@ export default function FormFieldSettingsPage() {
                     <TableCell align="center">{renderYesNo(f.requiredOnWaitingList)}</TableCell>
                     <TableCell align="right">
                       <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'flex-end' }}>
-                        <Button size="small" sx={{ textTransform: 'none', color: '#C17B4A', fontWeight: 500 }}
+                        <Button size="small" sx={{ textTransform: 'none', color: '#B8914A', fontWeight: 500 }}
                           onClick={() => setEditField(f)}>
                           Edit
                         </Button>
                         <Tooltip title="Delete">
-                          <IconButton size="small" sx={{ color: '#DC2626' }} onClick={() => handleDeleteCustom(f.key)}>
+                          <IconButton size="small" aria-label="Delete custom field" sx={{ color: '#DC2626' }} onClick={() => handleDeleteCustom(f.key)}>
                             <DeleteIcon fontSize="small" />
                           </IconButton>
                         </Tooltip>

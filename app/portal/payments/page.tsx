@@ -123,7 +123,7 @@ function UpdateCardForm({ onSuccess, onCancel }: { onSuccess: () => void; onCanc
           options={{
             style: {
               base: {
-                fontSize: '15px',
+                fontSize: '16px',
                 color: '#1C0F06',
                 fontFamily: '"DM Sans", sans-serif',
                 '::placeholder': { color: '#9CA3AF' },
@@ -268,10 +268,9 @@ function PayNowForm({ onClose, paymentMethod, balanceCents, dueDate, onSuccess }
               </Typography>
             </Box>
             <Button
-              size="small"
               variant="text"
               onClick={() => setUseNewCard(true)}
-              sx={{ color: '#B8914A', textTransform: 'none', whiteSpace: 'nowrap', '&:hover': { bgcolor: 'rgba(184,145,74,0.08)' } }}
+              sx={{ color: '#B8914A', textTransform: 'none', whiteSpace: 'nowrap', minHeight: 44, '&:hover': { bgcolor: 'rgba(184,145,74,0.08)' } }}
             >
               Use different card
             </Button>
@@ -284,8 +283,8 @@ function PayNowForm({ onClose, paymentMethod, balanceCents, dueDate, onSuccess }
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
               <Typography variant="body2" fontWeight={500}>Enter card details</Typography>
               {paymentMethod && (
-                <Button size="small" variant="text" onClick={() => setUseNewCard(false)}
-                  sx={{ color: 'text.secondary', textTransform: 'none', fontSize: '0.75rem' }}>
+                <Button variant="text" onClick={() => setUseNewCard(false)}
+                  sx={{ color: 'text.secondary', textTransform: 'none', fontSize: '0.75rem', minHeight: 44 }}>
                   Use card on file
                 </Button>
               )}
@@ -303,7 +302,7 @@ function PayNowForm({ onClose, paymentMethod, balanceCents, dueDate, onSuccess }
                 options={{
                   style: {
                     base: {
-                      fontSize: '15px',
+                      fontSize: '16px',
                       color: '#1C0F06',
                       fontFamily: '"DM Sans", sans-serif',
                       '::placeholder': { color: '#9CA3AF' },
@@ -575,11 +574,10 @@ export default function PaymentsPage() {
                     </Typography>
                   </Box>
                   <Button
-                    size="small"
                     variant="text"
                     startIcon={<EditIcon fontSize="small" />}
                     onClick={() => setCardDialogOpen(true)}
-                    sx={{ color: '#B8914A', textTransform: 'none', '&:hover': { bgcolor: 'rgba(184,145,74,0.08)' } }}
+                    sx={{ color: '#B8914A', textTransform: 'none', minHeight: 44, '&:hover': { bgcolor: 'rgba(184,145,74,0.08)' } }}
                   >
                     Update
                   </Button>
@@ -588,11 +586,10 @@ export default function PaymentsPage() {
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <Typography variant="body2" color="text.secondary">No card on file</Typography>
                   <Button
-                    size="small"
                     variant="outlined"
                     startIcon={<AddIcon fontSize="small" />}
                     onClick={() => setCardDialogOpen(true)}
-                    sx={{ textTransform: 'none', borderColor: '#B8914A', color: '#B8914A', '&:hover': { borderColor: '#9A7A3E' } }}
+                    sx={{ textTransform: 'none', borderColor: '#B8914A', color: '#B8914A', minHeight: 44, '&:hover': { borderColor: '#9A7A3E' } }}
                   >
                     Add Card
                   </Button>
@@ -656,8 +653,8 @@ export default function PaymentsPage() {
                       <TableCell align="center">
                         {payment.status === 'succeeded' ? (
                           <Tooltip title="Download receipt">
-                            <IconButton size="small" component="a" href={`/api/payments/${payment._id}/receipt`} target="_blank" rel="noopener noreferrer" sx={{ color: 'primary.main' }}>
-                              <DownloadIcon fontSize="small" />
+                            <IconButton component="a" href={`/api/payments/${payment._id}/receipt`} target="_blank" rel="noopener noreferrer" aria-label="Download receipt" sx={{ color: 'primary.main', minWidth: 44, minHeight: 44 }}>
+                              <DownloadIcon />
                             </IconButton>
                           </Tooltip>
                         ) : (

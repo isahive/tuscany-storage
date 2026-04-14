@@ -12,7 +12,7 @@ import SensorsIcon from '@mui/icons-material/Sensors'
 import LocalOfferIcon from '@mui/icons-material/LocalOffer'
 import AssignmentIcon from '@mui/icons-material/Assignment'
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos'
-import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 
 // ── Hub card data ────────────────────────────────────────────────────────────
 
@@ -89,8 +89,6 @@ const HUB_CARDS: HubCard[] = [
 // ── Main Page ────────────────────────────────────────────────────────────────
 
 export default function SettingsPage() {
-  const router = useRouter()
-
   return (
     <Box>
       <Typography
@@ -109,16 +107,26 @@ export default function SettingsPage() {
         {HUB_CARDS.map((card) => (
           <Grid item xs={12} sm={6} key={card.href}>
             <Card
-              onClick={() => router.push(card.href)}
+              component={Link}
+              href={card.href}
+              tabIndex={0}
+              role="link"
               sx={{
                 border: '1px solid #EDE5D8',
                 boxShadow: 'none',
                 borderRadius: 2,
                 cursor: 'pointer',
+                textDecoration: 'none',
+                color: 'inherit',
+                display: 'block',
                 transition: 'border-color 0.15s ease, box-shadow 0.15s ease',
                 '&:hover': {
                   borderColor: 'primary.main',
                   boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+                },
+                '&:focus-visible': {
+                  outline: '2px solid #B8914A',
+                  outlineOffset: 2,
                 },
               }}
             >

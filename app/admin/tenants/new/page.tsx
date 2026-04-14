@@ -227,7 +227,7 @@ export default function NewCustomerPage() {
     <Box>
       <Typography
         variant="h5"
-        sx={{ fontWeight: 700, color: '#C17B4A', fontFamily: '"Playfair Display", serif', mb: 0.5 }}
+        sx={{ fontWeight: 700, color: '#B8914A', fontFamily: '"Playfair Display", serif', mb: 0.5 }}
       >
         New Customer
       </Typography>
