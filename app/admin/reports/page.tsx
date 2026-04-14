@@ -1,7 +1,7 @@
 'use client'
 
 import { Box, Card, CardContent, Typography } from '@mui/material'
-import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 
 // ── Report categories matching Storable Easy ─────────────────────────────────
 
@@ -98,15 +98,13 @@ const REPORT_CATEGORIES: ReportCategory[] = [
 // ── Page ────────────────────────────────────────────────────────────────────
 
 export default function ReportsPage() {
-  const router = useRouter()
-
   return (
     <Box>
       <Typography
         variant="h5"
         sx={{
           fontWeight: 700,
-          color: '#C17B4A',
+          color: '#B8914A',
           fontFamily: '"Playfair Display", serif',
           mb: 0.5,
         }}
@@ -140,7 +138,7 @@ export default function ReportsPage() {
                 sx={{
                   px: 2.5,
                   py: 1.5,
-                  borderBottom: '3px solid #C17B4A',
+                  borderBottom: '3px solid #B8914A',
                 }}
               >
                 <Typography
@@ -157,12 +155,20 @@ export default function ReportsPage() {
                   <Typography
                     key={link.href}
                     variant="body2"
-                    onClick={() => router.push(link.href)}
+                    component={Link}
+                    href={link.href}
                     sx={{
-                      color: '#C17B4A',
+                      color: '#B8914A',
                       cursor: 'pointer',
                       py: 0.5,
+                      display: 'block',
+                      textDecoration: 'none',
                       '&:hover': { textDecoration: 'underline', color: '#A5623A' },
+                      '&:focus-visible': {
+                        outline: '2px solid #B8914A',
+                        outlineOffset: 2,
+                        borderRadius: 0.5,
+                      },
                     }}
                   >
                     {link.label}

@@ -34,7 +34,7 @@ export async function GET() {
     const now = new Date()
     const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
     const mtdPayments = await Payment.find({
-      status: 'completed',
+      status: 'succeeded',
       createdAt: { $gte: firstOfMonth, $lte: now },
     }).lean()
     const revenueMtd = mtdPayments.reduce((sum: number, p: any) => sum + p.amount, 0)

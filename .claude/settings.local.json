@@ -90,7 +90,10 @@
       "Bash(python3 \"C:/Users/silvi/.claude/plugins/marketplaces/ui-ux-pro-max-skill/src/ui-ux-pro-max/scripts/search.py\" \"testimonial review card social proof\" --domain style -n 3 2>&1)",
       "Bash(python3 \"C:/Users/silvi/.claude/plugins/marketplaces/ui-ux-pro-max-skill/src/ui-ux-pro-max/scripts/search.py\" \"testimonial card layout spacing\" --domain ux -n 5 2>&1)",
       "Bash(python3 \"C:/Users/silvi/.claude/plugins/marketplaces/ui-ux-pro-max-skill/src/ui-ux-pro-max/scripts/search.py\" \"warm earthy luxury tuscan rustic elegant storage\" --domain typography -n 5 2>&1)",
-      "Bash(python3 \"C:/Users/silvi/.claude/plugins/marketplaces/ui-ux-pro-max-skill/src/ui-ux-pro-max/scripts/search.py\" \"clean modern professional warm service sans\" --domain typography -n 5 2>&1)"
+      "Bash(python3 \"C:/Users/silvi/.claude/plugins/marketplaces/ui-ux-pro-max-skill/src/ui-ux-pro-max/scripts/search.py\" \"clean modern professional warm service sans\" --domain typography -n 5 2>&1)",
+      "Bash(python3 \"C:/Users/silvi/.claude/plugins/marketplaces/ui-ux-pro-max-skill/src/ui-ux-pro-max/scripts/search.py\" \"admin dashboard panel management\" --design-system -p \"Tuscany Storage Admin\" 2>&1 | head -40)",
+      "Bash(python3 \"C:/Users/silvi/.claude/plugins/marketplaces/ui-ux-pro-max-skill/src/ui-ux-pro-max/scripts/search.py\" \"tenant portal customer account self service\" --design-system -p \"Tuscany Tenant Portal\" 2>&1 | head -40)",
+      "Bash(cd \"D:/Users/silvi/Documents/Hive/Clients/Tuscany/tuscany-storage\" && sed -i \"s/status: 'completed'/status: 'succeeded'/g\" app/api/reports/route.ts && grep -c \"status: 'succeeded'\" app/api/reports/route.ts)"
     ]
   }
 }

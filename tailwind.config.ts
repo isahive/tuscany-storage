@@ -10,7 +10,7 @@ const config: Config = {
     extend: {
       colors: {
         brown:  { DEFAULT: '#1C0F06', light: '#2C1A0E' },
-        tan:    { DEFAULT: '#B8914A', light: '#D4A96A' },
+        tan:    { DEFAULT: '#9E7B3C', light: '#B8914A' },
         cream:  { DEFAULT: '#FAF7F2' },
         mid:    { DEFAULT: '#EDE5D8' },
         muted:  { DEFAULT: '#8A7B6B' },

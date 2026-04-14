@@ -36,7 +36,7 @@ export async function GET(req: NextRequest) {
     switch (type) {
       // ── Accounting / Financials ──────────────────────────────────────
       case 'revenues': {
-        const match: Record<string, unknown> = { status: 'completed' }
+        const match: Record<string, unknown> = { status: 'succeeded' }
         if (hasDate) match.createdAt = dateFilter
         const payments = await Payment.find(match)
           .populate('tenantId', 'firstName lastName')
@@ -56,7 +56,7 @@ export async function GET(req: NextRequest) {
       }
 
       case 'sales-tax': {
-        const match: Record<string, unknown> = { status: 'completed' }
+        const match: Record<string, unknown> = { status: 'succeeded' }
         if (hasDate) match.createdAt = dateFilter
         const payments = await Payment.find(match).lean()
         // Estimate tax from retail sales (type === 'other')
@@ -89,7 +89,7 @@ export async function GET(req: NextRequest) {
       }
 
       case 'retail-sales': {
-        const match: Record<string, unknown> = { status: 'completed', type: 'other' }
+        const match: Record<string, unknown> = { status: 'succeeded', type: 'other' }
         if (hasDate) match.createdAt = dateFilter
         const payments = await Payment.find(match)
           .populate('tenantId', 'firstName lastName')
@@ -138,7 +138,7 @@ export async function GET(req: NextRequest) {
       }
 
       case 'daily-close': {
-        const match: Record<string, unknown> = { status: 'completed' }
+        const match: Record<string, unknown> = { status: 'succeeded' }
         if (hasDate) match.createdAt = dateFilter
         const payments = await Payment.find(match).sort({ createdAt: -1 }).lean()
         // Group by date
@@ -366,7 +366,7 @@ export async function GET(req: NextRequest) {
       }
 
       case 'bank-activity': {
-        const match: Record<string, unknown> = { status: 'completed', stripePaymentIntentId: { $ne: null } }
+        const match: Record<string, unknown> = { status: 'succeeded', stripePaymentIntentId: { $ne: null } }
         if (hasDate) match.createdAt = dateFilter
         const payments = await Payment.find(match)
           .populate('tenantId', 'firstName lastName')
@@ -440,7 +440,7 @@ export async function GET(req: NextRequest) {
         const units = await Unit.find({}).lean()
         const tenants = await Tenant.find({}).lean()
         const activeLeases = await Lease.find({ status: 'active' }).lean()
-        const match: Record<string, unknown> = { status: 'completed' }
+        const match: Record<string, unknown> = { status: 'succeeded' }
         const now = new Date()
         match.createdAt = {
           $gte: new Date(now.getFullYear(), now.getMonth(), 1),

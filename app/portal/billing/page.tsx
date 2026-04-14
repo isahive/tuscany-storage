@@ -104,7 +104,7 @@ function UpdateCardForm({
           options={{
             style: {
               base: {
-                fontSize: '15px',
+                fontSize: '16px',
                 color: '#1C0F06',
                 fontFamily: '"DM Sans", sans-serif',
                 '::placeholder': { color: '#9CA3AF' },
@@ -312,10 +312,9 @@ export default function BillingPage() {
             </Box>
             {canEdit && (
               <Button
-                size="small"
                 variant="outlined"
                 onClick={() => setCardDialogOpen(true)}
-                sx={{ textTransform: 'none', borderColor: '#EDE5D8', color: '#1C0F06', '&:hover': { borderColor: '#B8914A', color: '#B8914A' }, whiteSpace: 'nowrap' }}
+                sx={{ textTransform: 'none', borderColor: '#EDE5D8', color: '#1C0F06', minHeight: 44, '&:hover': { borderColor: '#B8914A', color: '#B8914A' }, whiteSpace: 'nowrap' }}
               >
                 Update Card
               </Button>
@@ -328,10 +327,9 @@ export default function BillingPage() {
             </Typography>
             {canEdit && (
               <Button
-                size="small"
                 variant="contained"
                 onClick={() => setCardDialogOpen(true)}
-                sx={{ bgcolor: '#B8914A', '&:hover': { bgcolor: '#9A7A3E' }, textTransform: 'none', fontWeight: 600, whiteSpace: 'nowrap' }}
+                sx={{ bgcolor: '#B8914A', '&:hover': { bgcolor: '#9A7A3E' }, textTransform: 'none', fontWeight: 600, minHeight: 44, whiteSpace: 'nowrap' }}
               >
                 Add Card
               </Button>
