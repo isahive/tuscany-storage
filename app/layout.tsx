@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next'
-import { Playfair_Display, DM_Sans } from 'next/font/google'
+import { Playfair_Display, DM_Sans, Outfit, Inter, Work_Sans, Poppins, Open_Sans, Plus_Jakarta_Sans } from 'next/font/google'
 import './globals.css'
 
 const playfair = Playfair_Display({
@@ -13,6 +13,23 @@ const dmSans = DM_Sans({
   variable: '--font-dm-sans',
   display: 'swap',
 })
+
+// ── Font options to test (switch ACTIVE_FONTS below) ──────────────
+const outfit = Outfit({ subsets: ['latin'], variable: '--font-outfit', display: 'swap' })
+const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'swap' })
+const workSans = Work_Sans({ subsets: ['latin'], variable: '--font-work-sans', display: 'swap' })
+const poppins = Poppins({ subsets: ['latin'], variable: '--font-poppins', display: 'swap', weight: ['300', '400', '500', '600', '700'] })
+const openSans = Open_Sans({ subsets: ['latin'], variable: '--font-open-sans', display: 'swap' })
+const plusJakarta = Plus_Jakarta_Sans({ subsets: ['latin'], variable: '--font-plus-jakarta', display: 'swap' })
+
+// ▼▼▼ CHANGE THIS TO TEST DIFFERENT COMBOS ▼▼▼
+// Options:
+//   1: Outfit (headings) + Inter (body)
+//   2: Poppins (headings) + Open Sans (body)
+//   3: Plus Jakarta Sans (both)
+//   0: Original — Playfair Display + DM Sans
+const ACTIVE_FONTS = 1
+// ▲▲▲ CHANGE THIS TO TEST DIFFERENT COMBOS ▲▲▲
 
 export const metadata: Metadata = {
   title: {
@@ -56,7 +73,12 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${playfair.variable} ${dmSans.variable}`}
+      className={
+        ACTIVE_FONTS === 1 ? `${outfit.variable} ${inter.variable}` :
+        ACTIVE_FONTS === 2 ? `${poppins.variable} ${openSans.variable}` :
+        ACTIVE_FONTS === 3 ? `${plusJakarta.variable} ${plusJakarta.variable}` :
+        `${playfair.variable} ${dmSans.variable}`
+      }
     >
       <head>
         <link rel="apple-touch-icon" href="/icons/icon-192.png" />
@@ -141,9 +163,11 @@ export default function RootLayout({
                   },
                 ],
               },
+              // aggregateRating: values should match Google Business Profile rating
+              // Update these when real Google reviews are fetched via /api/public/reviews
               aggregateRating: {
                 '@type': 'AggregateRating',
-                ratingValue: '5',
+                ratingValue: '5.0',
                 reviewCount: '1',
                 bestRating: '5',
                 worstRating: '1',
