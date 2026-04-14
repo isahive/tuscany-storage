@@ -17,8 +17,19 @@ const config: Config = {
         olive:  { DEFAULT: '#4A5E38' },
       },
       fontFamily: {
-        serif: ['"Playfair Display"', 'Georgia', 'serif'],
-        sans:  ['"DM Sans"', 'Arial', 'sans-serif'],
+        // Switch these to match ACTIVE_FONTS in layout.tsx:
+        // Option 0 (original): Playfair Display + DM Sans
+        // serif: ['"Playfair Display"', 'Georgia', 'serif'],
+        // sans:  ['"DM Sans"', 'Arial', 'sans-serif'],
+        // Option 1: Outfit + Inter
+        serif: ['Outfit', 'sans-serif'],
+        sans:  ['Inter', 'sans-serif'],
+        // Option 2: Poppins + Open Sans
+        // serif: ['Poppins', 'sans-serif'],
+        // sans:  ['"Open Sans"', 'sans-serif'],
+        // Option 3: Plus Jakarta Sans (single font)
+        // serif: ['"Plus Jakarta Sans"', 'sans-serif'],
+        // sans:  ['"Plus Jakarta Sans"', 'sans-serif'],
       },
       backgroundImage: {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
@@ -41,6 +52,8 @@ const config: Config = {
     },
   },
   plugins: [],
+  // Respect prefers-reduced-motion — disables transitions/animations for users who prefer it
+  // Applied via `motion-safe:` and `motion-reduce:` variants in Tailwind
 }
 
 export default config

@@ -34,7 +34,7 @@ const STEPS = [
     title: 'Move In & Manage Online',
     body: 'Get your gate code and head to your unit at your convenience. Use our tenant portal to pay rent, update your gate code, view your access history, or give move-out notice — all from your phone.',
     image: 'https://images.unsplash.com/photo-1565183997392-2f6f122e5912?w=800&q=80',
-    tip: 'Gate access is available 7 days a week, 6 AM to 10 PM.',
+    tip: 'Gate access is available 24 hours a day, 7 days a week.',
   },
 ]
 
@@ -53,7 +53,7 @@ const FAQS = [
   },
   {
     q: 'Can I access my unit 24/7?',
-    a: 'Gate access is available 7 days a week from 6 AM to 10 PM. If you need extended access, contact our office to discuss options.',
+    a: 'Gate access is available 24 hours a day, 7 days a week.',
   },
   {
     q: 'What happens if I miss a payment?',
@@ -80,97 +80,148 @@ export default function HowItWorksPage() {
           }))
         }) }}
       />
-      {/* Header */}
-      <div className="bg-brown py-12 sm:py-16">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <h1 className="font-serif text-4xl font-bold text-cream sm:text-5xl">
-            How It Works
-          </h1>
-          <p className="mt-3 max-w-xl text-cream/60">
-            Renting a storage unit should be simple. Here&apos;s exactly what to expect.
-          </p>
+
+      {/* Hero header */}
+      <div className="relative overflow-hidden bg-brown py-16 sm:py-24">
+        <div className="absolute inset-0 opacity-[0.03]">
+          <div className="absolute -right-20 -top-20 h-96 w-96 rounded-full bg-tan" />
+          <div className="absolute -bottom-32 -left-20 h-80 w-80 rounded-full bg-tan" />
+        </div>
+        <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="max-w-2xl">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-tan">
+              Simple Process
+            </p>
+            <h1 className="font-serif text-4xl font-bold text-cream sm:text-5xl lg:text-6xl">
+              How It Works
+            </h1>
+            <p className="mt-4 text-lg text-cream/50">
+              Renting a storage unit should be simple. Here&apos;s exactly what to expect, from first visit to move-in day.
+            </p>
+          </div>
         </div>
       </div>
 
-      {/* Steps */}
-      <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
-        <div className="space-y-20">
-          {STEPS.map((step, idx) => (
-            <div
-              key={step.step}
-              className={`grid items-center gap-12 lg:grid-cols-2 ${
-                idx % 2 === 1 ? 'lg:grid-flow-dense' : ''
-              }`}
-            >
-              {/* Image */}
-              <div className={`relative overflow-hidden rounded-2xl ${idx % 2 === 1 ? 'lg:col-start-2' : ''}`}>
-                <Image
-                  src={step.image}
-                  alt={step.title}
-                  width={800}
-                  height={500}
-                  className="h-72 w-full object-cover sm:h-96"
-                />
-                <div className="absolute inset-0 bg-gradient-to-tr from-brown/30 to-transparent" />
-              </div>
+      {/* Steps — single responsive layout (no duplicate rendering) */}
+      <div className="bg-cream">
+        <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
+          <div className="space-y-16 lg:space-y-20">
+            {STEPS.map((step, idx) => (
+              <div key={step.step} className="relative">
+                {/* Connector line (desktop) */}
+                {idx < STEPS.length - 1 && (
+                  <div className="absolute left-1/2 top-full z-0 hidden h-16 w-px -translate-x-1/2 bg-gradient-to-b from-tan/40 to-transparent lg:block" />
+                )}
 
-              {/* Copy */}
-              <div className={idx % 2 === 1 ? 'lg:col-start-1' : ''}>
-                <div className="inline-flex h-14 w-14 items-center justify-center rounded-full border-2 border-tan/30 bg-tan/10 mb-5">
-                  <span className="font-serif text-xl font-bold text-tan">{step.step}</span>
-                </div>
-                <h2 className="font-serif text-3xl font-bold text-brown sm:text-4xl">
-                  {step.title}
-                </h2>
-                <p className="mt-4 text-base leading-relaxed text-muted">{step.body}</p>
-                <div className="mt-5 rounded-lg border border-tan/20 bg-tan/5 px-5 py-4">
-                  <p className="flex items-start gap-2 text-sm text-brown/70">
-                    <svg className="mt-0.5 h-4 w-4 flex-shrink-0 text-tan" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clipRule="evenodd" />
-                    </svg>
-                    <span><strong>Pro tip:</strong> {step.tip}</span>
-                  </p>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
+                <div
+                  className={`grid items-center gap-8 lg:grid-cols-2 lg:gap-16 ${
+                    idx % 2 === 1 ? 'lg:[&>*:first-child]:order-2' : ''
+                  }`}
+                >
+                  {/* Image */}
+                  <div className="relative overflow-hidden rounded-2xl shadow-xl shadow-brown/[0.06]">
+                    <Image
+                      src={step.image}
+                      alt={step.title}
+                      width={800}
+                      height={500}
+                      sizes="(max-width: 1024px) 100vw, 50vw"
+                      className="h-48 w-full object-cover sm:h-80 lg:h-96"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-tr from-brown/30 to-transparent" />
+                    <div className="absolute bottom-4 right-4 flex h-12 w-12 items-center justify-center rounded-full bg-tan/90 shadow-lg backdrop-blur-sm lg:bottom-5 lg:right-5 lg:h-14 lg:w-14">
+                      <span className="font-serif text-base font-bold text-brown lg:text-lg">{step.step}</span>
+                    </div>
+                  </div>
 
-      {/* FAQ */}
-      <div className="border-t border-mid bg-white py-16 sm:py-20">
-        <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
-          <h2 className="mb-10 text-center font-serif text-3xl font-bold text-brown sm:text-4xl">
-            Frequently Asked Questions
-          </h2>
-          <div className="space-y-6">
-            {FAQS.map((faq) => (
-              <div key={faq.q} className="rounded-xl border border-mid p-6">
-                <h3 className="font-semibold text-brown">{faq.q}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-muted">{faq.a}</p>
+                  {/* Content */}
+                  <div>
+                    <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-tan/20 bg-tan/5 px-4 py-1.5">
+                      <span className="font-serif text-sm font-bold text-tan">Step {step.step}</span>
+                    </div>
+                    <h2 className="font-serif text-2xl font-bold text-brown sm:text-3xl lg:text-4xl">
+                      {step.title}
+                    </h2>
+                    <p className="mt-4 text-sm leading-relaxed text-muted sm:text-base lg:mt-5">{step.body}</p>
+                    <div className="mt-5 rounded-xl border border-tan/15 bg-white px-5 py-4 shadow-sm lg:mt-6 lg:px-6 lg:py-5">
+                      <p className="flex items-start gap-2 text-xs text-brown/70 sm:text-sm lg:gap-3">
+                        <span className="mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-tan/10">
+                          <svg className="h-3 w-3 text-tan" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clipRule="evenodd" />
+                          </svg>
+                        </span>
+                        <span><strong className="text-brown">Pro tip:</strong> {step.tip}</span>
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </div>
             ))}
           </div>
         </div>
       </div>
 
+      {/* FAQ section */}
+      <div className="border-t border-mid bg-white py-16 sm:py-24">
+        <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
+          <div className="mb-12 text-center">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-tan">
+              Common Questions
+            </p>
+            <h2 className="font-serif text-3xl font-bold text-brown sm:text-4xl">
+              Frequently Asked Questions
+            </h2>
+            <p className="mx-auto mt-4 max-w-lg text-muted">
+              Everything you need to know about renting a storage unit with us.
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            {FAQS.map((faq, idx) => (
+              <details
+                key={faq.q}
+                className="group rounded-xl border border-mid/60 bg-cream/50 transition-all hover:border-tan/30 hover:shadow-sm [&[open]]:border-tan/30 [&[open]]:bg-white [&[open]]:shadow-md [&[open]]:shadow-brown/[0.04]"
+                {...(idx === 0 ? { open: true } : {})}
+              >
+                <summary className="flex cursor-pointer items-center justify-between px-6 py-5 text-left [&::-webkit-details-marker]:hidden">
+                  <h3 className="pr-4 font-semibold text-brown transition-colors group-open:text-brown">
+                    {faq.q}
+                  </h3>
+                  <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-mid/50 text-muted transition-all group-open:rotate-45 group-open:bg-tan/10 group-open:text-tan">
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                    </svg>
+                  </span>
+                </summary>
+                <div className="px-6 pb-6 pt-0">
+                  <p className="leading-relaxed text-muted">{faq.a}</p>
+                </div>
+              </details>
+            ))}
+          </div>
+        </div>
+      </div>
+
       {/* CTA */}
-      <div className="bg-brown py-14">
-        <div className="mx-auto max-w-xl px-4 text-center">
-          <h2 className="font-serif text-3xl font-bold text-cream">
+      <div className="relative overflow-hidden bg-brown py-16 sm:py-20">
+        <div className="absolute inset-0 opacity-[0.03]">
+          <div className="absolute left-1/2 top-1/2 h-96 w-96 -translate-x-1/2 -translate-y-1/2 rounded-full bg-tan" />
+        </div>
+        <div className="relative mx-auto max-w-xl px-4 text-center">
+          <h2 className="font-serif text-3xl font-bold text-cream sm:text-4xl">
             Ready to get started?
           </h2>
-          <p className="mt-3 text-cream/60">Browse available units or join our waiting list.</p>
-          <div className="mt-8 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
+          <p className="mt-4 text-cream/50">Browse available units or join our waiting list.</p>
+          <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
             <Link
               href="/units"
-              className="w-full rounded bg-tan px-8 py-3 font-semibold text-brown hover:bg-tan-light transition-colors sm:w-auto"
+              className="w-full rounded-full bg-tan px-10 py-3.5 font-semibold text-brown shadow-md shadow-tan/20 transition-all duration-200 hover:-translate-y-0.5 hover:bg-tan-light hover:shadow-lg sm:w-auto"
             >
               View Units
             </Link>
             <Link
               href="/contact"
-              className="w-full rounded border border-cream/30 px-8 py-3 font-semibold text-cream hover:border-tan hover:text-tan transition-colors sm:w-auto"
+              className="w-full rounded-full border border-cream/20 px-10 py-3.5 font-semibold text-cream transition-all duration-200 hover:-translate-y-0.5 hover:border-tan hover:text-tan sm:w-auto"
             >
               Contact Us
             </Link>

@@ -66,7 +66,31 @@
       "Bash(cd \"D:/Users/silvi/Documents/Hive/Clients/Tuscany/tuscany-storage\" && rm -f lib/sendgrid.ts && npm install 2>&1 | tail -5)",
       "Bash(cd \"D:/Users/silvi/Documents/Hive/Clients/Tuscany/tuscany-storage\" && npx next build 2>&1 | tail -60)",
       "Bash(cd \"D:/Users/silvi/Documents/Hive/Clients/Tuscany/tuscany-storage\" && sed -i '/@typescript-eslint\\\\/no-explicit-any/d' app/admin/delinquency/page.tsx app/api/portal/dashboard/route.ts)",
-      "Bash(cd \"D:/Users/silvi/Documents/Hive/Clients/Tuscany/tuscany-storage\" && npx next build 2>&1 | tail -80)"
+      "Bash(cd \"D:/Users/silvi/Documents/Hive/Clients/Tuscany/tuscany-storage\" && npx next build 2>&1 | tail -80)",
+      "Bash(cd \"D:/Users/silvi/Documents/Hive/Clients/Tuscany/tuscany-storage\" && sed -i \"s|Gate access is available 7 days a week, 6 AM to 10 PM\\\\.|Gate access is available 24 hours a day, 7 days a week.|g; s|Gate access is available 7 days a week from 6 AM to 10 PM\\\\. If you need extended access, contact our office to discuss options\\\\.|Gate access is available 24 hours a day, 7 days a week.|g\" \"app/\\(public\\)/how-it-works/page.tsx\")",
+      "Bash(cd \"D:/Users/silvi/Documents/Hive/Clients/Tuscany/tuscany-storage\" && sed -i 's|sticky top-16|sticky top-20|g' \"app/\\(public\\)/units/page.tsx\")",
+      "Bash(cd \"D:/Users/silvi/Documents/Hive/Clients/Tuscany/tuscany-storage\" && npx next build 2>&1 | grep -E \"Error|error|Failed|✓ \" | head -10)",
+      "Read(//c/Users/silvi/.claude/plugins/**)",
+      "Bash(find ~/.claude/plugins/marketplaces/ -path \"*ui-ux*\" -o -path \"*nextlevelbuilder*\" 2>/dev/null | head -20)",
+      "Bash(cd \"C:/Users/silvi/.claude/plugins/marketplaces/ui-ux-pro-max-skill\" && python3 .claude/skills/ui-ux-pro-max/scripts/search.py \"self storage facility service luxury warm tuscan\" --design-system -p \"Tuscany Village Self Storage\" 2>&1 | head -100)",
+      "Bash(python3 \"C:/Users/silvi/.claude/plugins/marketplaces/ui-ux-pro-max-skill/src/ui-ux-pro-max/scripts/search.py\" \"self storage facility service luxury warm tuscan\" --design-system -p \"Tuscany Village Self Storage\" 2>&1 | head -120)",
+      "Bash(python3 \"C:/Users/silvi/.claude/plugins/marketplaces/ui-ux-pro-max-skill/src/ui-ux-pro-max/scripts/search.py\" \"warm earthy rustic elegant service\" --domain style -n 5 2>&1)",
+      "Bash(python3 \"C:/Users/silvi/.claude/plugins/marketplaces/ui-ux-pro-max-skill/src/ui-ux-pro-max/scripts/search.py\" \"accessibility animation hover loading\" --domain ux -n 10 2>&1 | head -60)",
+      "Bash(cd \"D:/Users/silvi/Documents/Hive/Clients/Tuscany/tuscany-storage\" && npx next build 2>&1 | grep -E \"Error|error|Failed|✓ Compiled|✓ Generating\" | head -5)",
+      "Bash(cd \"D:/Users/silvi/Documents/Hive/Clients/Tuscany/tuscany-storage\" && rm -rf .next && npx next build 2>&1 | grep -E \"Error|error|Failed|✓ Compiled|✓ Generating|static pages\" | head -5)",
+      "Bash(cd \"D:/Users/silvi/Documents/Hive/Clients/Tuscany/tuscany-storage\" && npx next build 2>&1 | tail -5)",
+      "WebFetch(domain:www.google.com)",
+      "WebFetch(domain:maps.googleapis.com)",
+      "Bash(ls D:/Users/silvi/Documents/Hive/Clients/Tuscany/tuscany-storage/.env* 2>/dev/null || echo \"No .env files found\")",
+      "Bash(curl -s \"https://maps.googleapis.com/maps/api/place/details/json?place_id=ChIJg-ewDotOXIgRjzOllhslk_8&fields=rating,user_ratings_total,reviews&key=AIzaSyCS5livjOMIXkgZPt-VSi4O3dASef0_YM8\" 2>&1 | head -50)",
+      "Bash(curl -s \"https://places.googleapis.com/v1/places/ChIJg-ewDotOXIgRjzOllhslk_8\" -H \"X-Goog-Api-Key: AIzaSyCS5livjOMIXkgZPt-VSi4O3dASef0_YM8\" -H \"X-Goog-FieldMask: displayName,rating,userRatingCount,reviews\" 2>&1 | head -40)",
+      "Bash(curl -s \"https://places.googleapis.com/v1/places/ChIJg-ewDotOXIgRjzOllhslk_8\" -H \"X-Goog-Api-Key: AIzaSyBcoS_YVapd7-y5u7AITKtEc-Z11IY70Iw\" -H \"X-Goog-FieldMask: displayName,rating,userRatingCount,reviews\" 2>&1 | head -60)",
+      "Bash(curl -s \"https://maps.googleapis.com/maps/api/place/details/json?place_id=ChIJg-ewDotOXIgRjzOllhslk_8&fields=name,rating,user_ratings_total,reviews&key=AIzaSyBcoS_YVapd7-y5u7AITKtEc-Z11IY70Iw\" 2>&1 | head -60)",
+      "Bash(curl -s \"https://places.googleapis.com/v1/places/ChIJg-ewDotOXIgRjzOllhslk_8\" -H \"X-Goog-Api-Key: AIzaSyBcoS_YVapd7-y5u7AITKtEc-Z11IY70Iw\" -H \"X-Goog-FieldMask: displayName,rating,userRatingCount,reviews\" 2>&1 | head -80)",
+      "Bash(python3 \"C:/Users/silvi/.claude/plugins/marketplaces/ui-ux-pro-max-skill/src/ui-ux-pro-max/scripts/search.py\" \"testimonial review card social proof\" --domain style -n 3 2>&1)",
+      "Bash(python3 \"C:/Users/silvi/.claude/plugins/marketplaces/ui-ux-pro-max-skill/src/ui-ux-pro-max/scripts/search.py\" \"testimonial card layout spacing\" --domain ux -n 5 2>&1)",
+      "Bash(python3 \"C:/Users/silvi/.claude/plugins/marketplaces/ui-ux-pro-max-skill/src/ui-ux-pro-max/scripts/search.py\" \"warm earthy luxury tuscan rustic elegant storage\" --domain typography -n 5 2>&1)",
+      "Bash(python3 \"C:/Users/silvi/.claude/plugins/marketplaces/ui-ux-pro-max-skill/src/ui-ux-pro-max/scripts/search.py\" \"clean modern professional warm service sans\" --domain typography -n 5 2>&1)"
     ]
   }
 }
