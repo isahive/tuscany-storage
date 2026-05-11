@@ -15,7 +15,12 @@ export interface ILeaseDocument extends Document {
   leaseDocumentUrl?: string
   signedAt?: Date
   signatureData?: string
+  signatureType?: 'drawn' | 'typed'
+  appliedPromotionId?: Types.ObjectId
+  protectionPlanId?: Types.ObjectId
   lastRateChangeDate?: Date
+  auctionDate?: Date
+  auctionScheduledAt?: Date
   createdAt: Date
   updatedAt: Date
 }
@@ -39,7 +44,12 @@ const LeaseSchema = new Schema<ILeaseDocument>(
     leaseDocumentUrl: { type: String },
     signedAt: { type: Date },
     signatureData: { type: String },
+    signatureType: { type: String, enum: ['drawn', 'typed'] },
+    appliedPromotionId: { type: Schema.Types.ObjectId, ref: 'Promotion' },
+    protectionPlanId: { type: Schema.Types.ObjectId, ref: 'ProtectionPlan' },
     lastRateChangeDate: { type: Date },
+    auctionDate: { type: Date },
+    auctionScheduledAt: { type: Date },
   },
   { timestamps: true }
 )

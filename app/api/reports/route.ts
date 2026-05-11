@@ -12,6 +12,7 @@ import WaitingList from '@/models/WaitingList'
 import AccessLog from '@/models/AccessLog'
 import Note from '@/models/Note'
 import Promotion from '@/models/Promotion'
+import Notification from '@/models/Notification'
 
 // GET /api/reports?type=revenues&from=2026-01-01&to=2026-04-30
 export async function GET(req: NextRequest) {
@@ -605,6 +606,172 @@ export async function GET(req: NextRequest) {
           phone: t.phone,
         }))
         return NextResponse.json({ success: true, data: { rows, summary: { totalCredit: rows.reduce((s: number, r: any) => s + r.credit, 0) } } })
+      }
+
+      case 'collections': {
+        // All tenants with positive balance (owe money)
+        const tenants = await Tenant.find({ balance: { $gt: 0 } }).sort({ balance: -1 }).lean()
+        const tIds = tenants.map((t: any) => t._id)
+        const leases = await Lease.find({ tenantId: { $in: tIds }, status: 'active' })
+          .populate('unitId', 'unitNumber size')
+          .lean()
+        const leaseMap: Record<string, any> = {}
+        leases.forEach((l: any) => { leaseMap[l.tenantId.toString()] = l })
+
+        // Get latest succeeded rent payment to calculate days past due
+        const rentPayments = await Payment.find({ tenantId: { $in: tIds }, type: 'rent', status: 'succeeded' })
+          .sort({ periodEnd: -1 })
+          .lean()
+        const lastPaidMap: Record<string, Date> = {}
+        rentPayments.forEach((p: any) => {
+          const key = p.tenantId.toString()
+          if (!lastPaidMap[key]) lastPaidMap[key] = p.periodEnd
+        })
+
+        const now = new Date()
+        const rows = tenants.map((t: any) => {
+          const lease = leaseMap[t._id.toString()]
+          const lastPaid = lastPaidMap[t._id.toString()]
+          const daysPastDue = lastPaid
+            ? Math.max(0, Math.floor((now.getTime() - new Date(lastPaid).getTime()) / (1000 * 60 * 60 * 24)))
+            : null
+          return {
+            tenant: `${t.firstName} ${t.lastName}`,
+            email: t.email,
+            phone: t.phone,
+            unit: lease?.unitId?.unitNumber ?? 'N/A',
+            balance: t.balance,
+            status: t.status,
+            daysPastDue,
+          }
+        })
+        return NextResponse.json({
+          success: true,
+          data: {
+            rows,
+            summary: {
+              total: rows.length,
+              totalOwed: rows.reduce((s: number, r: any) => s + r.balance, 0),
+            },
+          },
+        })
+      }
+
+      case 'failed-payments': {
+        const match: Record<string, unknown> = { status: 'failed' }
+        if (hasDate) match.createdAt = dateFilter
+        const payments = await Payment.find(match)
+          .populate('tenantId', 'firstName lastName email phone')
+          .sort({ createdAt: -1 })
+          .lean()
+        const rows = payments.map((p: any) => ({
+          date: p.createdAt,
+          tenant: p.tenantId ? `${p.tenantId.firstName} ${p.tenantId.lastName}` : 'N/A',
+          email: p.tenantId?.email ?? '',
+          phone: p.tenantId?.phone ?? '',
+          amount: p.amount,
+          type: p.type,
+          reason: p.failureReason || 'Unknown',
+          attempts: p.attemptCount,
+        }))
+        return NextResponse.json({
+          success: true,
+          data: {
+            rows,
+            summary: {
+              total: rows.length,
+              totalAmount: rows.reduce((s: number, r: any) => s + r.amount, 0),
+            },
+          },
+        })
+      }
+
+      case 'lost-revenue': {
+        // Revenue lost from vacant units + locked-out tenants
+        const vacantUnits = await Unit.find({ status: 'available' }).lean()
+        const lockedOutTenants = await Tenant.find({ status: 'locked_out' }).lean()
+        const tIds = lockedOutTenants.map((t: any) => t._id)
+        const leases = await Lease.find({ tenantId: { $in: tIds }, status: 'active' })
+          .populate('unitId', 'unitNumber size')
+          .lean()
+
+        const vacantRows = vacantUnits.map((u: any) => ({
+          source: 'Vacant unit',
+          unit: u.unitNumber,
+          size: u.size,
+          monthlyLoss: u.price,
+        }))
+        const lockedRows = leases.map((l: any) => ({
+          source: 'Locked out (unpaid)',
+          unit: l.unitId?.unitNumber ?? '',
+          size: l.unitId?.size ?? '',
+          monthlyLoss: l.monthlyRate,
+        }))
+        const rows = [...vacantRows, ...lockedRows]
+        return NextResponse.json({
+          success: true,
+          data: {
+            rows,
+            summary: {
+              vacantCount: vacantRows.length,
+              lockedCount: lockedRows.length,
+              monthlyLoss: rows.reduce((s: number, r: any) => s + r.monthlyLoss, 0),
+              annualLoss: rows.reduce((s: number, r: any) => s + r.monthlyLoss, 0) * 12,
+            },
+          },
+        })
+      }
+
+      case 'yearly-revenues': {
+        // Aggregate succeeded payments by year/month
+        const match: Record<string, unknown> = { status: 'succeeded' }
+        if (hasDate) match.createdAt = dateFilter
+        const payments = await Payment.find(match).lean()
+        const byMonth: Record<string, { rent: number; deposit: number; lateFee: number; other: number; total: number }> = {}
+        payments.forEach((p: any) => {
+          const d = new Date(p.createdAt)
+          const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+          if (!byMonth[key]) byMonth[key] = { rent: 0, deposit: 0, lateFee: 0, other: 0, total: 0 }
+          if (p.type === 'rent' || p.type === 'prorated') byMonth[key].rent += p.amount
+          else if (p.type === 'deposit') byMonth[key].deposit += p.amount
+          else if (p.type === 'late_fee') byMonth[key].lateFee += p.amount
+          else byMonth[key].other += p.amount
+          byMonth[key].total += p.amount
+        })
+        const rows = Object.entries(byMonth)
+          .map(([month, v]) => ({ month, ...v }))
+          .sort((a, b) => a.month.localeCompare(b.month))
+        return NextResponse.json({
+          success: true,
+          data: {
+            rows,
+            summary: {
+              total: rows.reduce((s, r) => s + r.total, 0),
+              months: rows.length,
+            },
+          },
+        })
+      }
+
+      case 'undelivered-notifications': {
+        const match: Record<string, unknown> = { status: { $in: ['failed', 'undelivered'] } }
+        if (hasDate) match.createdAt = dateFilter
+        const notifs = await Notification.find(match)
+          .populate('tenantId', 'firstName lastName email phone')
+          .sort({ createdAt: -1 })
+          .limit(500)
+          .lean()
+        const rows = notifs.map((n: any) => ({
+          date: n.createdAt,
+          tenant: n.tenantId ? `${n.tenantId.firstName} ${n.tenantId.lastName}` : 'Unknown',
+          email: n.tenantId?.email ?? '',
+          phone: n.tenantId?.phone ?? '',
+          type: n.type,
+          channel: n.channel,
+          subject: n.subject ?? '',
+          reason: n.failureReason ?? '',
+        }))
+        return NextResponse.json({ success: true, data: { rows, summary: { total: rows.length } } })
       }
 
       default:

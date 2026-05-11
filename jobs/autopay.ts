@@ -2,6 +2,9 @@ import { connectDB } from '@/lib/db'
 import Tenant from '@/models/Tenant'
 import Lease from '@/models/Lease'
 import Payment from '@/models/Payment'
+import Unit from '@/models/Unit'
+import { sendTemplatedNotification } from '@/lib/sendNotification'
+import { applyPromotionToCharge } from '@/lib/billing/applyPromotion'
 import type { ITenantDocument } from '@/models/Tenant'
 import type { ILeaseDocument } from '@/models/Lease'
 
@@ -105,7 +108,20 @@ export async function runAutopay(): Promise<void> {
         continue
       }
 
-      console.log(`[Autopay] Processing autopay for tenant ${tenant.email}, amount: $${(lease.monthlyRate / 100).toFixed(2)}`)
+      // Apply promo discount if any
+      const promoResult = await applyPromotionToCharge(
+        lease.monthlyRate,
+        lease._id,
+        lease.appliedPromotionId,
+      )
+      const chargeAmount = promoResult.discountedAmount
+      if (promoResult.discount > 0) {
+        console.log(
+          `[Autopay] Promo applied for ${tenant.email}: -$${(promoResult.discount / 100).toFixed(2)} (charge: $${(chargeAmount / 100).toFixed(2)})`,
+        )
+      }
+
+      console.log(`[Autopay] Processing autopay for tenant ${tenant.email}, amount: $${(chargeAmount / 100).toFixed(2)}`)
 
       let stripePaymentIntentId = `mock_pi_${Date.now()}_${tenant._id}`
       let paymentStatus: 'pending' | 'succeeded' | 'failed' = 'pending'
@@ -118,7 +134,7 @@ export async function runAutopay(): Promise<void> {
         // Real Stripe charge
         try {
           const paymentIntent = await stripe.paymentIntents.create({
-            amount: lease.monthlyRate,
+            amount: chargeAmount,
             currency: 'usd',
             customer: tenant.stripeCustomerId,
             payment_method: tenant.defaultPaymentMethodId,
@@ -166,7 +182,7 @@ export async function runAutopay(): Promise<void> {
         unitId: lease.unitId,
         stripePaymentIntentId,
         stripeChargeId,
-        amount: lease.monthlyRate,
+        amount: chargeAmount,
         currency: 'usd',
         type: 'rent',
         status: paymentStatus,
@@ -176,6 +192,29 @@ export async function runAutopay(): Promise<void> {
         lastAttemptAt: new Date(),
         failureReason,
       })
+
+      // Notify tenant of outcome
+      const unit = await Unit.findById(lease.unitId).select('unitNumber').lean() as { unitNumber?: string } | null
+      if (paymentStatus === 'succeeded') {
+        await sendTemplatedNotification({
+          templateName: 'Payment Receipt',
+          notificationType: 'payment_confirmation',
+          tenant,
+          unitNumber: unit?.unitNumber,
+          paymentAmount: chargeAmount,
+          paymentDate: new Date(),
+          balance: 0,
+        })
+      } else if (paymentStatus === 'failed') {
+        await sendTemplatedNotification({
+          templateName: 'Failed Payment',
+          notificationType: 'payment_failed',
+          tenant,
+          unitNumber: unit?.unitNumber,
+          paymentAmount: chargeAmount,
+          balance: chargeAmount,
+        })
+      }
 
       processed++
       if (paymentStatus === 'succeeded') {

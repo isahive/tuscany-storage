@@ -33,6 +33,8 @@ import PersonIcon from '@mui/icons-material/Person'
 import CreditCardIcon from '@mui/icons-material/CreditCard'
 import LogoutIcon from '@mui/icons-material/Logout'
 import WarningAmberIcon from '@mui/icons-material/WarningAmber'
+import ShieldIcon from '@mui/icons-material/Shield'
+import AddBusinessIcon from '@mui/icons-material/AddBusiness'
 import { usePathname, useRouter } from 'next/navigation'
 import { theme } from '@/lib/theme'
 
@@ -42,6 +44,8 @@ const BASE_NAV_ITEMS = [
   { label: 'Dashboard',    href: '/portal',              icon: <DashboardIcon /> },
   { label: 'Payments',     href: '/portal/payments',     icon: <PaymentIcon /> },
   { label: 'Gate Code',    href: '/portal/gate-code',    icon: <LockIcon />, key: 'gateCode' },
+  { label: 'Protection',   href: '/portal/protection',   icon: <ShieldIcon /> },
+  { label: 'Rent Another', href: '/portal/rent-another', icon: <AddBusinessIcon /> },
   { label: 'My Profile',   href: '/portal/profile',      icon: <PersonIcon /> },
   { label: 'Billing',      href: '/portal/billing',      icon: <CreditCardIcon /> },
   { label: 'Instructions', href: '/portal/instructions', icon: <InfoOutlinedIcon /> },

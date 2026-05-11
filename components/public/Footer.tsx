@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Image from 'next/image'
 
 const FOOTER_LINKS = {
   'Storage': [
@@ -10,6 +11,8 @@ const FOOTER_LINKS = {
   ],
   'Company': [
     { label: 'How It Works', href: '/how-it-works' },
+    { label: 'Tenant Protection', href: '/tenant-protection' },
+    { label: 'Blog', href: '/blog' },
     { label: 'Contact Us', href: '/contact' },
     { label: 'Waiting List', href: '/waiting-list' },
   ],
@@ -31,22 +34,17 @@ export default function Footer() {
           {/* Brand column — spans 2 cols on large */}
           <div className="space-y-6 lg:col-span-2">
             <div>
-              <div className="flex items-center gap-3">
-                <p className="font-serif text-2xl font-bold text-tan tracking-wide">
-                  Tuscany Village
-                </p>
-                <div className="h-7 w-[1px] bg-tan/40" />
-                <p className="text-[11px] tracking-[0.25em] text-cream/50 uppercase">
-                  Self Storage
-                </p>
-              </div>
-              <p className="mt-2 font-serif text-sm italic text-cream/40">
-                Where security meets elegance
-              </p>
+              <Image
+                src="/images/brand/logo.png"
+                alt="Tuscany Village Self Storage"
+                width={220}
+                height={70}
+                className="h-14 w-auto object-contain"
+              />
             </div>
             <p className="max-w-sm text-sm leading-relaxed text-cream/60">
-              Caryville&apos;s premier self storage facility. Clean, secure, and
-              conveniently located with 24/7 gate access.
+              We are a fully automated company. Clean, secure, and conveniently
+              located in Caryville with 24/7 gate access.
             </p>
             <div className="space-y-2 text-sm text-cream/60">
               <p>2519 Highway 116</p>
@@ -68,6 +66,18 @@ export default function Footer() {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
                 </svg>
                 Tuscanystorage@gmail.com
+              </a>
+              <a
+                href="https://www.yelp.com/biz/tuscany-village-self-storage-caryville"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-3 inline-flex items-center gap-2 text-sm hover:text-tan transition-colors duration-200"
+                aria-label="Yelp"
+              >
+                <svg className="h-4 w-4 text-tan/60" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M20.16 12.594l-4.995-1.624c-1.314-.428-2.51 1.224-1.51 2.272l3.5 3.674c.667.7 1.804.524 2.179-.336l.929-2.135c.366-.842-.064-1.819-.929-1.852l-.001-.001zm-7.469-2.301l-.001-7.227c0-1.099-1.222-1.633-2.06-.902l-3.516 3.085c-.671.589-.516 1.726.295 2.103l4.422 2.046c.853.395 1.886-.205 1.886-1.105h-.026zM10.756 16.4l-3.514 3.085c-.838.736-.378 2.16.787 2.16h4.6c1.115 0 1.7-1.353.913-2.146l-1.086-1.092c-.408-.412-.408-1.092 0-1.504l.184-.185c.408-.412.408-1.092 0-1.504l-.184-.184c-.408-.412-1.086-.412-1.494 0l-.206.186c-.408.4-.812.812-1.196 1.184h.196zm-3.43-5.108L2.331 9.668c-.86-.28-1.683.51-1.426 1.378l1.379 4.65c.302 1.024 1.694 1.143 2.18.186l2.45-4.802c.408-.804-.34-1.708-1.214-1.708l-.374.12z"/>
+                </svg>
+                Yelp
               </a>
             </div>
           </div>
@@ -162,6 +172,9 @@ export default function Footer() {
               </Link>
             </div>
           </div>
+          <p className="mt-4 text-center text-xs text-cream/30 sm:text-right">
+            Powered by Storable Easy
+          </p>
         </div>
       </div>
     </footer>

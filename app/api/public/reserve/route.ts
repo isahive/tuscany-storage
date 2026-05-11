@@ -19,9 +19,15 @@ const schema = z.object({
   state: z.string().optional(),
   zip: z.string().optional(),
   driversLicense: z.string().optional(),
+  driversLicenseNumber: z.string().optional(),
+  driversLicenseState: z.string().optional(),
   alternatePhone: z.string().optional(),
   alternateEmail: z.string().optional(),
+  alternateContactName: z.string().optional(),
   idPhotoUrl: z.string().optional(),
+  smsConsent: z.boolean().optional(),
+  howDidYouHear: z.string().optional(),
+  howDidYouHearOther: z.string().optional(),
 })
 
 export async function POST(req: NextRequest) {
@@ -34,7 +40,10 @@ export async function POST(req: NextRequest) {
 
     const {
       unitId, firstName, lastName, email, phone, password,
-      address, city, state, zip, driversLicense, alternatePhone, alternateEmail, idPhotoUrl,
+      address, city, state, zip,
+      driversLicense, driversLicenseNumber, driversLicenseState,
+      alternatePhone, alternateEmail, alternateContactName,
+      idPhotoUrl, smsConsent, howDidYouHear, howDidYouHearOther,
     } = parsed.data
 
     await connectDB()
@@ -75,8 +84,15 @@ export async function POST(req: NextRequest) {
       password: hashedPassword,
       address, city, state, zip,
       driversLicense,
+      driversLicenseNumber,
+      driversLicenseState,
       idPhotoUrl,
-      alternatePhone, alternateEmail,
+      alternatePhone, alternateEmail, alternateContactName,
+      smsConsent: smsConsent ?? false,
+      smsOptIn: smsConsent ?? false,
+      howDidYouHear,
+      howDidYouHearOther,
+      referralSource: howDidYouHear,
       gateCode,
       role: 'tenant',
       status: 'active',

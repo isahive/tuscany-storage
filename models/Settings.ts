@@ -27,6 +27,14 @@ export interface ISettingsDocument extends Document {
   billingDaysBeforeDue: number  // days before due date billing is generated (default 7)
   daysRequiredBeforeBillingDay: number // default 0
 
+  // ── Billing Cycle ─────────────────────────────────────────────────────────
+  billingCycleAnchor: 'first_of_month' | 'signup_day' | 'custom_day'
+  billingCycleCustomDay: number  // 1-28, only used when anchor is 'custom_day'
+
+  // ── Proration Model ───────────────────────────────────────────────────────
+  prorationModel: 'none' | 'prorate_first_month' | 'first_month_full_then_prorate' | 'prorate_both'
+  prorationDaysBasis: 'actual_days_in_month' | 'thirty_day_month'
+
   // ── Fees (cents) ─────────────────────────────────────────────────────────
   lateFeeAfterDays: number
   lateFeeAmount: number
@@ -117,6 +125,9 @@ export interface ISettingsDocument extends Document {
     requiredOnWaitingList: boolean
     isCustom: boolean    // true = admin-created field
     order: number        // display order
+    fieldType?: 'text' | 'select' | 'checkbox'
+    options?: string[]
+    helpText?: string
   }>
 
   createdAt: Date
@@ -150,6 +161,26 @@ const SettingsSchema = new Schema<ISettingsDocument>(
     // Billing
     billingDaysBeforeDue:        { type: Number, default: 7 },
     daysRequiredBeforeBillingDay: { type: Number, default: 0 },
+
+    // Billing Cycle
+    billingCycleAnchor: {
+      type: String,
+      enum: ['first_of_month', 'signup_day', 'custom_day'],
+      default: 'first_of_month',
+    },
+    billingCycleCustomDay: { type: Number, default: 1, min: 1, max: 28 },
+
+    // Proration Model
+    prorationModel: {
+      type: String,
+      enum: ['none', 'prorate_first_month', 'first_month_full_then_prorate', 'prorate_both'],
+      default: 'first_month_full_then_prorate',
+    },
+    prorationDaysBasis: {
+      type: String,
+      enum: ['actual_days_in_month', 'thirty_day_month'],
+      default: 'actual_days_in_month',
+    },
 
     // Fees
     lateFeeAfterDays: { type: Number, default: 5 },
@@ -252,6 +283,9 @@ const SettingsSchema = new Schema<ISettingsDocument>(
         requiredOnWaitingList: { type: Boolean, default: false },
         isCustom:              { type: Boolean, default: false },
         order:                 { type: Number, default: 0 },
+        fieldType:             { type: String, enum: ['text', 'select', 'checkbox'], default: 'text' },
+        options:               { type: [String], default: [] },
+        helpText:              { type: String, default: '' },
       }],
       default: [],
     },

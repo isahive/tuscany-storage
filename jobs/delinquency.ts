@@ -7,10 +7,25 @@ import AccessLog from '@/models/AccessLog'
 import { sendSMS } from '@/lib/twilio'
 import { sendEmail } from '@/lib/email'
 import { formatMoney } from '@/lib/utils'
+import { getSettings } from '@/lib/getSettings'
 import type { ITenantDocument } from '@/models/Tenant'
 import type { ILeaseDocument } from '@/models/Lease'
 
-const LATE_FEE_CENTS = 2500 // $25.00
+// Fallback thresholds (used if Settings.lateLienEvents is empty)
+const DEFAULT_lateFeeCents = 2500
+const DEFAULT_LATE_DAY = 5
+const DEFAULT_LOCKOUT_DAY = 10
+const DEFAULT_PRE_LIEN_DAY = 30
+const DEFAULT_LIEN_DAY = 45
+
+function daysForStatus(
+  events: Array<{ status: string; daysPastDue: number }> | undefined,
+  status: 'late' | 'locked_out' | 'pre_lien' | 'lien' | 'auction',
+  fallback: number,
+): number {
+  const ev = events?.find((e) => e.status === status)
+  return ev?.daysPastDue ?? fallback
+}
 
 interface DelinquencyResult {
   tenantEmail: string
@@ -44,6 +59,18 @@ function daysBetween(a: Date, b: Date): number {
 export async function runDelinquency(): Promise<DelinquencyResult[]> {
   console.log('[Delinquency] Starting delinquency escalation job...')
   await connectDB()
+
+  // Load admin-configured thresholds + fees from Settings
+  const settings = await getSettings()
+  const lateFeeCents = settings.lateFeeAmount ?? DEFAULT_lateFeeCents
+  const events = settings.lateLienEvents as Array<{ status: string; daysPastDue: number }> | undefined
+  const lateDay = settings.lateFeeAfterDays ?? daysForStatus(events, 'late', DEFAULT_LATE_DAY)
+  const lockoutDay = daysForStatus(events, 'locked_out', DEFAULT_LOCKOUT_DAY)
+  const preLienDay = daysForStatus(events, 'pre_lien', DEFAULT_PRE_LIEN_DAY)
+  const lienDay = daysForStatus(events, 'lien', DEFAULT_LIEN_DAY)
+  // Auction day defaults to lien + 30 if not configured
+  const auctionDay = daysForStatus(events, 'auction', lienDay + 30)
+  const gateAutoLockout = settings.gateAutoLockout !== false
 
   const now = new Date()
   const results: DelinquencyResult[] = []
@@ -97,15 +124,15 @@ export async function runDelinquency(): Promise<DelinquencyResult[]> {
       }
 
       // No payment for current period — apply escalation based on days past due
-      if (daysSinceBilling < 5) {
-        // Day 0-4: No action yet
+      if (daysSinceBilling < lateDay) {
+        // Grace period: no action yet
         continue
       }
 
       const amountFormatted = formatMoney(lease.monthlyRate)
 
-      // Day 5 — LATE: mark delinquent, add late fee
-      if (daysSinceBilling >= 5 && daysSinceBilling < 10 && tenant.status === 'active') {
+      // LATE: mark delinquent, add late fee
+      if (daysSinceBilling >= lateDay && daysSinceBilling < lockoutDay && tenant.status === 'active') {
         console.log(`[Delinquency] Day ${daysSinceBilling}: Marking ${tenant.email} as delinquent`)
 
         await Tenant.findByIdAndUpdate(tenant._id, { status: 'delinquent' })
@@ -120,7 +147,7 @@ export async function runDelinquency(): Promise<DelinquencyResult[]> {
           leaseId: lease._id,
           unitId: lease.unitId,
           stripePaymentIntentId: `late_fee_${Date.now()}_${tenant._id}`,
-          amount: LATE_FEE_CENTS,
+          amount: lateFeeCents,
           currency: 'usd',
           type: 'late_fee',
           status: 'pending',
@@ -135,7 +162,7 @@ export async function runDelinquency(): Promise<DelinquencyResult[]> {
           <h2>Late Payment Notice</h2>
           <p>Hi ${tenant.firstName},</p>
           <p>Your rent payment of <strong>${amountFormatted}</strong> was due on ${lastBillingDate.toLocaleDateString('en-US')} and has not been received.</p>
-          <p>A late fee of <strong>${formatMoney(LATE_FEE_CENTS)}</strong> has been applied to your account.</p>
+          <p>A late fee of <strong>${formatMoney(lateFeeCents)}</strong> has been applied to your account.</p>
           <p>Please make your payment as soon as possible to avoid further action.</p>
           <br/>
           <p>Tuscany Village Self Storage</p>
@@ -164,13 +191,13 @@ export async function runDelinquency(): Promise<DelinquencyResult[]> {
         })
       }
 
-      // Day 10 — LOCKED OUT: revoke gate access
-      if (daysSinceBilling >= 10 && daysSinceBilling < 30 && tenant.status === 'delinquent') {
+      // LOCKED OUT: revoke gate access
+      if (daysSinceBilling >= lockoutDay && daysSinceBilling < preLienDay && tenant.status === 'delinquent') {
         console.log(`[Delinquency] Day ${daysSinceBilling}: Locking out ${tenant.email}`)
 
         await Tenant.findByIdAndUpdate(tenant._id, {
           status: 'locked_out',
-          gateCode: null, // Revoke gate access
+          ...(gateAutoLockout ? { gateCode: null } : {}),
         })
 
         // Log access revocation
@@ -188,7 +215,7 @@ export async function runDelinquency(): Promise<DelinquencyResult[]> {
           <h2>Access Suspended</h2>
           <p>Hi ${tenant.firstName},</p>
           <p>Due to non-payment, your gate access to Tuscany Village Self Storage has been <strong>suspended</strong>.</p>
-          <p>Your outstanding balance of <strong>${amountFormatted}</strong> plus a late fee of <strong>${formatMoney(LATE_FEE_CENTS)}</strong> must be paid to restore access.</p>
+          <p>Your outstanding balance of <strong>${amountFormatted}</strong> plus a late fee of <strong>${formatMoney(lateFeeCents)}</strong> must be paid to restore access.</p>
           <p>Please contact us immediately to resolve this matter.</p>
           <br/>
           <p>Tuscany Village Self Storage</p>
@@ -217,8 +244,8 @@ export async function runDelinquency(): Promise<DelinquencyResult[]> {
         })
       }
 
-      // Day 30 — Pre-lien notice
-      if (daysSinceBilling >= 30 && daysSinceBilling < 45) {
+      // Pre-lien notice
+      if (daysSinceBilling >= preLienDay && daysSinceBilling < lienDay) {
         // Check if pre-lien notice already sent
         const existingPreLien = await Notification.findOne({
           tenantId: tenant._id,
@@ -266,8 +293,8 @@ export async function runDelinquency(): Promise<DelinquencyResult[]> {
         }
       }
 
-      // Day 45 — Lien notice
-      if (daysSinceBilling >= 45) {
+      // Lien notice
+      if (daysSinceBilling >= lienDay) {
         const existingLien = await Notification.findOne({
           tenantId: tenant._id,
           type: 'custom',
@@ -312,6 +339,52 @@ export async function runDelinquency(): Promise<DelinquencyResult[]> {
             daysPastDue: daysSinceBilling,
           })
         }
+      }
+
+      // Auction scheduling — schedule auction date 14 days out when threshold hit
+      if (daysSinceBilling >= auctionDay && !lease.auctionDate) {
+        const auctionDate = new Date()
+        auctionDate.setDate(auctionDate.getDate() + 14)
+
+        await Lease.findByIdAndUpdate(lease._id, {
+          auctionDate,
+          auctionScheduledAt: new Date(),
+        })
+
+        console.log(`[Delinquency] Day ${daysSinceBilling}: Auction scheduled for ${tenant.email} on ${auctionDate.toLocaleDateString()}`)
+
+        const emailSubject = 'Auction Notice - Tuscany Village Self Storage'
+        const emailBody = `
+          <h2>Auction Notice</h2>
+          <p>Hi ${tenant.firstName},</p>
+          <p>Your storage unit at Tuscany Village Self Storage is scheduled for <strong>public auction on ${auctionDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</strong> in accordance with state lien law.</p>
+          <p>Your account is <strong>${daysSinceBilling} days past due</strong> with an outstanding balance of <strong>${amountFormatted}</strong>.</p>
+          <p>To stop the auction, your full balance plus all accumulated fees must be paid before the auction date. Contact us immediately at (865) 426-2100.</p>
+          <br/>
+          <p>Tuscany Village Self Storage</p>
+        `
+        const smsBody = `FINAL NOTICE: Your Tuscany Village unit is scheduled for AUCTION on ${auctionDate.toLocaleDateString()}. Pay your balance immediately to stop the sale. Call (865) 426-2100.`
+
+        await sendEmail(tenant.email, emailSubject, emailBody)
+        if (tenant.smsOptIn) {
+          await sendSMS(tenant.phone, smsBody)
+        }
+
+        await Notification.create({
+          tenantId: tenant._id,
+          type: 'custom',
+          channel: tenant.smsOptIn ? 'both' : 'email',
+          subject: emailSubject,
+          body: smsBody,
+          status: 'sent',
+          sentAt: new Date(),
+        })
+
+        results.push({
+          tenantEmail: tenant.email,
+          action: 'auction_scheduled',
+          daysPastDue: daysSinceBilling,
+        })
       }
     } catch (err: any) {
       console.error(`[Delinquency] Error processing tenant ${tenant.email}:`, err.message)

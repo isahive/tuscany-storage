@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import {
   Alert,
   Box,
@@ -23,6 +23,7 @@ import CancelIcon from '@mui/icons-material/Cancel'
 import OpenInNewIcon from '@mui/icons-material/OpenInNew'
 import CreditCardIcon from '@mui/icons-material/CreditCard'
 import PhotoIcon from '@mui/icons-material/Photo'
+import GavelIcon from '@mui/icons-material/Gavel'
 import { formatDate } from '@/lib/utils'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -41,9 +42,8 @@ interface MoveOutRow {
   status: MoveOutStatus
   adminNotes?: string
   submittedAt: string
+  leaseEnded?: boolean
 }
-
-// ─── Status chip config ───────────────────────────────────────────────────────
 
 const STATUS_COLORS: Record<MoveOutStatus, { bg: string; color: string; label: string }> = {
   pending:  { bg: '#FEF3C7', color: '#92400E', label: 'Pending' },
@@ -57,82 +57,27 @@ function StatusChip({ status }: { status: MoveOutStatus }) {
     <Chip
       label={label}
       size="small"
-      sx={{
-        bgcolor: bg,
-        color,
-        fontWeight: 600,
-        fontSize: '0.7rem',
-        borderRadius: 1,
-      }}
+      sx={{ bgcolor: bg, color, fontWeight: 600, fontSize: '0.7rem', borderRadius: 1 }}
     />
   )
 }
 
-// ─── Mock data ────────────────────────────────────────────────────────────────
-
-const INITIAL_ROWS: MoveOutRow[] = [
-  {
-    id: 'mor-1',
-    tenantName: 'Maria Gonzalez',
-    tenantEmail: 'm.gonzalez@email.com',
-    unitNumber: 'B-14',
-    requestedMoveOutDate: '2026-05-10',
-    stripePaymentMethodConfirmed: true,
-    lastFourDigits: '4242',
-    photoUrls: [
-      'https://placehold.co/400x300/EDE5D8/1C0F06?text=Unit+Front',
-      'https://placehold.co/400x300/EDE5D8/1C0F06?text=Unit+Back',
-    ],
-    status: 'pending',
-    submittedAt: '2026-04-07T09:15:00Z',
-  },
-  {
-    id: 'mor-2',
-    tenantName: 'James O\'Brien',
-    tenantEmail: 'j.obrien@email.com',
-    unitNumber: 'A-06',
-    requestedMoveOutDate: '2026-04-30',
-    stripePaymentMethodConfirmed: true,
-    lastFourDigits: '1881',
-    photoUrls: [
-      'https://placehold.co/400x300/EDE5D8/1C0F06?text=Photo+1',
-      'https://placehold.co/400x300/EDE5D8/1C0F06?text=Photo+2',
-      'https://placehold.co/400x300/EDE5D8/1C0F06?text=Photo+3',
-    ],
-    status: 'approved',
-    adminNotes: 'Unit looks clean. Deposit to be returned within 30 days.',
-    submittedAt: '2026-03-28T14:30:00Z',
-  },
-  {
-    id: 'mor-3',
-    tenantName: 'Rachel Kim',
-    tenantEmail: 'r.kim@email.com',
-    unitNumber: 'C-22',
-    requestedMoveOutDate: '2026-05-15',
-    stripePaymentMethodConfirmed: false,
-    photoUrls: [],
-    status: 'denied',
-    adminNotes: 'Outstanding balance of $82.50 must be resolved before move-out is approved.',
-    submittedAt: '2026-04-02T11:00:00Z',
-  },
-]
-
-// ─── Request detail drawer ────────────────────────────────────────────────────
+// ─── Detail drawer ────────────────────────────────────────────────────────────
 
 interface DetailDrawerProps {
   row: MoveOutRow | null
   open: boolean
   onClose: () => void
   onDecision: (id: string, status: 'approved' | 'denied', adminNotes: string) => Promise<void>
+  onFinalize: (id: string) => Promise<void>
 }
 
-function DetailDrawer({ row, open, onClose, onDecision }: DetailDrawerProps) {
+function DetailDrawer({ row, open, onClose, onDecision, onFinalize }: DetailDrawerProps) {
   const [adminNotes, setAdminNotes] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
-
-  // Sync notes when row changes
   const [lastRowId, setLastRowId] = useState<string | null>(null)
+
   if (row && row.id !== lastRowId) {
     setLastRowId(row.id)
     setAdminNotes(row.adminNotes ?? '')
@@ -153,40 +98,34 @@ function DetailDrawer({ row, open, onClose, onDecision }: DetailDrawerProps) {
     }
   }
 
+  const handleFinalize = async () => {
+    if (!row) return
+    setSubmitting(true)
+    setActionError(null)
+    try {
+      await onFinalize(row.id)
+      onClose()
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Finalize failed.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
   if (!row) return null
 
   const isPending = row.status === 'pending'
+  const canFinalize = row.status === 'approved' && !row.leaseEnded
 
   return (
     <Drawer
       anchor="right"
       open={open}
       onClose={onClose}
-      PaperProps={{
-        sx: {
-          width: { xs: '100%', sm: 480 },
-          p: 0,
-          bgcolor: '#FFFFFF',
-        },
-      }}
+      PaperProps={{ sx: { width: { xs: '100%', sm: 480 }, bgcolor: '#FFFFFF' } }}
     >
-      {/* Drawer header */}
-      <Box
-        sx={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          px: 3,
-          py: 2,
-          borderBottom: '1px solid #EDE5D8',
-          bgcolor: '#FAF7F2',
-        }}
-      >
-        <Typography
-          variant="subtitle1"
-          fontWeight={700}
-          sx={{ fontFamily: '"Playfair Display", serif' }}
-        >
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 3, py: 2, borderBottom: '1px solid #EDE5D8', bgcolor: '#FAF7F2' }}>
+        <Typography variant="subtitle1" fontWeight={700} sx={{ fontFamily: '"Playfair Display", serif' }}>
           Move-Out Request
         </Typography>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -197,9 +136,7 @@ function DetailDrawer({ row, open, onClose, onDecision }: DetailDrawerProps) {
         </Box>
       </Box>
 
-      {/* Drawer body */}
       <Box sx={{ px: 3, py: 2.5, overflowY: 'auto', flex: 1 }}>
-        {/* Tenant & unit */}
         <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: 0.5 }}>
           Tenant
         </Typography>
@@ -214,40 +151,25 @@ function DetailDrawer({ row, open, onClose, onDecision }: DetailDrawerProps) {
 
         <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap', mb: 2 }}>
           <Box>
-            <Typography variant="caption" color="text.secondary">
-              Unit
-            </Typography>
-            <Typography variant="body2" fontWeight={600}>
-              {row.unitNumber}
-            </Typography>
+            <Typography variant="caption" color="text.secondary">Unit</Typography>
+            <Typography variant="body2" fontWeight={600}>{row.unitNumber}</Typography>
           </Box>
           <Box>
-            <Typography variant="caption" color="text.secondary">
-              Requested Move-Out
-            </Typography>
-            <Typography variant="body2" fontWeight={600}>
-              {formatDate(row.requestedMoveOutDate)}
-            </Typography>
+            <Typography variant="caption" color="text.secondary">Requested Move-Out</Typography>
+            <Typography variant="body2" fontWeight={600}>{formatDate(row.requestedMoveOutDate)}</Typography>
           </Box>
           <Box>
-            <Typography variant="caption" color="text.secondary">
-              Submitted
-            </Typography>
-            <Typography variant="body2" fontWeight={600}>
-              {formatDate(row.submittedAt)}
-            </Typography>
+            <Typography variant="caption" color="text.secondary">Submitted</Typography>
+            <Typography variant="body2" fontWeight={600}>{formatDate(row.submittedAt)}</Typography>
           </Box>
         </Box>
 
         <Divider sx={{ my: 2 }} />
 
-        {/* Payment confirmation */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
           <CreditCardIcon sx={{ color: 'text.secondary', fontSize: '1.1rem' }} />
           <Box>
-            <Typography variant="body2" fontWeight={500}>
-              Card Confirmation
-            </Typography>
+            <Typography variant="body2" fontWeight={500}>Card Confirmation</Typography>
             <Typography variant="caption" color="text.secondary">
               {row.stripePaymentMethodConfirmed
                 ? `Confirmed${row.lastFourDigits ? ` — ••••${row.lastFourDigits}` : ''}`
@@ -268,7 +190,6 @@ function DetailDrawer({ row, open, onClose, onDecision }: DetailDrawerProps) {
 
         <Divider sx={{ my: 2 }} />
 
-        {/* Photo gallery */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
           <PhotoIcon sx={{ color: 'text.secondary', fontSize: '1.1rem' }} />
           <Typography variant="body2" fontWeight={500}>
@@ -277,41 +198,12 @@ function DetailDrawer({ row, open, onClose, onDecision }: DetailDrawerProps) {
         </Box>
 
         {row.photoUrls.length === 0 ? (
-          <Typography variant="caption" color="text.secondary">
-            No photos submitted.
-          </Typography>
+          <Typography variant="caption" color="text.secondary">No photos submitted.</Typography>
         ) : (
-          <Box
-            sx={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))',
-              gap: 1,
-            }}
-          >
+          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 1 }}>
             {row.photoUrls.map((url, i) => (
-              <Box
-                key={url}
-                component="a"
-                href={url}
-                target="_blank"
-                rel="noopener noreferrer"
-                sx={{ display: 'block', borderRadius: 1, overflow: 'hidden' }}
-              >
-                <Box
-                  component="img"
-                  src={url}
-                  alt={`Unit photo ${i + 1}`}
-                  sx={{
-                    width: '100%',
-                    aspectRatio: '4/3',
-                    objectFit: 'cover',
-                    display: 'block',
-                    border: '1px solid #EDE5D8',
-                    borderRadius: 1,
-                    transition: 'opacity 0.15s',
-                    '&:hover': { opacity: 0.85 },
-                  }}
-                />
+              <Box key={url} component="a" href={url} target="_blank" rel="noopener noreferrer" sx={{ display: 'block', borderRadius: 1, overflow: 'hidden' }}>
+                <Box component="img" src={url} alt={`Unit photo ${i + 1}`} sx={{ width: '100%', aspectRatio: '4/3', objectFit: 'cover', display: 'block', border: '1px solid #EDE5D8', borderRadius: 1 }} />
               </Box>
             ))}
           </Box>
@@ -319,95 +211,65 @@ function DetailDrawer({ row, open, onClose, onDecision }: DetailDrawerProps) {
 
         <Divider sx={{ my: 2 }} />
 
-        {/* Admin notes */}
-        <Typography variant="body2" fontWeight={500} sx={{ mb: 1 }}>
-          Admin Notes
-        </Typography>
+        <Typography variant="body2" fontWeight={500} sx={{ mb: 1 }}>Admin Notes</Typography>
         <TextField
           multiline
           minRows={3}
           maxRows={6}
           fullWidth
           size="small"
-          placeholder="Optional notes for internal reference or tenant communication…"
+          placeholder="Optional notes for internal reference…"
           value={adminNotes}
           onChange={(e) => setAdminNotes(e.target.value)}
           disabled={!isPending || submitting}
-          sx={{
-            '& .MuiOutlinedInput-root': {
-              '& fieldset': { borderColor: '#EDE5D8' },
-              '&:hover fieldset': { borderColor: '#B8914A' },
-            },
-          }}
         />
 
         {actionError && (
-          <Alert severity="error" sx={{ mt: 2, borderRadius: 1 }}>
-            {actionError}
-          </Alert>
+          <Alert severity="error" sx={{ mt: 2 }}>{actionError}</Alert>
         )}
       </Box>
 
-      {/* Drawer footer — actions */}
       {isPending && (
-        <Box
-          sx={{
-            px: 3,
-            py: 2,
-            borderTop: '1px solid #EDE5D8',
-            display: 'flex',
-            gap: 1.5,
-            bgcolor: '#FAF7F2',
-          }}
-        >
-          <Button
-            variant="contained"
-            fullWidth
-            disabled={submitting}
-            startIcon={
-              submitting ? (
-                <CircularProgress size={16} color="inherit" />
-              ) : (
-                <CheckCircleIcon />
-              )
-            }
-            onClick={() => handleDecision('approved')}
-            sx={{
-              bgcolor: '#065F46',
-              '&:hover': { bgcolor: '#054d38' },
-              '&.Mui-disabled': { bgcolor: '#D1FAE5', color: '#9CA3AF' },
-            }}
-          >
+        <Box sx={{ px: 3, py: 2, borderTop: '1px solid #EDE5D8', display: 'flex', gap: 1.5, bgcolor: '#FAF7F2' }}>
+          <Button variant="contained" fullWidth disabled={submitting} startIcon={submitting ? <CircularProgress size={16} color="inherit" /> : <CheckCircleIcon />} onClick={() => handleDecision('approved')} sx={{ bgcolor: '#065F46', '&:hover': { bgcolor: '#054d38' } }}>
             {submitting ? 'Saving…' : 'Approve'}
           </Button>
-          <Button
-            variant="contained"
-            fullWidth
-            disabled={submitting}
-            startIcon={<CancelIcon />}
-            onClick={() => handleDecision('denied')}
-            sx={{
-              bgcolor: '#991B1B',
-              '&:hover': { bgcolor: '#7f1d1d' },
-              '&.Mui-disabled': { bgcolor: '#FEE2E2', color: '#9CA3AF' },
-            }}
-          >
+          <Button variant="contained" fullWidth disabled={submitting} startIcon={<CancelIcon />} onClick={() => handleDecision('denied')} sx={{ bgcolor: '#991B1B', '&:hover': { bgcolor: '#7f1d1d' } }}>
             Deny
           </Button>
         </Box>
       )}
 
-      {!isPending && (
-        <Box
-          sx={{
-            px: 3,
-            py: 2,
-            borderTop: '1px solid #EDE5D8',
-            bgcolor: '#FAF7F2',
-          }}
-        >
+      {canFinalize && (
+        <Box sx={{ px: 3, py: 2, borderTop: '1px solid #EDE5D8', bgcolor: '#FAF7F2' }}>
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.5 }}>
+            Approved — ready to finalize. This ends the lease, frees the unit, stops autopay, and sends the move-out receipt.
+          </Typography>
+          <Button
+            variant="contained"
+            fullWidth
+            disabled={submitting}
+            startIcon={submitting ? <CircularProgress size={16} color="inherit" /> : <GavelIcon />}
+            onClick={handleFinalize}
+            sx={{ bgcolor: '#1C0F06', '&:hover': { bgcolor: '#000000' } }}
+          >
+            {submitting ? 'Finalizing…' : 'Finalize Move-Out'}
+          </Button>
+        </Box>
+      )}
+
+      {row.leaseEnded && (
+        <Box sx={{ px: 3, py: 2, borderTop: '1px solid #EDE5D8', bgcolor: '#FAF7F2' }}>
           <Typography variant="caption" color="text.secondary">
-            This request has already been <strong>{row.status}</strong> and cannot be changed.
+            Lease has been ended. This request is fully closed.
+          </Typography>
+        </Box>
+      )}
+
+      {!isPending && !canFinalize && !row.leaseEnded && (
+        <Box sx={{ px: 3, py: 2, borderTop: '1px solid #EDE5D8', bgcolor: '#FAF7F2' }}>
+          <Typography variant="caption" color="text.secondary">
+            This request has already been <strong>{row.status}</strong>.
           </Typography>
         </Box>
       )}
@@ -417,183 +279,138 @@ function DetailDrawer({ row, open, onClose, onDecision }: DetailDrawerProps) {
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
+interface ApiMoveOut {
+  _id: string
+  tenantId: { firstName?: string; lastName?: string; email?: string } | null
+  unitId: { unitNumber?: string } | null
+  leaseId: { status?: string } | null
+  requestedMoveOutDate: string
+  stripePaymentMethodConfirmed: boolean
+  lastFourDigits?: string
+  photoUrls: string[]
+  status: MoveOutStatus
+  adminNotes?: string
+  createdAt: string
+}
+
 export default function AdminMoveOutPage() {
-  const [rows, setRows] = useState<MoveOutRow[]>(INITIAL_ROWS)
+  const [rows, setRows] = useState<MoveOutRow[]>([])
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [selectedRow, setSelectedRow] = useState<MoveOutRow | null>(null)
-  const [snackbar, setSnackbar] = useState<{
-    open: boolean
-    message: string
-    severity: 'success' | 'error'
-  }>({ open: false, message: '', severity: 'success' })
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({ open: false, message: '', severity: 'success' })
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    setLoadError(null)
+    try {
+      const res = await fetch('/api/move-out')
+      const json = await res.json()
+      if (!json.success) throw new Error(json.error ?? 'Failed to load')
+      const apiRows: MoveOutRow[] = (json.data as ApiMoveOut[]).map((r) => ({
+        id: r._id,
+        tenantName: r.tenantId ? `${r.tenantId.firstName ?? ''} ${r.tenantId.lastName ?? ''}`.trim() : 'Unknown',
+        tenantEmail: r.tenantId?.email ?? '',
+        unitNumber: r.unitId?.unitNumber ?? 'N/A',
+        requestedMoveOutDate: r.requestedMoveOutDate,
+        stripePaymentMethodConfirmed: r.stripePaymentMethodConfirmed,
+        lastFourDigits: r.lastFourDigits,
+        photoUrls: r.photoUrls ?? [],
+        status: r.status,
+        adminNotes: r.adminNotes,
+        submittedAt: r.createdAt,
+        leaseEnded: r.leaseId?.status === 'ended',
+      }))
+      setRows(apiRows)
+    } catch (err) {
+      setLoadError(err instanceof Error ? err.message : 'Failed to load')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => { load() }, [load])
 
   const handleView = useCallback((row: MoveOutRow) => {
     setSelectedRow(row)
     setDrawerOpen(true)
   }, [])
 
-  const handleDecision = useCallback(
-    async (id: string, status: 'approved' | 'denied', adminNotes: string) => {
-      // Call PATCH /api/move-out/:id
-      const res = await fetch(`/api/move-out/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status, adminNotes: adminNotes || undefined }),
-      })
+  const handleDecision = useCallback(async (id: string, status: 'approved' | 'denied', adminNotes: string) => {
+    const res = await fetch(`/api/move-out/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status, adminNotes: adminNotes || undefined }),
+    })
+    const json = await res.json()
+    if (!json.success) throw new Error(json.error ?? 'Failed to update')
+    setSnackbar({ open: true, message: `Request ${status}.`, severity: 'success' })
+    await load()
+  }, [load])
 
-      const json = await res.json()
-      if (!json.success) {
-        throw new Error(json.error ?? 'Failed to update request.')
-      }
-
-      // Optimistically update local state
-      setRows((prev) =>
-        prev.map((r) =>
-          r.id === id ? { ...r, status, adminNotes: adminNotes || r.adminNotes } : r,
-        ),
-      )
-      setSnackbar({
-        open: true,
-        message: `Request ${status === 'approved' ? 'approved' : 'denied'} successfully.`,
-        severity: 'success',
-      })
-    },
-    [],
-  )
-
-  // ─── DataGrid columns ──────────────────────────────────────────────────────
+  const handleFinalize = useCallback(async (id: string) => {
+    const res = await fetch(`/api/move-out/${id}/finalize`, { method: 'POST' })
+    const json = await res.json()
+    if (!json.success) throw new Error(json.error ?? 'Failed to finalize')
+    const credit = (json.data?.prorationCredit ?? 0) / 100
+    const owed = (json.data?.owedTotal ?? 0) / 100
+    setSnackbar({
+      open: true,
+      message: `Move-out finalized. Owed: $${owed.toFixed(2)} · Credit: $${credit.toFixed(2)}.`,
+      severity: 'success',
+    })
+    await load()
+  }, [load])
 
   const columns: GridColDef[] = [
-    {
-      field: 'tenantName',
-      headerName: 'Tenant',
-      flex: 1.2,
-      minWidth: 150,
-      renderCell: (params: GridRenderCellParams) => (
-        <Box>
-          <Typography variant="body2" fontWeight={500}>
-            {params.value as string}
-          </Typography>
-        </Box>
-      ),
-    },
-    {
-      field: 'unitNumber',
-      headerName: 'Unit',
-      width: 90,
-      renderCell: (params: GridRenderCellParams) => (
-        <Typography variant="body2" fontWeight={500}>
-          {params.value as string}
-        </Typography>
-      ),
-    },
-    {
-      field: 'requestedMoveOutDate',
-      headerName: 'Requested Date',
-      width: 140,
-      renderCell: (params: GridRenderCellParams) => (
-        <Typography variant="body2">
-          {formatDate(params.value as string)}
-        </Typography>
-      ),
-    },
-    {
-      field: 'stripePaymentMethodConfirmed',
-      headerName: 'Card Confirmed',
-      width: 130,
-      renderCell: (params: GridRenderCellParams) => {
-        const confirmed = params.value as boolean
-        return (
-          <Chip
-            label={confirmed ? 'Yes' : 'No'}
-            size="small"
-            sx={{
-              bgcolor: confirmed ? '#D1FAE5' : '#FEF3C7',
-              color: confirmed ? '#065F46' : '#92400E',
-              fontWeight: 600,
-              fontSize: '0.7rem',
-              borderRadius: 1,
-            }}
-          />
-        )
+    { field: 'tenantName', headerName: 'Tenant', flex: 1.2, minWidth: 150,
+      renderCell: (p: GridRenderCellParams) => <Typography variant="body2" fontWeight={500}>{p.value as string}</Typography> },
+    { field: 'unitNumber', headerName: 'Unit', width: 90,
+      renderCell: (p: GridRenderCellParams) => <Typography variant="body2" fontWeight={500}>{p.value as string}</Typography> },
+    { field: 'requestedMoveOutDate', headerName: 'Requested Date', width: 140,
+      renderCell: (p: GridRenderCellParams) => <Typography variant="body2">{formatDate(p.value as string)}</Typography> },
+    { field: 'stripePaymentMethodConfirmed', headerName: 'Card Confirmed', width: 130,
+      renderCell: (p: GridRenderCellParams) => {
+        const c = p.value as boolean
+        return <Chip label={c ? 'Yes' : 'No'} size="small" sx={{ bgcolor: c ? '#D1FAE5' : '#FEF3C7', color: c ? '#065F46' : '#92400E', fontWeight: 600, fontSize: '0.7rem' }} />
       },
     },
-    {
-      field: 'photoUrls',
-      headerName: 'Photos',
-      width: 80,
-      sortable: false,
-      renderCell: (params: GridRenderCellParams) => {
-        const count = (params.value as string[]).length
-        return (
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-            <PhotoIcon sx={{ fontSize: '1rem', color: count > 0 ? 'primary.main' : 'text.disabled' }} />
-            <Typography variant="body2" color={count > 0 ? 'text.primary' : 'text.disabled'}>
-              {count}
-            </Typography>
-          </Box>
-        )
+    { field: 'photoUrls', headerName: 'Photos', width: 80, sortable: false,
+      renderCell: (p: GridRenderCellParams) => {
+        const n = (p.value as string[]).length
+        return <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}><PhotoIcon sx={{ fontSize: '1rem', color: n > 0 ? 'primary.main' : 'text.disabled' }} /><Typography variant="body2">{n}</Typography></Box>
       },
     },
-    {
-      field: 'status',
-      headerName: 'Status',
-      width: 110,
-      renderCell: (params: GridRenderCellParams) => (
-        <StatusChip status={params.value as MoveOutStatus} />
-      ),
-    },
-    {
-      field: 'submittedAt',
-      headerName: 'Submitted',
-      width: 130,
-      renderCell: (params: GridRenderCellParams) => (
-        <Typography variant="body2" color="text.secondary">
-          {formatDate(params.value as string)}
-        </Typography>
-      ),
-    },
-    {
-      field: 'actions',
-      headerName: 'Actions',
-      width: 90,
-      sortable: false,
-      filterable: false,
-      renderCell: (params: GridRenderCellParams) => {
-        const row = params.row as MoveOutRow
-        return (
-          <Tooltip title="View details">
-            <IconButton
-              size="small"
-              onClick={() => handleView(row)}
-              sx={{
-                color: 'primary.main',
-                '&:hover': { bgcolor: 'rgba(184,145,74,0.08)' },
-              }}
-            >
-              <OpenInNewIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-        )
+    { field: 'status', headerName: 'Status', width: 110,
+      renderCell: (p: GridRenderCellParams) => {
+        const row = p.row as MoveOutRow
+        if (row.leaseEnded) return <Chip label="Finalized" size="small" sx={{ bgcolor: '#E5E7EB', color: '#374151', fontWeight: 600, fontSize: '0.7rem' }} />
+        return <StatusChip status={p.value as MoveOutStatus} />
       },
+    },
+    { field: 'submittedAt', headerName: 'Submitted', width: 130,
+      renderCell: (p: GridRenderCellParams) => <Typography variant="body2" color="text.secondary">{formatDate(p.value as string)}</Typography> },
+    { field: 'actions', headerName: 'Actions', width: 90, sortable: false, filterable: false,
+      renderCell: (p: GridRenderCellParams) => (
+        <Tooltip title="View details">
+          <IconButton size="small" onClick={() => handleView(p.row as MoveOutRow)} sx={{ color: 'primary.main' }}>
+            <OpenInNewIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+      ),
     },
   ]
 
-  // ─── Summary counts ────────────────────────────────────────────────────────
-
   const pendingCount = rows.filter((r) => r.status === 'pending').length
-  const approvedCount = rows.filter((r) => r.status === 'approved').length
-  const deniedCount = rows.filter((r) => r.status === 'denied').length
+  const approvedNotFinalCount = rows.filter((r) => r.status === 'approved' && !r.leaseEnded).length
+  const finalizedCount = rows.filter((r) => r.leaseEnded).length
 
   return (
     <Box>
-      {/* Page header */}
       <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', mb: 3 }}>
         <Box>
-          <Typography
-            variant="h5"
-            sx={{ fontFamily: '"Playfair Display", serif', color: 'secondary.main', fontWeight: 700 }}
-          >
+          <Typography variant="h5" sx={{ fontFamily: '"Playfair Display", serif', color: 'secondary.main', fontWeight: 700 }}>
             Move-Out Requests
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
@@ -601,31 +418,20 @@ export default function AdminMoveOutPage() {
           </Typography>
         </Box>
 
-        {/* Summary badges */}
         <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
-          <Chip
-            label={`${pendingCount} Pending`}
-            size="small"
-            sx={{ bgcolor: '#FEF3C7', color: '#92400E', fontWeight: 600 }}
-          />
-          <Chip
-            label={`${approvedCount} Approved`}
-            size="small"
-            sx={{ bgcolor: '#D1FAE5', color: '#065F46', fontWeight: 600 }}
-          />
-          <Chip
-            label={`${deniedCount} Denied`}
-            size="small"
-            sx={{ bgcolor: '#FEE2E2', color: '#991B1B', fontWeight: 600 }}
-          />
+          <Chip label={`${pendingCount} Pending`} size="small" sx={{ bgcolor: '#FEF3C7', color: '#92400E', fontWeight: 600 }} />
+          <Chip label={`${approvedNotFinalCount} Awaiting Finalize`} size="small" sx={{ bgcolor: '#D1FAE5', color: '#065F46', fontWeight: 600 }} />
+          <Chip label={`${finalizedCount} Finalized`} size="small" sx={{ bgcolor: '#E5E7EB', color: '#374151', fontWeight: 600 }} />
         </Box>
       </Box>
 
-      {/* DataGrid */}
+      {loadError && <Alert severity="error" sx={{ mb: 2 }}>{loadError}</Alert>}
+
       <Card sx={{ border: '1px solid #EDE5D8', boxShadow: 'none' }}>
         <DataGrid
           rows={rows}
           columns={columns}
+          loading={loading}
           rowHeight={56}
           pageSizeOptions={[10, 25, 50]}
           initialState={{
@@ -636,47 +442,31 @@ export default function AdminMoveOutPage() {
           sx={{
             border: 'none',
             bgcolor: '#FFFFFF',
-            '& .MuiDataGrid-columnHeader': {
-              bgcolor: '#1C0F06',
-              color: '#FFFFFF',
-              fontWeight: 600,
-            },
-            '& .MuiDataGrid-columnHeaderTitle': { fontWeight: 600 },
+            '& .MuiDataGrid-columnHeader': { bgcolor: '#1C0F06', color: '#FFFFFF', fontWeight: 600 },
             '& .MuiDataGrid-sortIcon': { color: 'rgba(255,255,255,0.7)' },
             '& .MuiDataGrid-menuIconButton': { color: 'rgba(255,255,255,0.7)' },
-            '& .MuiDataGrid-columnSeparator': { color: 'rgba(255,255,255,0.2)' },
             '& .MuiDataGrid-row:hover': { bgcolor: '#FAF7F2' },
-            '& .MuiDataGrid-cell': {
-              borderColor: '#EDE5D8',
-              display: 'flex',
-              alignItems: 'center',
-            },
+            '& .MuiDataGrid-cell': { borderColor: '#EDE5D8', display: 'flex', alignItems: 'center' },
             '& .MuiDataGrid-footerContainer': { borderColor: '#EDE5D8' },
           }}
         />
       </Card>
 
-      {/* Detail drawer */}
       <DetailDrawer
         row={selectedRow}
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
         onDecision={handleDecision}
+        onFinalize={handleFinalize}
       />
 
-      {/* Snackbar feedback */}
       <Snackbar
         open={snackbar.open}
-        autoHideDuration={4500}
-        onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
+        autoHideDuration={5000}
+        onClose={() => setSnackbar((p) => ({ ...p, open: false }))}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
-        <Alert
-          severity={snackbar.severity}
-          variant="filled"
-          onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
-          sx={{ width: '100%' }}
-        >
+        <Alert severity={snackbar.severity} variant="filled" onClose={() => setSnackbar((p) => ({ ...p, open: false }))} sx={{ width: '100%' }}>
           {snackbar.message}
         </Alert>
       </Snackbar>

@@ -1,5 +1,4 @@
 import type { Metadata } from 'next'
-import Image from 'next/image'
 import Link from 'next/link'
 
 export const metadata: Metadata = {
@@ -11,29 +10,25 @@ const STEPS = [
   {
     step: '01',
     title: 'Browse & Choose Your Unit',
-    body: 'Visit our units page to see everything available. Filter by size, type, and price to find the right fit. Each listing includes photos, dimensions, features, and monthly pricing.',
-    image: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=800&q=80',
+    body: 'Visit our units page to see everything available. Filter by size, type, and price to find the right fit. Each listing includes dimensions, features, and monthly pricing.',
     tip: 'Not sure what size you need? Check our Size Guide for helpful comparisons.',
   },
   {
     step: '02',
     title: 'Join the Waiting List',
-    body: "Spot the unit you want but it\'s currently occupied? Join our waiting list with your contact info and preferred unit type. When a matching unit opens up, you\'re first in line — we\'ll reach out immediately.",
-    image: 'https://images.unsplash.com/photo-1553413077-190dd305871c?w=800&q=80',
+    body: "Spot the unit you want but it's currently occupied? Join our waiting list with your contact info and preferred unit type. When a matching unit opens up, you're first in line — we'll reach out immediately.",
     tip: 'Most waiting list members get a unit within 2–4 weeks.',
   },
   {
     step: '03',
     title: 'Complete Your Move-In',
     body: "Once a unit is ready for you, our team will contact you to complete the move-in process. You'll review your lease, sign digitally, pay your first month plus deposit, and get your personalized gate code — all without leaving the house.",
-    image: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800&q=80',
-    tip: 'Bring a valid photo ID and payment method. That\'s all you need.',
+    tip: "Bring a valid photo ID and payment method. That's all you need.",
   },
   {
     step: '04',
     title: 'Move In & Manage Online',
     body: 'Get your gate code and head to your unit at your convenience. Use our tenant portal to pay rent, update your gate code, view your access history, or give move-out notice — all from your phone.',
-    image: 'https://images.unsplash.com/photo-1565183997392-2f6f122e5912?w=800&q=80',
     tip: 'Gate access is available 24 hours a day, 7 days a week.',
   },
 ]
@@ -113,29 +108,14 @@ export default function HowItWorksPage() {
                   <div className="absolute left-1/2 top-full z-0 hidden h-16 w-px -translate-x-1/2 bg-gradient-to-b from-tan/40 to-transparent lg:block" />
                 )}
 
-                <div
-                  className={`grid items-center gap-8 lg:grid-cols-2 lg:gap-16 ${
-                    idx % 2 === 1 ? 'lg:[&>*:first-child]:order-2' : ''
-                  }`}
-                >
-                  {/* Image */}
-                  <div className="relative overflow-hidden rounded-2xl shadow-xl shadow-brown/[0.06]">
-                    <Image
-                      src={step.image}
-                      alt={step.title}
-                      width={800}
-                      height={500}
-                      sizes="(max-width: 1024px) 100vw, 50vw"
-                      className="h-48 w-full object-cover sm:h-80 lg:h-96"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-tr from-brown/30 to-transparent" />
-                    <div className="absolute bottom-4 right-4 flex h-12 w-12 items-center justify-center rounded-full bg-tan/90 shadow-lg backdrop-blur-sm lg:bottom-5 lg:right-5 lg:h-14 lg:w-14">
-                      <span className="font-serif text-base font-bold text-brown lg:text-lg">{step.step}</span>
-                    </div>
+                <div className="mx-auto max-w-3xl">
+                  {/* Step number badge */}
+                  <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full border border-tan/30 bg-white shadow-lg shadow-brown/[0.06]">
+                    <span className="font-serif text-xl font-bold text-tan">{step.step}</span>
                   </div>
 
                   {/* Content */}
-                  <div>
+                  <div className="text-center">
                     <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-tan/20 bg-tan/5 px-4 py-1.5">
                       <span className="font-serif text-sm font-bold text-tan">Step {step.step}</span>
                     </div>

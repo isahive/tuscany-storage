@@ -30,6 +30,12 @@ const updateSettingsSchema = z
     // Billing
     billingDaysBeforeDue: z.number().int().min(0),
     daysRequiredBeforeBillingDay: z.number().int().min(0),
+    // Billing Cycle
+    billingCycleAnchor: z.enum(['first_of_month', 'signup_day', 'custom_day']),
+    billingCycleCustomDay: z.number().int().min(1).max(28),
+    // Proration
+    prorationModel: z.enum(['none', 'prorate_first_month', 'first_month_full_then_prorate', 'prorate_both']),
+    prorationDaysBasis: z.enum(['actual_days_in_month', 'thirty_day_month']),
     // Fees
     lateFeeAfterDays: z.number().int().min(0),
     lateFeeAmount: z.number().int().min(0),
@@ -99,6 +105,9 @@ const updateSettingsSchema = z
       requiredOnWaitingList: z.boolean(),
       isCustom: z.boolean(),
       order: z.number().int().min(0),
+      fieldType: z.enum(['text', 'select', 'checkbox']).optional(),
+      options: z.array(z.string()).optional(),
+      helpText: z.string().optional(),
     })),
   })
   .partial()

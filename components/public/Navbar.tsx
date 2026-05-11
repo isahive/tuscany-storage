@@ -2,12 +2,14 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 
 const NAV_LINKS = [
-  { label: 'Units & Pricing', href: '/units' },
-  { label: 'How It Works', href: '/how-it-works' },
-  { label: 'Size Guide', href: '/size-guide' },
-  { label: 'Contact', href: '/contact' },
+  { label: 'Home', href: '/' },
+  { label: 'Rent Storage', href: '/units' },
+  { label: 'Tenant Protection', href: '/tenant-protection' },
+  { label: 'Map', href: '/contact#map' },
+  { label: 'Contact Us', href: '/contact' },
 ]
 
 export default function Navbar() {
@@ -22,17 +24,15 @@ export default function Navbar() {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex h-20 items-center justify-between">
             {/* Logo */}
-            <Link href="/" className="group flex items-center gap-3">
-              <div className="flex flex-col leading-tight">
-                <span className="font-serif text-xl font-bold text-tan tracking-wide">
-                  Tuscany Village
-                </span>
-              </div>
-              {/* Decorative vertical gold divider */}
-              <div className="hidden sm:block h-8 w-[1px] bg-tan/50" />
-              <span className="hidden sm:block text-[11px] font-medium tracking-[0.25em] text-cream/60 uppercase">
-                Self Storage
-              </span>
+            <Link href="/" className="group flex items-center" aria-label="Tuscany Village Self Storage">
+              <Image
+                src="/images/brand/logo.png"
+                alt="Tuscany Village Self Storage"
+                width={180}
+                height={60}
+                priority
+                className="h-12 w-auto object-contain"
+              />
             </Link>
 
             {/* Desktop Nav */}

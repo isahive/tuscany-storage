@@ -135,12 +135,17 @@ export default function ContactPage() {
 
               {/* Hours card */}
               <div className="overflow-hidden rounded-2xl bg-brown p-7 shadow-lg shadow-brown/10">
-                <h3 className="mb-5 font-serif text-lg font-semibold text-cream">Office Hours</h3>
+                <h3 className="mb-1 font-serif text-lg font-semibold text-cream">Office Hours</h3>
+                <p className="mb-5 text-xs text-cream/50">We are a fully automated company.</p>
                 <div className="space-y-3 text-sm">
                   {[
-                    ['Monday \u2013 Friday', '9:00 AM \u2013 5:00 PM'],
-                    ['Saturday', '9:00 AM \u2013 2:00 PM'],
-                    ['Sunday', 'Closed'],
+                    ['Monday', 'By Appointment'],
+                    ['Tuesday', 'By Appointment'],
+                    ['Wednesday', 'By Appointment'],
+                    ['Thursday', 'By Appointment'],
+                    ['Friday', 'By Appointment'],
+                    ['Saturday', 'By Appointment'],
+                    ['Sunday', 'By Appointment'],
                   ].map(([day, hours]) => (
                     <div key={day} className="flex items-center justify-between">
                       <span className="text-cream/60">{day}</span>

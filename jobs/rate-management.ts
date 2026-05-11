@@ -2,9 +2,7 @@ import { connectDB } from '@/lib/db'
 import Unit from '@/models/Unit'
 import Lease from '@/models/Lease'
 import Tenant from '@/models/Tenant'
-import Notification from '@/models/Notification'
-import { sendEmail } from '@/lib/email'
-import { sendSMS } from '@/lib/twilio'
+import RateChange from '@/models/RateChange'
 import { formatMoney } from '@/lib/utils'
 import type { IUnitDocument } from '@/models/Unit'
 import type { ILeaseDocument } from '@/models/Lease'
@@ -137,52 +135,32 @@ export async function runRateManagement(): Promise<RateChangeProposal[]> {
       console.log(`  Current: ${formatMoney(lease.monthlyRate)} -> Proposed: ${formatMoney(proposedRate)} (+${formatMoney(increaseAmount)}, ${increasePercent.toFixed(1)}%)`)
       console.log(`  Tenure: ${tenureMonths} months, Occupancy: ${occupancyRate.toFixed(1)}%`)
 
-      // Create notification with 30-day advance notice
+      // Persist as proposal — admin must approve before tenant is notified
       let notificationCreated = false
       try {
-        const emailSubject = 'Rate Adjustment Notice - Tuscany Village Self Storage'
-        const emailBody = `
-          <h2>Rate Adjustment Notice</h2>
-          <p>Hi ${tenant.firstName},</p>
-          <p>Thank you for being a valued tenant at Tuscany Village Self Storage.</p>
-          <p>We are writing to inform you that your monthly storage rate will be adjusted as follows:</p>
-          <ul>
-            <li><strong>Current Rate:</strong> ${formatMoney(lease.monthlyRate)}/month</li>
-            <li><strong>New Rate:</strong> ${formatMoney(proposedRate)}/month</li>
-            <li><strong>Effective Date:</strong> ${effectiveDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</li>
-          </ul>
-          <p>This adjustment reflects current market conditions and continued improvements to our facility.</p>
-          <p>If you have any questions, please don't hesitate to contact us.</p>
-          <br/>
-          <p>Tuscany Village Self Storage</p>
-        `
-        const smsBody = `Tuscany Village Storage: Your monthly rate will change from ${formatMoney(lease.monthlyRate)} to ${formatMoney(proposedRate)} effective ${effectiveDate.toLocaleDateString('en-US')}. Check your email for details.`
-
-        if (isDev) {
-          console.log(`[RateManagement][DEV] Would send rate change notice to ${tenant.email}`)
-          console.log(`[RateManagement][DEV] Subject: ${emailSubject}`)
-        }
-
-        // Always create the notification record (even in dev)
-        await Notification.create({
-          tenantId: tenant._id,
-          type: 'rate_change_notice',
-          channel: tenant.smsOptIn ? 'both' : 'email',
-          subject: emailSubject,
-          body: smsBody,
-          status: 'sent',
-          sentAt: new Date(),
+        const existing = await RateChange.findOne({
+          leaseId: lease._id,
+          status: { $in: ['proposed', 'approved'] },
         })
-
-        // Send actual notifications (sendEmail/sendSMS handle dev mode internally)
-        await sendEmail(tenant.email, emailSubject, emailBody)
-        if (tenant.smsOptIn) {
-          await sendSMS(tenant.phone, smsBody)
+        if (existing) {
+          console.log(`[RateManagement] Existing open proposal for lease ${lease._id}, skipping`)
+          continue
         }
 
+        await RateChange.create({
+          tenantId: tenant._id,
+          leaseId: lease._id,
+          unitId: unit._id,
+          currentRate: lease.monthlyRate,
+          proposedRate,
+          effectiveDate,
+          status: 'proposed',
+          occupancyRate,
+          tenureMonths,
+        })
         notificationCreated = true
       } catch (err: any) {
-        console.error(`[RateManagement] Error sending notification to ${tenant.email}:`, err.message)
+        console.error(`[RateManagement] Error persisting proposal for ${tenant.email}:`, err.message)
       }
 
       proposals.push({
@@ -217,10 +195,6 @@ export async function runRateManagement(): Promise<RateChangeProposal[]> {
       console.log(`    Effective: ${p.effectiveDate.toLocaleDateString('en-US')}`)
     })
   }
-
-  // NOTE: These are proposals only. The admin must approve them via the admin panel.
-  // The actual rate change (updating lease.monthlyRate and lease.lastRateChangeDate)
-  // should happen through an admin API endpoint that accepts/rejects proposals.
 
   return proposals
 }

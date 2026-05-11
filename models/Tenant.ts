@@ -1,6 +1,14 @@
 import mongoose, { Schema, Document } from 'mongoose'
 import type { TenantRole, TenantStatus } from '@/types'
 
+export interface ITenantBillingAddress {
+  line1: string
+  city: string
+  state: string
+  zip: string
+  country: string
+}
+
 export interface ITenantDocument extends Document {
   firstName: string
   lastName: string
@@ -8,11 +16,14 @@ export interface ITenantDocument extends Document {
   phone: string
   alternatePhone?: string
   alternateEmail?: string
+  alternateContactName?: string
   address?: string
   city?: string
   state?: string
   zip?: string
   driversLicense?: string
+  driversLicenseNumber?: string
+  driversLicenseState?: string
   idPhotoUrl?: string
   password: string
   role: TenantRole
@@ -23,7 +34,11 @@ export interface ITenantDocument extends Document {
   balance: number
   status: TenantStatus
   smsOptIn: boolean
+  smsConsent?: boolean
   referralSource?: string
+  howDidYouHear?: string
+  howDidYouHearOther?: string
+  billingAddress?: ITenantBillingAddress
   createdAt: Date
   updatedAt: Date
 }
@@ -36,11 +51,14 @@ const TenantSchema = new Schema<ITenantDocument>(
     phone: { type: String, required: true },
     alternatePhone: { type: String },
     alternateEmail: { type: String },
+    alternateContactName: { type: String },
     address: { type: String },
     city: { type: String },
     state: { type: String },
     zip: { type: String },
     driversLicense: { type: String },
+    driversLicenseNumber: { type: String },
+    driversLicenseState: { type: String },
     idPhotoUrl: { type: String },
     password: { type: String, required: true, select: false },
     role: { type: String, enum: ['tenant', 'admin'], default: 'tenant' },
@@ -55,12 +73,21 @@ const TenantSchema = new Schema<ITenantDocument>(
       default: 'active',
     },
     smsOptIn: { type: Boolean, default: false },
+    smsConsent: { type: Boolean, default: false },
     referralSource: { type: String },
+    howDidYouHear: { type: String },
+    howDidYouHearOther: { type: String },
+    billingAddress: {
+      line1: { type: String },
+      city: { type: String },
+      state: { type: String },
+      zip: { type: String },
+      country: { type: String },
+    },
   },
   { timestamps: true }
 )
 
-TenantSchema.index({ email: 1 })
 TenantSchema.index({ status: 1 })
 TenantSchema.index({ stripeCustomerId: 1 })
 

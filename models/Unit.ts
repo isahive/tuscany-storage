@@ -54,6 +54,5 @@ const UnitSchema = new Schema<IUnitDocument>(
 
 UnitSchema.index({ status: 1 })
 UnitSchema.index({ type: 1 })
-UnitSchema.index({ unitNumber: 1 })
 
 export default mongoose.models.Unit || mongoose.model<IUnitDocument>('Unit', UnitSchema)

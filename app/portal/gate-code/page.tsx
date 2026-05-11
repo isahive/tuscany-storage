@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import {
   Box,
   Card,
@@ -14,6 +14,8 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  TextField,
+  MenuItem,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -23,6 +25,7 @@ import {
   Chip,
   Divider,
   CircularProgress,
+  Stack,
 } from '@mui/material'
 import VisibilityIcon from '@mui/icons-material/Visibility'
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff'
@@ -32,6 +35,8 @@ import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward'
 import BlockIcon from '@mui/icons-material/Block'
 import KeyIcon from '@mui/icons-material/Key'
 import LockIcon from '@mui/icons-material/Lock'
+import SmsIcon from '@mui/icons-material/Sms'
+import FilterAltOffIcon from '@mui/icons-material/FilterAltOff'
 import type { AccessLog, EventType } from '@/types'
 
 const formatDateTime = (date: string | Date): string =>
@@ -62,6 +67,10 @@ function EventChip({ type }: { type: EventType }) {
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
+type AccessLogEntry = Pick<AccessLog, '_id' | 'eventType' | 'gateId' | 'source' | 'createdAt'> & {
+  notes?: string | null
+}
+
 export default function GateCodePage() {
   const [revealed, setRevealed] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
@@ -70,6 +79,14 @@ export default function GateCodePage() {
   const [gateCode, setGateCode] = useState<string | null>(null)
   const [signedAt, setSignedAt] = useState<string | null>(null)
   const [unitId, setUnitId] = useState<string>('')
+
+  // Access history state
+  const [logs, setLogs] = useState<AccessLogEntry[]>([])
+  const [logsLoading, setLogsLoading] = useState(true)
+  const [logsTotal, setLogsTotal] = useState(0)
+  const [filterEvent, setFilterEvent] = useState<EventType | ''>('')
+  const [filterStart, setFilterStart] = useState('')
+  const [filterEnd, setFilterEnd] = useState('')
 
   useEffect(() => {
     fetch('/api/portal/active-lease')
@@ -84,6 +101,35 @@ export default function GateCodePage() {
       .catch(() => {/* ignore */})
       .finally(() => setLoading(false))
   }, [])
+
+  const loadLogs = useCallback(() => {
+    setLogsLoading(true)
+    const qs = new URLSearchParams()
+    if (filterEvent) qs.set('eventType', filterEvent)
+    if (filterStart) qs.set('startDate', filterStart)
+    if (filterEnd) qs.set('endDate', filterEnd)
+    qs.set('limit', '100')
+    fetch(`/api/portal/access-log?${qs.toString()}`)
+      .then((r) => r.json())
+      .then((j) => {
+        if (j.success) {
+          setLogs(j.data.logs)
+          setLogsTotal(j.data.total)
+        }
+      })
+      .catch(() => {/* ignore */})
+      .finally(() => setLogsLoading(false))
+  }, [filterEvent, filterStart, filterEnd])
+
+  useEffect(() => {
+    if (signedAt) loadLogs()
+  }, [signedAt, loadLogs])
+
+  const clearFilters = () => {
+    setFilterEvent('')
+    setFilterStart('')
+    setFilterEnd('')
+  }
 
   const handleRequestNewCode = () => {
     setConfirmOpen(false)
@@ -198,15 +244,124 @@ export default function GateCodePage() {
         </CardContent>
       </Card>
 
-      {/* Access Log — placeholder until gate system is integrated */}
+      {/* Text-to-Open — feature placeholder */}
+      <Card sx={{ mb: 2, bgcolor: 'background.default', borderLeft: '3px solid', borderColor: 'primary.main' }}>
+        <CardContent sx={{ p: 3 }}>
+          <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5 }}>
+            <SmsIcon sx={{ color: 'primary.main', mt: 0.5 }} />
+            <Box>
+              <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 0.5 }}>
+                Text-to-Open <Chip label="Coming Soon" size="small" sx={{ ml: 1 }} />
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Open the gate by sending a text from your registered phone — no need to enter your code on the keypad.
+                We&apos;ll let you know when this feature is ready to enable.
+              </Typography>
+            </Box>
+          </Box>
+        </CardContent>
+      </Card>
+
+      {/* Access History */}
       <Card>
         <CardContent sx={{ p: 3 }}>
-          <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 1 }}>
-            Access History
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Access history will appear here once the gate system is connected.
-          </Typography>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <Typography variant="subtitle1" fontWeight={600}>
+              Access History
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              {logsTotal} {logsTotal === 1 ? 'event' : 'events'}
+            </Typography>
+          </Box>
+
+          {/* Filters */}
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ mb: 2 }}>
+            <TextField
+              select
+              size="small"
+              label="Event type"
+              value={filterEvent}
+              onChange={(e) => setFilterEvent(e.target.value as EventType | '')}
+              sx={{ minWidth: 160 }}
+            >
+              <MenuItem value="">All events</MenuItem>
+              <MenuItem value="entry">Entry</MenuItem>
+              <MenuItem value="exit">Exit</MenuItem>
+              <MenuItem value="denied">Denied</MenuItem>
+              <MenuItem value="code_changed">Code Changed</MenuItem>
+            </TextField>
+            <TextField
+              size="small"
+              type="date"
+              label="From"
+              InputLabelProps={{ shrink: true }}
+              value={filterStart}
+              onChange={(e) => setFilterStart(e.target.value)}
+            />
+            <TextField
+              size="small"
+              type="date"
+              label="To"
+              InputLabelProps={{ shrink: true }}
+              value={filterEnd}
+              onChange={(e) => setFilterEnd(e.target.value)}
+            />
+            {(filterEvent || filterStart || filterEnd) && (
+              <Button
+                variant="text"
+                size="small"
+                startIcon={<FilterAltOffIcon />}
+                onClick={clearFilters}
+              >
+                Clear
+              </Button>
+            )}
+          </Stack>
+
+          {logsLoading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+              <CircularProgress size={28} />
+            </Box>
+          ) : logs.length === 0 ? (
+            <Typography variant="body2" color="text.secondary" sx={{ py: 3 }}>
+              No access events match these filters.
+            </Typography>
+          ) : (
+            <TableContainer>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Event</TableCell>
+                    <TableCell>Gate</TableCell>
+                    <TableCell>Source</TableCell>
+                    <TableCell>Date &amp; Time</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {logs.map((log) => (
+                    <TableRow key={log._id} hover>
+                      <TableCell>
+                        <EventChip type={log.eventType} />
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" sx={{ textTransform: 'capitalize' }}>
+                          {log.gateId}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" sx={{ textTransform: 'capitalize' }}>
+                          {log.source}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2">{formatDateTime(log.createdAt)}</Typography>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
         </CardContent>
       </Card>
 

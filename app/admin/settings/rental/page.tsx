@@ -9,6 +9,8 @@ import {
   CircularProgress,
   Divider,
   FormControlLabel,
+  Radio,
+  RadioGroup,
   Snackbar,
   Switch,
   TextField,
@@ -17,10 +19,20 @@ import {
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import SaveIcon from '@mui/icons-material/Save'
 
+type BillingCycleAnchor = 'first_of_month' | 'signup_day' | 'custom_day'
+type ProrationModel = 'none' | 'prorate_first_month' | 'first_month_full_then_prorate' | 'prorate_both'
+type ProrationDaysBasis = 'actual_days_in_month' | 'thirty_day_month'
+
 interface FormState {
+  // Billing Cycle
+  billingCycleAnchor: BillingCycleAnchor
+  billingCycleCustomDay: number
   // Billing
   billingDaysBeforeDue: number
   daysRequiredBeforeBillingDay: number
+  // Proration
+  prorationModel: ProrationModel
+  prorationDaysBasis: ProrationDaysBasis
   // Rental options
   enablePrepay: boolean
   disablePartialPaymentsForLockedOut: boolean
@@ -44,8 +56,12 @@ interface FormState {
 }
 
 const DEFAULTS: FormState = {
+  billingCycleAnchor: 'first_of_month',
+  billingCycleCustomDay: 1,
   billingDaysBeforeDue: 7,
   daysRequiredBeforeBillingDay: 0,
+  prorationModel: 'first_month_full_then_prorate',
+  prorationDaysBasis: 'actual_days_in_month',
   enablePrepay: false,
   disablePartialPaymentsForLockedOut: false,
   saveUnpaidRentals: false,
@@ -101,8 +117,8 @@ function SettingSwitch({
   )
 }
 
-function NumberField({ label, hint, value, onChange, min = 0 }: {
-  label: string; hint?: string; value: number; onChange: (v: number) => void; min?: number
+function NumberField({ label, hint, value, onChange, min = 0, max }: {
+  label: string; hint?: string; value: number; onChange: (v: number) => void; min?: number; max?: number
 }) {
   return (
     <Box sx={{ mb: 2.5 }}>
@@ -111,8 +127,13 @@ function NumberField({ label, hint, value, onChange, min = 0 }: {
         type="number"
         size="small"
         value={value}
-        onChange={(e) => onChange(Math.max(min, parseInt(e.target.value, 10) || 0))}
-        inputProps={{ min }}
+        onChange={(e) => {
+          const raw = parseInt(e.target.value, 10) || 0
+          let next = Math.max(min, raw)
+          if (typeof max === 'number') next = Math.min(max, next)
+          onChange(next)
+        }}
+        inputProps={{ min, ...(typeof max === 'number' ? { max } : {}) }}
         sx={{
           width: 120,
           '& .MuiOutlinedInput-root': {
@@ -125,6 +146,49 @@ function NumberField({ label, hint, value, onChange, min = 0 }: {
       {hint && (
         <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.5 }}>{hint}</Typography>
       )}
+    </Box>
+  )
+}
+
+function RadioGroupField<T extends string>({
+  label, hint, value, onChange, options,
+}: {
+  label: string
+  hint?: string
+  value: T
+  onChange: (v: T) => void
+  options: Array<{ value: T; label: string; hint?: string }>
+}) {
+  return (
+    <Box sx={{ mb: 2.5 }}>
+      <Typography variant="body2" sx={{ fontWeight: 600, color: '#1C0F06', mb: 0.5 }}>{label}</Typography>
+      {hint && (
+        <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 0.5 }}>{hint}</Typography>
+      )}
+      <RadioGroup value={value} onChange={(e) => onChange(e.target.value as T)}>
+        {options.map((opt) => (
+          <Box key={opt.value} sx={{ mb: 0.5 }}>
+            <FormControlLabel
+              value={opt.value}
+              control={
+                <Radio
+                  size="small"
+                  sx={{
+                    color: '#EDE5D8',
+                    '&.Mui-checked': { color: '#B8914A' },
+                  }}
+                />
+              }
+              label={<Typography variant="body2" sx={{ fontWeight: 500, color: '#1C0F06' }}>{opt.label}</Typography>}
+            />
+            {opt.hint && (
+              <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', ml: 4, mt: -0.5 }}>
+                {opt.hint}
+              </Typography>
+            )}
+          </Box>
+        ))}
+      </RadioGroup>
     </Box>
   )
 }
@@ -146,8 +210,12 @@ export default function RentalSettingsPage() {
         if (j.success) {
           const d = j.data
           const loaded: FormState = {
+            billingCycleAnchor: d.billingCycleAnchor ?? DEFAULTS.billingCycleAnchor,
+            billingCycleCustomDay: d.billingCycleCustomDay ?? DEFAULTS.billingCycleCustomDay,
             billingDaysBeforeDue: d.billingDaysBeforeDue ?? 7,
             daysRequiredBeforeBillingDay: d.daysRequiredBeforeBillingDay ?? 0,
+            prorationModel: d.prorationModel ?? DEFAULTS.prorationModel,
+            prorationDaysBasis: d.prorationDaysBasis ?? DEFAULTS.prorationDaysBasis,
             enablePrepay: d.enablePrepay ?? false,
             disablePartialPaymentsForLockedOut: d.disablePartialPaymentsForLockedOut ?? false,
             saveUnpaidRentals: d.saveUnpaidRentals ?? false,
@@ -179,6 +247,9 @@ export default function RentalSettingsPage() {
     setForm((prev) => ({ ...prev, [field]: value }))
   }
   function setStr(field: keyof FormState, value: string) {
+    setForm((prev) => ({ ...prev, [field]: value }))
+  }
+  function setField<K extends keyof FormState>(field: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [field]: value }))
   }
 
@@ -242,6 +313,31 @@ export default function RentalSettingsPage() {
 
       <Box sx={{ maxWidth: 680, bgcolor: 'white', border: '1px solid #EDE5D8', borderRadius: 2, p: 3 }}>
 
+        {/* Billing Cycle */}
+        <SectionHeading>Billing Cycle</SectionHeading>
+        <RadioGroupField<BillingCycleAnchor>
+          label="When does the billing cycle start?"
+          value={form.billingCycleAnchor}
+          onChange={(v) => setField('billingCycleAnchor', v)}
+          options={[
+            { value: 'first_of_month', label: '1st of every month', hint: 'Recommended — every tenant billed on the same calendar day.' },
+            { value: 'signup_day',     label: 'Day of the month tenant signed up' },
+            { value: 'custom_day',     label: 'Specific day of the month' },
+          ]}
+        />
+        {form.billingCycleAnchor === 'custom_day' && (
+          <NumberField
+            label="Day of month (1–28)"
+            hint="Capped at 28 to keep cycles consistent across all months."
+            value={form.billingCycleCustomDay}
+            onChange={(v) => setNum('billingCycleCustomDay', v)}
+            min={1}
+            max={28}
+          />
+        )}
+
+        <Divider sx={{ my: 3, borderColor: '#EDE5D8' }} />
+
         {/* Billing */}
         <SectionHeading>Billing Period</SectionHeading>
         <NumberField
@@ -254,6 +350,31 @@ export default function RentalSettingsPage() {
           label="Days required before billing day"
           value={form.daysRequiredBeforeBillingDay}
           onChange={(v) => setNum('daysRequiredBeforeBillingDay', v)}
+        />
+
+        <Divider sx={{ my: 3, borderColor: '#EDE5D8' }} />
+
+        {/* Proration */}
+        <SectionHeading>Proration</SectionHeading>
+        <RadioGroupField<ProrationModel>
+          label="How are partial months handled?"
+          value={form.prorationModel}
+          onChange={(v) => setField('prorationModel', v)}
+          options={[
+            { value: 'none',                          label: 'No proration — charge full month every cycle' },
+            { value: 'prorate_first_month',           label: 'Prorate the first month, full months thereafter' },
+            { value: 'first_month_full_then_prorate', label: 'Charge first FULL calendar month upfront, then prorate the partial period', hint: 'Industry standard — matches Storable behavior.' },
+            { value: 'prorate_both',                  label: 'Prorate first AND second months' },
+          ]}
+        />
+        <RadioGroupField<ProrationDaysBasis>
+          label="How are prorated days calculated?"
+          value={form.prorationDaysBasis}
+          onChange={(v) => setField('prorationDaysBasis', v)}
+          options={[
+            { value: 'actual_days_in_month', label: 'Actual days in the month (28–31)' },
+            { value: 'thirty_day_month',     label: '30-day month (banking method)' },
+          ]}
         />
 
         <Divider sx={{ my: 3, borderColor: '#EDE5D8' }} />

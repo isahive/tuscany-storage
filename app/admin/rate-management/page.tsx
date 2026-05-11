@@ -815,26 +815,53 @@ export default function RateManagementPage() {
     setDialogOpen(true)
   }, [])
 
-  const handleConfirm = useCallback(() => {
+  const handleConfirm = useCallback(async () => {
     if (!dialogBatch) return
 
-    const newStatus: BatchStatus = dialogAction === 'approve' ? 'approved' : 'rejected'
+    try {
+      const res = await fetch('/api/admin/rate-management/batch-approve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: dialogAction,
+          effectiveDate: dialogBatch.effectiveDate,
+          units: dialogBatch.units.map((u) => ({
+            unitNumber: u.unitNumber,
+            currentRate: u.currentRate,
+            proposedRate: u.proposedRate,
+          })),
+        }),
+      })
+      const json = await res.json()
+      if (!json.success) throw new Error(json.error ?? 'Failed to submit batch')
 
-    setBatches((prev) =>
-      prev.map((b) => (b.id === dialogBatch.id ? { ...b, status: newStatus } : b)),
-    )
+      const newStatus: BatchStatus = dialogAction === 'approve' ? 'approved' : 'rejected'
+      setBatches((prev) =>
+        prev.map((b) => (b.id === dialogBatch.id ? { ...b, status: newStatus } : b)),
+      )
 
-    setSnackbar({
-      open: true,
-      message:
-        dialogAction === 'approve'
-          ? `"${dialogBatch.name}" approved. Notices will be sent by ${formatDate(dialogBatch.noticeDate)}.`
-          : `"${dialogBatch.name}" rejected. No changes will be applied.`,
-      severity: dialogAction === 'approve' ? 'success' : 'error',
-    })
+      const skipped: number = (json.data?.results ?? []).filter(
+        (r: { status: string }) => r.status === 'skipped' || r.status === 'error',
+      ).length
 
-    setDialogOpen(false)
-    setDialogBatch(null)
+      setSnackbar({
+        open: true,
+        message:
+          dialogAction === 'approve'
+            ? `"${dialogBatch.name}" approved. Notices sent.${skipped ? ` (${skipped} unit${skipped !== 1 ? 's' : ''} skipped)` : ''}`
+            : `"${dialogBatch.name}" rejected. No changes applied.`,
+        severity: dialogAction === 'approve' ? 'success' : 'error',
+      })
+    } catch (err) {
+      setSnackbar({
+        open: true,
+        message: err instanceof Error ? err.message : 'Batch submit failed',
+        severity: 'error',
+      })
+    } finally {
+      setDialogOpen(false)
+      setDialogBatch(null)
+    }
   }, [dialogBatch, dialogAction])
 
   const handleCancel = useCallback(() => {

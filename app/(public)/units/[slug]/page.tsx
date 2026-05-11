@@ -4,6 +4,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { useState, useEffect } from 'react'
+import { unitImage } from '@/lib/unitImage'
 
 const TYPE_LABELS: Record<string, string> = {
   standard: 'Standard',
@@ -15,13 +16,6 @@ const TYPE_LABELS: Record<string, string> = {
 const FLOOR_LABELS: Record<string, string> = {
   ground: 'Ground Floor',
   upper: 'Upper Floor',
-}
-
-const TYPE_IMAGES: Record<string, string> = {
-  standard: 'https://images.unsplash.com/photo-1600585152220-90363fe7e115?w=800&h=500&fit=crop',
-  climate_controlled: 'https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=800&h=500&fit=crop',
-  drive_up: 'https://images.unsplash.com/photo-1600566752355-35792bedcfea?w=800&h=500&fit=crop',
-  vehicle_outdoor: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&h=500&fit=crop',
 }
 
 const formatMoney = (cents: number) =>
@@ -88,7 +82,7 @@ export default function UnitDetailPage() {
     )
   }
 
-  const imageUrl = TYPE_IMAGES[unit.type] ?? TYPE_IMAGES.standard
+  const imageUrl = unitImage(unit)
   const typeLabel = TYPE_LABELS[unit.type] ?? unit.type
   const floorLabel = FLOOR_LABELS[unit.floor] ?? unit.floor
   const isAvailable = unit.status === 'available'

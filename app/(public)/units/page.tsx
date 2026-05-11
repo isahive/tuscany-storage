@@ -3,6 +3,7 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { useState, useEffect, type ReactNode } from 'react'
+import { unitImage } from '@/lib/unitImage'
 
 const TYPE_LABELS: Record<string, string> = {
   all: 'All Units',
@@ -10,13 +11,6 @@ const TYPE_LABELS: Record<string, string> = {
   climate_controlled: 'Climate Controlled',
   drive_up: 'Drive-Up',
   vehicle_outdoor: 'Vehicle Storage',
-}
-
-const TYPE_IMAGES: Record<string, string> = {
-  standard: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=600&q=80',
-  climate_controlled: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=600&q=80',
-  drive_up: 'https://images.unsplash.com/photo-1565183997392-2f6f122e5912?w=600&q=80',
-  vehicle_outdoor: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=600&q=80',
 }
 
 const TYPE_ICONS: Record<string, ReactNode> = {
@@ -233,7 +227,7 @@ export default function UnitsPage() {
                     {/* Photo */}
                     <div className="relative h-48 overflow-hidden">
                       <Image
-                        src={TYPE_IMAGES[unit.type] ?? TYPE_IMAGES.standard}
+                        src={unitImage(unit)}
                         alt={`${unit.size} ${unit.type} storage unit`}
                         fill
                         className="object-cover transition-transform duration-700 ease-out group-hover:scale-110"

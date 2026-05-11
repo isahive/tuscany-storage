@@ -10,6 +10,7 @@ import LanguageIcon from '@mui/icons-material/Language'
 import HomeWorkIcon from '@mui/icons-material/HomeWork'
 import SensorsIcon from '@mui/icons-material/Sensors'
 import LocalOfferIcon from '@mui/icons-material/LocalOffer'
+import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined'
 import AssignmentIcon from '@mui/icons-material/Assignment'
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos'
 import Link from 'next/link'
@@ -71,6 +72,12 @@ const HUB_CARDS: HubCard[] = [
     description: 'Create and manage discounts, promo codes & automatic offers',
     icon: <LocalOfferIcon sx={{ color: 'white', fontSize: 28 }} />,
     href: '/admin/settings/promotions',
+  },
+  {
+    title: 'Protection Plans',
+    description: 'Manage tenant protection plan tiers shown during rental',
+    icon: <ShieldOutlinedIcon sx={{ color: 'white', fontSize: 28 }} />,
+    href: '/admin/settings/protection-plans',
   },
   {
     title: 'Form Fields',

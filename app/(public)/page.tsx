@@ -32,11 +32,13 @@ async function getFeaturedUnits() {
 }
 
 const TRUST_ITEMS = [
-  { icon: 'gate', label: 'Electronic Gate Access', sub: '24/7 security monitoring' },
-  { icon: 'climate', label: 'Climate Controlled', sub: 'Protect temperature-sensitive items' },
-  { icon: 'phone', label: 'Manage Online', sub: 'Pay rent & get gate code from your phone' },
-  { icon: 'truck', label: 'Drive-Up Units', sub: 'Load & unload with ease' },
-  { icon: 'star', label: '5-Star Rated', sub: '100+ happy customers in Caryville' },
+  { icon: 'ada', label: 'ADA Compliant', sub: 'Accessible units available' },
+  { icon: 'truck', label: 'Drive-up Access', sub: 'Load & unload with ease' },
+  { icon: 'fence', label: 'Fenced & Gated', sub: 'Perimeter secured 24/7' },
+  { icon: 'camera', label: 'Digital Video Surveillance', sub: 'Recorded coverage' },
+  { icon: 'shield', label: 'Onsite Security', sub: 'Active monitoring' },
+  { icon: 'phone', label: 'Online Bill Pay', sub: 'Pay rent from your phone' },
+  { icon: 'sizes', label: 'Variety of Unit Sizes', sub: '5x10 up to 10x30' },
 ]
 
 const HOW_IT_WORKS = [
@@ -66,14 +68,6 @@ const HOW_IT_WORKS = [
   },
 ]
 
-const FACILITY_PHOTOS = [
-  { src: 'https://images.unsplash.com/photo-1553413077-190dd305871c?w=900&q=80', alt: 'Storage facility exterior', label: 'Climate Controlled' },
-  { src: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=500&q=80', alt: 'Climate controlled hallway', label: 'Drive-Up Access' },
-  { src: 'https://images.unsplash.com/photo-1565183997392-2f6f122e5912?w=500&q=80', alt: 'Drive-up units', label: '24/7 Security' },
-  { src: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=500&q=80', alt: 'Security gate', label: 'LED Lighting' },
-  { src: 'https://images.unsplash.com/photo-1590490360182-c33d57733427?w=500&q=80', alt: 'Unit interior', label: 'Well Maintained' },
-]
-
 function formatMoney(cents: number): string {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(
     cents / 100
@@ -83,22 +77,11 @@ function formatMoney(cents: number): string {
 function TrustIcon({ type }: { type: string }) {
   const cls = "h-7 w-7 text-tan"
   switch (type) {
-    case 'gate':
+    case 'ada':
       return (
         <svg className={cls} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
-        </svg>
-      )
-    case 'climate':
-      return (
-        <svg className={cls} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" />
-        </svg>
-      )
-    case 'phone':
-      return (
-        <svg className={cls} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 1.5H8.25A2.25 2.25 0 006 3.75v16.5a2.25 2.25 0 002.25 2.25h7.5A2.25 2.25 0 0018 20.25V3.75a2.25 2.25 0 00-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3" />
+          <circle cx="12" cy="4" r="1.5" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 7.5h6l-1.2 4.5h4.2L20 19m-7-7l-1 7m-1-7H8.5l-2 5.5" />
         </svg>
       )
     case 'truck':
@@ -107,10 +90,35 @@ function TrustIcon({ type }: { type: string }) {
           <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" />
         </svg>
       )
-    case 'star':
+    case 'fence':
       return (
         <svg className={cls} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M3 21V8l3-3 3 3v2h3V8l3-3 3 3v13M3 14h18M3 17.5h18" />
+        </svg>
+      )
+    case 'camera':
+      return (
+        <svg className={cls} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM18.75 10.5h.008v.008h-.008V10.5z" />
+        </svg>
+      )
+    case 'shield':
+      return (
+        <svg className={cls} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9c0-1.605.42-3.113 1.157-4.418A8.969 8.969 0 0112 3a8.969 8.969 0 017.843 4.582A8.967 8.967 0 0121 12z" />
+        </svg>
+      )
+    case 'phone':
+      return (
+        <svg className={cls} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 1.5H8.25A2.25 2.25 0 006 3.75v16.5a2.25 2.25 0 002.25 2.25h7.5A2.25 2.25 0 0018 20.25V3.75a2.25 2.25 0 00-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3" />
+        </svg>
+      )
+    case 'sizes':
+      return (
+        <svg className={cls} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
         </svg>
       )
     default:
@@ -156,19 +164,14 @@ export default async function HomePage() {
     <>
       {/* ── Hero ─────────────────────────────────────────────────────────── */}
       <section className="relative min-h-[85vh] overflow-hidden bg-brown">
-        {/* Background image */}
+        {/* Layered gradient background — no photo, to match the live site's minimal aesthetic */}
         <div className="absolute inset-0 z-0">
-          <Image
-            src="https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=1600&q=80"
-            alt="Storage facility"
-            fill
-            className="object-cover"
-            priority
-          />
-          {/* Gradient overlay instead of simple opacity */}
-          <div className="absolute inset-0 bg-gradient-to-br from-brown/95 via-brown/80 to-brown-light/70" />
+          <div className="absolute inset-0 bg-gradient-to-br from-brown via-brown to-brown-light/80" />
+          {/* Radial glow accent */}
+          <div className="absolute right-[-200px] top-[-200px] h-[500px] w-[500px] rounded-full bg-tan/10 blur-3xl" />
+          <div className="absolute bottom-[-150px] left-[-100px] h-[400px] w-[400px] rounded-full bg-olive/10 blur-3xl" />
           {/* Grain texture */}
-          <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 256 256\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'noise\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.9\' numOctaves=\'4\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23noise)\'/%3E%3C/svg%3E")', backgroundRepeat: 'repeat' }} />
+          <div className="absolute inset-0 opacity-[0.04]" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 256 256\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'noise\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.9\' numOctaves=\'4\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23noise)\'/%3E%3C/svg%3E")', backgroundRepeat: 'repeat' }} />
         </div>
 
         {/* Decorative gold line */}
@@ -273,13 +276,13 @@ export default async function HomePage() {
       {/* ── Trust Bar ────────────────────────────────────────────────────── */}
       <section className="border-b border-mid/50 bg-white">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7">
             {TRUST_ITEMS.map((item, idx) => (
               <div
                 key={item.label}
-                className={`flex flex-col items-center gap-3 px-6 py-8 text-center ${
+                className={`flex flex-col items-center gap-3 px-4 py-8 text-center ${
                   idx < TRUST_ITEMS.length - 1 ? 'lg:border-r lg:border-mid/40' : ''
-                } ${idx < 3 ? 'sm:border-r sm:border-mid/40' : ''} ${idx < 2 ? 'border-r border-mid/40' : ''}`}
+                } ${idx < 3 ? 'sm:border-r sm:border-mid/40' : ''} ${idx % 2 === 0 ? 'border-r border-mid/40 sm:border-r-0' : ''} ${idx < 2 ? 'sm:border-r sm:border-mid/40' : ''}`}
               >
                 <div className="flex h-12 w-12 items-center justify-center rounded-full bg-tan/[0.08]">
                   <TrustIcon type={item.icon} />
@@ -290,66 +293,6 @@ export default async function HomePage() {
                 </div>
               </div>
             ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── Facility Photos ──────────────────────────────────────────────── */}
-      <section className="bg-white py-24">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="mb-14 text-center">
-            {/* Decorative element */}
-            <div className="mb-4 flex items-center justify-center gap-3">
-              <div className="h-px w-12 bg-tan/40" />
-              <div className="h-1.5 w-1.5 rounded-full bg-tan/60" />
-              <div className="h-px w-12 bg-tan/40" />
-            </div>
-            <h2 className="font-serif text-3xl font-bold text-brown sm:text-4xl lg:text-5xl">
-              A Facility You&apos;ll Feel Good About
-            </h2>
-            <p className="mx-auto mt-4 max-w-2xl text-lg leading-relaxed text-muted">
-              Clean, well-lit, and maintained to the highest standards.
-              Every detail designed with your belongings in mind.
-            </p>
-          </div>
-
-          {/* Photo grid with labels */}
-          <div className="grid grid-cols-1 gap-4 sm:gap-5 lg:grid-cols-2 lg:h-[540px]">
-            {/* Left — tall feature photo */}
-            <div className="group relative h-64 overflow-hidden rounded-2xl sm:h-80 lg:h-full">
-              <Image
-                src={FACILITY_PHOTOS[0].src}
-                alt={FACILITY_PHOTOS[0].alt}
-                fill
-                className="object-cover transition-transform duration-700 group-hover:scale-105"
-              />
-              <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-brown/70 to-transparent" />
-              <div className="absolute bottom-5 left-5">
-                <span className="rounded-full border border-cream/20 bg-brown/50 px-4 py-1.5 text-sm font-medium text-cream backdrop-blur-sm">
-                  {FACILITY_PHOTOS[0].label}
-                </span>
-              </div>
-            </div>
-
-            {/* Right — 2x2 grid */}
-            <div className="grid grid-cols-2 grid-rows-2 gap-4 sm:gap-5 lg:h-full">
-              {FACILITY_PHOTOS.slice(1).map((photo) => (
-                <div key={photo.label} className="group relative h-36 overflow-hidden rounded-2xl sm:h-44 lg:h-full">
-                  <Image
-                    src={photo.src}
-                    alt={photo.alt}
-                    fill
-                    className="object-cover transition-transform duration-700 group-hover:scale-105"
-                  />
-                  <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-brown/60 to-transparent" />
-                  <div className="absolute bottom-4 left-4">
-                    <span className="rounded-full border border-cream/20 bg-brown/50 px-3 py-1 text-xs font-medium text-cream backdrop-blur-sm">
-                      {photo.label}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
           </div>
         </div>
       </section>
@@ -499,17 +442,10 @@ export default async function HomePage() {
 
       {/* ── CTA Banner ───────────────────────────────────────────────────── */}
       <section className="relative overflow-hidden bg-brown py-24">
-        {/* Background image with strong overlay */}
+        {/* Gradient + glow accents — no photo */}
         <div className="absolute inset-0 z-0">
-          <Image
-            src="https://images.unsplash.com/photo-1553413077-190dd305871c?w=1600&q=60"
-            alt=""
-            fill
-            loading="lazy"
-            sizes="100vw"
-            className="object-cover"
-          />
-          <div className="absolute inset-0 bg-gradient-to-br from-brown/95 via-brown/90 to-brown-light/85" />
+          <div className="absolute inset-0 bg-gradient-to-br from-brown via-brown to-brown-light/80" />
+          <div className="absolute left-1/2 top-[-150px] h-[400px] w-[400px] -translate-x-1/2 rounded-full bg-tan/10 blur-3xl" />
         </div>
         {/* Grain texture */}
         <div className="absolute inset-0 z-[1] opacity-[0.03]" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 256 256\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'noise\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.9\' numOctaves=\'4\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23noise)\'/%3E%3C/svg%3E")', backgroundRepeat: 'repeat' }} />
