@@ -14,7 +14,7 @@ const config: Config = {
         cream:  { DEFAULT: '#FAF7F2' },
         mid:    { DEFAULT: '#EDE5D8' },
         muted:  { DEFAULT: '#8A7B6B' },
-        olive:  { DEFAULT: '#4A5E38' },
+        olive:  { DEFAULT: '#86A87C' },
       },
       fontFamily: {
         // Switch these to match ACTIVE_FONTS in layout.tsx:

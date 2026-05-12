@@ -8,7 +8,7 @@ const NAV_LINKS = [
   { label: 'Home', href: '/' },
   { label: 'Rent Storage', href: '/units' },
   { label: 'Tenant Protection', href: '/tenant-protection' },
-  { label: 'Map', href: '/contact#map' },
+  { label: 'Map', href: '/map' },
   { label: 'Contact Us', href: '/contact' },
 ]
 
@@ -20,7 +20,7 @@ export default function Navbar() {
       {/* Top strip */}
       <div className="bg-gray-100 border-b border-gray-200">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex h-9 items-center justify-between">
+          <div className="flex h-9 items-center justify-end gap-4">
             <a
               href="tel:+18654262100"
               className="flex items-center gap-1.5 text-xs text-gray-600 hover:text-gray-900 transition-colors duration-200"
@@ -32,7 +32,7 @@ export default function Navbar() {
             </a>
             <Link
               href="/portal"
-              className="rounded bg-olive px-3 py-1 text-xs font-semibold text-white hover:bg-olive/90 transition-colors duration-200"
+              className="rounded bg-olive px-4 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-olive/90 transition-colors duration-200"
             >
               Make a Payment / Login
             </Link>

@@ -2,13 +2,13 @@ import Link from 'next/link'
 import Image from 'next/image'
 
 const APPOINTMENT_HOURS = [
-  { day: 'Monday',    hours: '9:00 AM – 5:00 PM' },
-  { day: 'Tuesday',   hours: '9:00 AM – 5:00 PM' },
-  { day: 'Wednesday', hours: '9:00 AM – 5:00 PM' },
-  { day: 'Thursday',  hours: '9:00 AM – 5:00 PM' },
-  { day: 'Friday',    hours: '9:00 AM – 5:00 PM' },
-  { day: 'Saturday',  hours: '10:00 AM – 2:00 PM' },
-  { day: 'Sunday',    hours: 'Closed' },
+  { day: 'Monday',    hours: 'By Appointment' },
+  { day: 'Tuesday',   hours: 'By Appointment' },
+  { day: 'Wednesday', hours: 'By Appointment' },
+  { day: 'Thursday',  hours: 'By Appointment' },
+  { day: 'Friday',    hours: 'By Appointment' },
+  { day: 'Saturday',  hours: 'By Appointment' },
+  { day: 'Sunday',    hours: 'By Appointment' },
 ]
 
 export default function Footer() {
@@ -55,12 +55,23 @@ export default function Footer() {
               <p className="font-semibold text-white">Gate Access</p>
               <p>24 hours / 7 days a week</p>
             </div>
+            <a
+              href="https://www.yelp.com/biz/tuscany-village-self-storage-caryville"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 rounded-lg bg-white/10 px-4 py-2.5 text-sm font-semibold text-white hover:bg-white/20 transition-colors duration-200"
+            >
+              <svg className="h-4 w-4 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M21.111 18.226c-.141.974-2.185 3.349-3.126 3.617-.328.094-.606.043-.826-.156-.14-.13-2.606-3.946-2.606-3.946a1.067 1.067 0 0 1-.07-.157c-.134-.476.217-.908.733-.965l4.755-.41c.547-.047.991.39.991.975 0 .014-.001.028-.004.04l.153 1.002zm-6.742 4.242c-.43.874-3.139 2.407-4.112 2.316-.34-.032-.59-.191-.734-.459-.088-.167-.767-4.576-.767-4.576a.954.954 0 0 1-.009-.157c.008-.492.48-.868 1.005-.851l4.741.536c.543.062.899.566.784 1.133l-.908 2.058zm-6.89-1.24c-.77.604-3.83.45-4.683-.16-.302-.217-.443-.512-.404-.851.025-.213 1.884-4.319 1.884-4.319.073-.141.151-.26.245-.353.364-.359.927-.328 1.284.073l3.076 3.566c.352.41.313 1.044-.092 1.42l-1.31.624zm-4.37-7.217c-.912-.462-1.875-3.406-1.601-4.329.097-.327.303-.548.595-.639.183-.057 4.648-.404 4.648-.404.156-.01.302-.006.429.018.508.096.81.596.682 1.124l-1.238 4.603c-.138.514-.676.801-1.207.65l-2.308-1.023zm6.284-7.02c.111-.997 2.295-3.246 3.253-3.465.334-.077.614-.016.826.193.133.131 2.414 4.04 2.414 4.04.076.133.134.264.16.395.104.481-.266.912-.79.954l-4.757.24c-.549.027-.987-.408-.972-.993.001-.013.003-.026.004-.039l-.138-1.325z"/>
+              </svg>
+              Book Online
+            </a>
           </div>
 
           {/* Right — appointment hours */}
           <div>
             <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-white">
-              Office Hours (By Appointment)
+              We are a fully automated company.
             </h3>
             <table className="w-full text-sm">
               <tbody>
@@ -77,19 +88,7 @@ export default function Footer() {
 
         {/* Bottom bar */}
         <div className="mt-10 border-t border-white/20 pt-6">
-          <div className="flex flex-col items-center justify-between gap-3 text-xs text-white/60 sm:flex-row">
-            <p>&copy; {new Date().getFullYear()} Tuscany Village Self Storage. All rights reserved.</p>
-            <div className="flex items-center gap-2">
-              <Link href="/privacy" className="hover:text-white transition-colors duration-200">
-                Privacy Policy
-              </Link>
-              <span className="text-white/30">&middot;</span>
-              <Link href="/terms" className="hover:text-white transition-colors duration-200">
-                Terms of Service
-              </Link>
-            </div>
-          </div>
-          <p className="mt-3 text-center text-xs text-white/50 sm:text-right">
+          <p className="text-center text-xs text-white/50">
             Powered by{' '}
             <a
               href="https://storableeasy.com"
