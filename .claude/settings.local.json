@@ -96,7 +96,8 @@
       "Bash(cd \"D:/Users/silvi/Documents/Hive/Clients/Tuscany/tuscany-storage\" && sed -i \"s/status: 'completed'/status: 'succeeded'/g\" app/api/reports/route.ts && grep -c \"status: 'succeeded'\" app/api/reports/route.ts)",
       "Bash(findstr /i \"map\\\\|gridview\")",
       "Bash(dir \"C:\\\\Users\\\\isabe\\\\OneDrive\\\\Desktop\\\\HiveMedia\\\\tuscany-storage\\\\node_modules\\\\@mui\\\\icons-material\\\\Map.js\")",
-      "Bash(dir \"C:\\\\Users\\\\isabe\\\\OneDrive\\\\Desktop\\\\HiveMedia\\\\tuscany-storage\\\\node_modules\\\\@mui\\\\icons-material\\\\GridView.js\")"
+      "Bash(dir \"C:\\\\Users\\\\isabe\\\\OneDrive\\\\Desktop\\\\HiveMedia\\\\tuscany-storage\\\\node_modules\\\\@mui\\\\icons-material\\\\GridView.js\")",
+      "Bash(Get-Content *)"
     ]
   }
 }
