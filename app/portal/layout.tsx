@@ -35,6 +35,8 @@ import LogoutIcon from '@mui/icons-material/Logout'
 import WarningAmberIcon from '@mui/icons-material/WarningAmber'
 import ShieldIcon from '@mui/icons-material/Shield'
 import AddBusinessIcon from '@mui/icons-material/AddBusiness'
+import MapIcon from '@mui/icons-material/Map'
+import GridViewIcon from '@mui/icons-material/GridView'
 import { usePathname, useRouter } from 'next/navigation'
 import { theme } from '@/lib/theme'
 
@@ -46,6 +48,8 @@ const BASE_NAV_ITEMS = [
   { label: 'Gate Code',    href: '/portal/gate-code',    icon: <LockIcon />, key: 'gateCode' },
   { label: 'Protection',   href: '/portal/protection',   icon: <ShieldIcon /> },
   { label: 'Rent Another', href: '/portal/rent-another', icon: <AddBusinessIcon /> },
+  { label: 'Facility Map', href: '/portal/map',          icon: <MapIcon /> },
+  { label: 'Site Map',     href: '/portal/site-map',     icon: <GridViewIcon /> },
   { label: 'My Profile',   href: '/portal/profile',      icon: <PersonIcon /> },
   { label: 'Billing',      href: '/portal/billing',      icon: <CreditCardIcon /> },
   { label: 'Instructions', href: '/portal/instructions', icon: <InfoOutlinedIcon /> },

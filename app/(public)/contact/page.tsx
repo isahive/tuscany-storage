@@ -119,20 +119,6 @@ export default function ContactPage() {
                 ))}
               </div>
 
-              {/* Map embed */}
-              <div className="overflow-hidden rounded-2xl border border-mid/60 shadow-md shadow-brown/[0.04]">
-                <iframe
-                  src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3229.5!2d-84.223!3d36.297!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2s2519+Highway+116+Caryville+TN+37714!5e0!3m2!1sen!2sus!4v1"
-                  width="100%"
-                  height="260"
-                  style={{ border: 0, display: 'block' }}
-                  allowFullScreen
-                  loading="lazy"
-                  referrerPolicy="no-referrer-when-downgrade"
-                  title="Tuscany Village Self Storage Location"
-                />
-              </div>
-
               {/* Hours card */}
               <div className="overflow-hidden rounded-2xl bg-brown p-7 shadow-lg shadow-brown/10">
                 <h3 className="mb-1 font-serif text-lg font-semibold text-cream">Office Hours</h3>

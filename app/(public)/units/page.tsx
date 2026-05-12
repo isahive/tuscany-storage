@@ -57,6 +57,49 @@ interface Unit {
   features: string[]
 }
 
+// Static entries for sizes not yet seeded in the database
+const STATIC_UNITS: Unit[] = [
+  {
+    _id: 'static-10x15',
+    unitNumber: '—',
+    size: '10x15',
+    width: 10,
+    depth: 15,
+    sqft: 150,
+    type: 'drive_up',
+    floor: 'ground',
+    price: 12000,
+    status: 'waitlist',
+    features: ['Roll-up door', 'Drive-up access', '24/7 gate access'],
+  },
+  {
+    _id: 'static-10x20',
+    unitNumber: '—',
+    size: '10x20',
+    width: 10,
+    depth: 20,
+    sqft: 200,
+    type: 'drive_up',
+    floor: 'ground',
+    price: 14000,
+    status: 'waitlist',
+    features: ['Roll-up door', 'Drive-up access', '24/7 gate access'],
+  },
+  {
+    _id: 'static-rv',
+    unitNumber: '—',
+    size: '10x30',
+    width: 10,
+    depth: 30,
+    sqft: 300,
+    type: 'vehicle_outdoor',
+    floor: 'ground',
+    price: 8000,
+    status: 'waitlist',
+    features: ['Open air parking', 'Fits boats, RVs & campers', '24/7 gate access'],
+  },
+]
+
 function formatMoney(cents: number): string {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
@@ -79,7 +122,15 @@ export default function UnitsPage() {
       .finally(() => setLoading(false))
   }, [])
 
-  const filtered = units
+  // Only show static units for sizes not already represented in the DB
+  const dbSizes = new Set(units.map((u) => u.size.toLowerCase().replace(/\s+/g, '')))
+  const staticToShow = STATIC_UNITS.filter(
+    (u) => !dbSizes.has(u.size.toLowerCase().replace(/\s+/g, ''))
+  )
+
+  const allUnits = [...units, ...staticToShow]
+
+  const filtered = allUnits
     .filter((u) => activeType === 'all' || u.type === activeType)
     .sort((a, b) => {
       if (sortBy === 'price_asc') return a.price - b.price
@@ -126,7 +177,6 @@ export default function UnitsPage() {
 
       {/* Hero header */}
       <div className="relative overflow-hidden bg-brown py-16 sm:py-24">
-        {/* Decorative background elements */}
         <div className="absolute inset-0 opacity-[0.03]">
           <div className="absolute -right-20 -top-20 h-96 w-96 rounded-full bg-tan" />
           <div className="absolute -bottom-32 -left-20 h-80 w-80 rounded-full bg-tan" />
@@ -142,7 +192,7 @@ export default function UnitsPage() {
             <p className="mt-4 text-lg text-cream/50">
               {loading
                 ? 'Loading available units...'
-                : `${units.length} unit${units.length !== 1 ? 's' : ''} available \u00b7 Starting at ${formatMoney(minPrice)}/mo`}
+                : `${units.length} unit${units.length !== 1 ? 's' : ''} available · Starting at ${formatMoney(minPrice)}/mo`}
             </p>
           </div>
         </div>
@@ -215,77 +265,108 @@ export default function UnitsPage() {
             </div>
           ) : (
             <>
-              <p className="mb-8 text-sm font-medium text-muted">
-                Showing {filtered.length} unit{filtered.length !== 1 ? 's' : ''}
-              </p>
+              <div className="mb-8 flex items-center justify-between gap-4">
+                <p className="text-sm font-medium text-muted">
+                  Showing {filtered.length} unit{filtered.length !== 1 ? 's' : ''}
+                </p>
+                <Link
+                  href="/site-map"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-mid bg-white px-4 py-1.5 text-xs font-medium text-muted transition-all hover:border-tan/40 hover:text-brown hover:shadow-sm"
+                >
+                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
+                  </svg>
+                  View Site Map
+                </Link>
+              </div>
               <div className="grid gap-7 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                {filtered.map((unit) => (
-                  <article
-                    key={unit._id}
-                    className="group flex flex-col overflow-hidden rounded-2xl border border-mid/60 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-brown/[0.06]"
-                  >
-                    {/* Photo */}
-                    <div className="relative h-48 overflow-hidden">
-                      <Image
-                        src={unitImage(unit)}
-                        alt={`${unit.size} ${unit.type} storage unit`}
-                        fill
-                        className="object-cover transition-transform duration-700 ease-out group-hover:scale-110"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-brown/50 via-brown/10 to-transparent" />
-                      <span className="absolute bottom-3 left-3 rounded-full bg-brown/70 px-3 py-1 text-xs font-semibold text-cream backdrop-blur-md">
-                        Unit {unit.unitNumber}
-                      </span>
-                      <span className="absolute right-3 top-3 rounded-full bg-olive/90 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-white backdrop-blur-sm">
-                        Available
-                      </span>
-                    </div>
-
-                    {/* Content */}
-                    <div className="flex flex-1 flex-col justify-between p-6">
-                      <div>
-                        <div className="mb-1.5 flex items-start justify-between">
-                          <div>
-                            <p className="font-serif text-2xl font-bold text-brown">{unit.size}</p>
-                            <p className="text-xs text-muted">{unit.sqft} sq ft</p>
-                          </div>
-                        </div>
-
-                        <p className="mb-4 text-xs font-semibold uppercase tracking-wider text-tan">
-                          {TYPE_LABELS[unit.type] ?? unit.type}
-                        </p>
-
-                        <ul className="mb-5 space-y-1.5">
-                          {unit.features.slice(0, 3).map((f) => (
-                            <li key={f} className="flex items-center gap-2 text-xs text-muted">
-                              <span className="flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full bg-olive/10">
-                                <svg className="h-2.5 w-2.5 text-olive" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor">
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                                </svg>
-                              </span>
-                              {f}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-
-                      <div className="flex items-center justify-between border-t border-mid/50 pt-5">
-                        <div>
-                          <span className="font-serif text-2xl font-bold text-brown">
-                            {formatMoney(unit.price)}
+                {filtered.map((unit) => {
+                  const isWaitlist = unit.status === 'waitlist'
+                  return (
+                    <article
+                      key={unit._id}
+                      className="group flex flex-col overflow-hidden rounded-2xl border border-mid/60 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-brown/[0.06]"
+                    >
+                      {/* Photo */}
+                      <div className="relative h-48 overflow-hidden">
+                        <Image
+                          src={unitImage(unit)}
+                          alt={`${unit.size} ${unit.type} storage unit`}
+                          fill
+                          className="object-cover transition-transform duration-700 ease-out group-hover:scale-110"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-brown/50 via-brown/10 to-transparent" />
+                        {!isWaitlist && (
+                          <span className="absolute bottom-3 left-3 rounded-full bg-brown/70 px-3 py-1 text-xs font-semibold text-cream backdrop-blur-md">
+                            Unit {unit.unitNumber}
                           </span>
-                          <span className="ml-0.5 text-xs text-muted">/mo</span>
-                        </div>
-                        <Link
-                          href={`/units/${unit._id}`}
-                          className="rounded-full bg-brown px-4 py-2 text-xs font-semibold text-cream transition-all duration-200 hover:bg-tan hover:text-brown hover:shadow-md"
+                        )}
+                        <span
+                          className={`absolute right-3 top-3 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider backdrop-blur-sm ${
+                            isWaitlist
+                              ? 'bg-tan/90 text-brown'
+                              : 'bg-olive/90 text-white'
+                          }`}
                         >
-                          Reserve
-                        </Link>
+                          {isWaitlist ? 'Waitlist' : 'Available'}
+                        </span>
                       </div>
-                    </div>
-                  </article>
-                ))}
+
+                      {/* Content */}
+                      <div className="flex flex-1 flex-col justify-between p-6">
+                        <div>
+                          <div className="mb-1.5 flex items-start justify-between">
+                            <div>
+                              <p className="font-serif text-2xl font-bold text-brown">{unit.size}</p>
+                              <p className="text-xs text-muted">{unit.sqft} sq ft</p>
+                            </div>
+                          </div>
+
+                          <p className="mb-4 text-xs font-semibold uppercase tracking-wider text-tan">
+                            {TYPE_LABELS[unit.type] ?? unit.type}
+                          </p>
+
+                          <ul className="mb-5 space-y-1.5">
+                            {unit.features.slice(0, 3).map((f) => (
+                              <li key={f} className="flex items-center gap-2 text-xs text-muted">
+                                <span className="flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full bg-olive/10">
+                                  <svg className="h-2.5 w-2.5 text-olive" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                                  </svg>
+                                </span>
+                                {f}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+
+                        <div className="flex items-center justify-between border-t border-mid/50 pt-5">
+                          <div>
+                            <span className="font-serif text-2xl font-bold text-brown">
+                              {formatMoney(unit.price)}
+                            </span>
+                            <span className="ml-0.5 text-xs text-muted">/mo</span>
+                          </div>
+                          {isWaitlist ? (
+                            <Link
+                              href="/waiting-list"
+                              className="rounded-full border border-tan px-4 py-2 text-xs font-semibold text-tan transition-all duration-200 hover:bg-tan hover:text-brown hover:shadow-md"
+                            >
+                              Join Waitlist
+                            </Link>
+                          ) : (
+                            <Link
+                              href={`/units/${unit._id}`}
+                              className="rounded-full bg-brown px-4 py-2 text-xs font-semibold text-cream transition-all duration-200 hover:bg-tan hover:text-brown hover:shadow-md"
+                            >
+                              Reserve
+                            </Link>
+                          )}
+                        </div>
+                      </div>
+                    </article>
+                  )
+                })}
               </div>
             </>
           )}

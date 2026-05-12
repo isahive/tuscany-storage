@@ -8,7 +8,7 @@ const NAV_LINKS = [
   { label: 'Home', href: '/' },
   { label: 'Rent Storage', href: '/units' },
   { label: 'Tenant Protection', href: '/tenant-protection' },
-  { label: 'Map', href: '/contact#map' },
+  { label: 'Map', href: '/map' },
   { label: 'Contact Us', href: '/contact' },
 ]
 

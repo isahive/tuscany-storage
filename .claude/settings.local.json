@@ -93,7 +93,10 @@
       "Bash(python3 \"C:/Users/silvi/.claude/plugins/marketplaces/ui-ux-pro-max-skill/src/ui-ux-pro-max/scripts/search.py\" \"clean modern professional warm service sans\" --domain typography -n 5 2>&1)",
       "Bash(python3 \"C:/Users/silvi/.claude/plugins/marketplaces/ui-ux-pro-max-skill/src/ui-ux-pro-max/scripts/search.py\" \"admin dashboard panel management\" --design-system -p \"Tuscany Storage Admin\" 2>&1 | head -40)",
       "Bash(python3 \"C:/Users/silvi/.claude/plugins/marketplaces/ui-ux-pro-max-skill/src/ui-ux-pro-max/scripts/search.py\" \"tenant portal customer account self service\" --design-system -p \"Tuscany Tenant Portal\" 2>&1 | head -40)",
-      "Bash(cd \"D:/Users/silvi/Documents/Hive/Clients/Tuscany/tuscany-storage\" && sed -i \"s/status: 'completed'/status: 'succeeded'/g\" app/api/reports/route.ts && grep -c \"status: 'succeeded'\" app/api/reports/route.ts)"
+      "Bash(cd \"D:/Users/silvi/Documents/Hive/Clients/Tuscany/tuscany-storage\" && sed -i \"s/status: 'completed'/status: 'succeeded'/g\" app/api/reports/route.ts && grep -c \"status: 'succeeded'\" app/api/reports/route.ts)",
+      "Bash(findstr /i \"map\\\\|gridview\")",
+      "Bash(dir \"C:\\\\Users\\\\isabe\\\\OneDrive\\\\Desktop\\\\HiveMedia\\\\tuscany-storage\\\\node_modules\\\\@mui\\\\icons-material\\\\Map.js\")",
+      "Bash(dir \"C:\\\\Users\\\\isabe\\\\OneDrive\\\\Desktop\\\\HiveMedia\\\\tuscany-storage\\\\node_modules\\\\@mui\\\\icons-material\\\\GridView.js\")"
     ]
   }
 }

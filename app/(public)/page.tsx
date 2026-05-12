@@ -21,10 +21,17 @@ const TYPE_LABELS: Record<string, string> = {
 async function getFeaturedUnits() {
   try {
     await connectDB()
-    const units = await Unit.find({})
-      .sort({ price: 1 })
-      .limit(4)
-      .lean()
+    const all = await Unit.find({}).sort({ price: 1 }).lean()
+    const seen = new Set<string>()
+    const units = []
+    for (const u of all) {
+      const key = (u.size as string).toLowerCase().replace(/\s+/g, '')
+      if (!seen.has(key)) {
+        seen.add(key)
+        units.push(u)
+        if (units.length === 4) break
+      }
+    }
     return units
   } catch {
     return []
