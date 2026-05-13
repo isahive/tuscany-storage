@@ -15,10 +15,14 @@ export async function GET() {
 
     await connectDB()
 
-    // Seed default templates if none exist
-    const count = await NotificationTemplate.countDocuments({})
-    if (count === 0) {
-      await NotificationTemplate.insertMany(DEFAULT_TEMPLATES)
+    // Insert any default templates that aren't yet in the DB (idempotent —
+    // existing rows are left untouched so admin edits aren't overwritten).
+    const existingNames = new Set(
+      (await NotificationTemplate.find({}).select('name').lean()).map((t: any) => t.name),
+    )
+    const missing = DEFAULT_TEMPLATES.filter((t) => !existingNames.has(t.name))
+    if (missing.length > 0) {
+      await NotificationTemplate.insertMany(missing)
     }
 
     const templates = await NotificationTemplate.find({})
