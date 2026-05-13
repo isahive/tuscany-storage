@@ -196,8 +196,10 @@ export async function runAutopay(): Promise<void> {
       // Notify tenant of outcome
       const unit = await Unit.findById(lease.unitId).select('unitNumber').lean() as { unitNumber?: string } | null
       if (paymentStatus === 'succeeded') {
+        // Autopay-specific receipt — "Payment Receipt" is reserved for one-off
+        // tenant-initiated payments.
         await sendTemplatedNotification({
-          templateName: 'Payment Receipt',
+          templateName: 'Automatic Payment Receipt',
           notificationType: 'payment_confirmation',
           tenant,
           unitNumber: unit?.unitNumber,

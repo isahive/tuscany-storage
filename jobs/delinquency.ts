@@ -4,10 +4,8 @@ import Lease from '@/models/Lease'
 import Payment from '@/models/Payment'
 import Notification from '@/models/Notification'
 import AccessLog from '@/models/AccessLog'
-import { sendSMS } from '@/lib/twilio'
-import { sendEmail } from '@/lib/email'
-import { formatMoney } from '@/lib/utils'
 import { getSettings } from '@/lib/getSettings'
+import { sendTemplatedNotification } from '@/lib/sendNotification'
 import type { ITenantDocument } from '@/models/Tenant'
 import type { ILeaseDocument } from '@/models/Lease'
 
@@ -129,8 +127,6 @@ export async function runDelinquency(): Promise<DelinquencyResult[]> {
         continue
       }
 
-      const amountFormatted = formatMoney(lease.monthlyRate)
-
       // LATE: mark delinquent, add late fee
       if (daysSinceBilling >= lateDay && daysSinceBilling < lockoutDay && tenant.status === 'active') {
         console.log(`[Delinquency] Day ${daysSinceBilling}: Marking ${tenant.email} as delinquent`)
@@ -156,32 +152,14 @@ export async function runDelinquency(): Promise<DelinquencyResult[]> {
           attemptCount: 0,
         })
 
-        // Send notifications
-        const emailSubject = 'Late Payment Notice - Tuscany Village Self Storage'
-        const emailBody = `
-          <h2>Late Payment Notice</h2>
-          <p>Hi ${tenant.firstName},</p>
-          <p>Your rent payment of <strong>${amountFormatted}</strong> was due on ${lastBillingDate.toLocaleDateString('en-US')} and has not been received.</p>
-          <p>A late fee of <strong>${formatMoney(lateFeeCents)}</strong> has been applied to your account.</p>
-          <p>Please make your payment as soon as possible to avoid further action.</p>
-          <br/>
-          <p>Tuscany Village Self Storage</p>
-        `
-        const smsBody = `Tuscany Village Storage: Your payment of ${amountFormatted} is past due. A $25.00 late fee has been applied. Please pay immediately to avoid further action.`
-
-        await sendEmail(tenant.email, emailSubject, emailBody)
-        if (tenant.smsOptIn) {
-          await sendSMS(tenant.phone, smsBody)
-        }
-
-        await Notification.create({
-          tenantId: tenant._id,
-          type: 'late_notice',
-          channel: tenant.smsOptIn ? 'both' : 'email',
-          subject: emailSubject,
-          body: smsBody,
-          status: 'sent',
-          sentAt: new Date(),
+        await sendTemplatedNotification({
+          templateName: 'Late Notice',
+          notificationType: 'late_notice',
+          tenant,
+          unitNumber: undefined,
+          monthlyRate: lease.monthlyRate,
+          balance: (tenant.balance ?? 0) + lateFeeCents,
+          dueDate: lastBillingDate,
         })
 
         results.push({
@@ -210,31 +188,13 @@ export async function runDelinquency(): Promise<DelinquencyResult[]> {
           notes: `Gate access revoked due to delinquency (${daysSinceBilling} days past due)`,
         })
 
-        const emailSubject = 'Access Suspended - Tuscany Village Self Storage'
-        const emailBody = `
-          <h2>Access Suspended</h2>
-          <p>Hi ${tenant.firstName},</p>
-          <p>Due to non-payment, your gate access to Tuscany Village Self Storage has been <strong>suspended</strong>.</p>
-          <p>Your outstanding balance of <strong>${amountFormatted}</strong> plus a late fee of <strong>${formatMoney(lateFeeCents)}</strong> must be paid to restore access.</p>
-          <p>Please contact us immediately to resolve this matter.</p>
-          <br/>
-          <p>Tuscany Village Self Storage</p>
-        `
-        const smsBody = `Tuscany Village Storage: Your gate access has been SUSPENDED due to non-payment. Contact us immediately to resolve. Outstanding: ${amountFormatted} + $25 late fee.`
-
-        await sendEmail(tenant.email, emailSubject, emailBody)
-        if (tenant.smsOptIn) {
-          await sendSMS(tenant.phone, smsBody)
-        }
-
-        await Notification.create({
-          tenantId: tenant._id,
-          type: 'lockout_notice',
-          channel: tenant.smsOptIn ? 'both' : 'email',
-          subject: emailSubject,
-          body: smsBody,
-          status: 'sent',
-          sentAt: new Date(),
+        await sendTemplatedNotification({
+          templateName: 'Lockout Notice',
+          notificationType: 'lockout_notice',
+          tenant,
+          monthlyRate: lease.monthlyRate,
+          balance: (tenant.balance ?? 0) + lateFeeCents,
+          dueDate: lastBillingDate,
         })
 
         results.push({
@@ -255,34 +215,12 @@ export async function runDelinquency(): Promise<DelinquencyResult[]> {
         })
 
         if (!existingPreLien) {
-          console.log(`[Delinquency] Day ${daysSinceBilling}: Sending pre-lien notice to ${tenant.email}`)
-
-          const emailSubject = 'Pre-Lien Notice - Tuscany Village Self Storage'
-          const emailBody = `
-            <h2>Pre-Lien Notice</h2>
-            <p>Hi ${tenant.firstName},</p>
-            <p>This is a formal pre-lien notice regarding your storage unit at Tuscany Village Self Storage.</p>
-            <p>Your account is <strong>${daysSinceBilling} days past due</strong> with an outstanding balance.</p>
-            <p>If payment is not received within 15 days, a lien will be placed on your stored property in accordance with state law.</p>
-            <p>Please contact us immediately to make arrangements.</p>
-            <br/>
-            <p>Tuscany Village Self Storage</p>
-          `
-          const smsBody = `IMPORTANT: Pre-lien notice for your Tuscany Village storage unit. Your account is ${daysSinceBilling} days past due. Contact us immediately to avoid a lien on your property.`
-
-          await sendEmail(tenant.email, emailSubject, emailBody)
-          if (tenant.smsOptIn) {
-            await sendSMS(tenant.phone, smsBody)
-          }
-
-          await Notification.create({
-            tenantId: tenant._id,
-            type: 'custom',
-            channel: tenant.smsOptIn ? 'both' : 'email',
-            subject: emailSubject,
-            body: smsBody,
-            status: 'sent',
-            sentAt: new Date(),
+          await sendTemplatedNotification({
+            templateName: 'Pre-Lien Notice',
+            notificationType: 'custom',
+            tenant,
+            monthlyRate: lease.monthlyRate,
+            balance: tenant.balance ?? 0,
           })
 
           results.push({
@@ -303,34 +241,12 @@ export async function runDelinquency(): Promise<DelinquencyResult[]> {
         })
 
         if (!existingLien) {
-          console.log(`[Delinquency] Day ${daysSinceBilling}: Sending lien notice to ${tenant.email}`)
-
-          const emailSubject = 'Lien Notice - Tuscany Village Self Storage'
-          const emailBody = `
-            <h2>Lien Notice</h2>
-            <p>Hi ${tenant.firstName},</p>
-            <p>This is a formal lien notice regarding your storage unit at Tuscany Village Self Storage.</p>
-            <p>Your account is <strong>${daysSinceBilling} days past due</strong>. A lien has been placed on your stored property.</p>
-            <p>Your property may be sold at public auction if the outstanding balance is not paid in full.</p>
-            <p>Contact us immediately to resolve this matter.</p>
-            <br/>
-            <p>Tuscany Village Self Storage</p>
-          `
-          const smsBody = `URGENT: A lien has been placed on your property at Tuscany Village Storage. Your account is ${daysSinceBilling} days past due. Contact us immediately.`
-
-          await sendEmail(tenant.email, emailSubject, emailBody)
-          if (tenant.smsOptIn) {
-            await sendSMS(tenant.phone, smsBody)
-          }
-
-          await Notification.create({
-            tenantId: tenant._id,
-            type: 'custom',
-            channel: tenant.smsOptIn ? 'both' : 'email',
-            subject: emailSubject,
-            body: smsBody,
-            status: 'sent',
-            sentAt: new Date(),
+          await sendTemplatedNotification({
+            templateName: 'Lien Notice',
+            notificationType: 'custom',
+            tenant,
+            monthlyRate: lease.monthlyRate,
+            balance: tenant.balance ?? 0,
           })
 
           results.push({
@@ -353,31 +269,13 @@ export async function runDelinquency(): Promise<DelinquencyResult[]> {
 
         console.log(`[Delinquency] Day ${daysSinceBilling}: Auction scheduled for ${tenant.email} on ${auctionDate.toLocaleDateString()}`)
 
-        const emailSubject = 'Auction Notice - Tuscany Village Self Storage'
-        const emailBody = `
-          <h2>Auction Notice</h2>
-          <p>Hi ${tenant.firstName},</p>
-          <p>Your storage unit at Tuscany Village Self Storage is scheduled for <strong>public auction on ${auctionDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</strong> in accordance with state lien law.</p>
-          <p>Your account is <strong>${daysSinceBilling} days past due</strong> with an outstanding balance of <strong>${amountFormatted}</strong>.</p>
-          <p>To stop the auction, your full balance plus all accumulated fees must be paid before the auction date. Contact us immediately at (865) 426-2100.</p>
-          <br/>
-          <p>Tuscany Village Self Storage</p>
-        `
-        const smsBody = `FINAL NOTICE: Your Tuscany Village unit is scheduled for AUCTION on ${auctionDate.toLocaleDateString()}. Pay your balance immediately to stop the sale. Call (865) 426-2100.`
-
-        await sendEmail(tenant.email, emailSubject, emailBody)
-        if (tenant.smsOptIn) {
-          await sendSMS(tenant.phone, smsBody)
-        }
-
-        await Notification.create({
-          tenantId: tenant._id,
-          type: 'custom',
-          channel: tenant.smsOptIn ? 'both' : 'email',
-          subject: emailSubject,
-          body: smsBody,
-          status: 'sent',
-          sentAt: new Date(),
+        await sendTemplatedNotification({
+          templateName: 'Auction Notice',
+          notificationType: 'custom',
+          tenant,
+          monthlyRate: lease.monthlyRate,
+          balance: tenant.balance ?? 0,
+          dueDate: auctionDate,
         })
 
         results.push({

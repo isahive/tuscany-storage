@@ -5,6 +5,7 @@ import { authOptions } from '@/lib/auth'
 import { connectDB } from '@/lib/db'
 import Tenant from '@/models/Tenant'
 import Unit from '@/models/Unit'
+import { sendTemplatedNotification } from '@/lib/sendNotification'
 
 interface RouteContext {
   params: Promise<{ id: string }>
@@ -61,6 +62,16 @@ export async function POST(req: NextRequest, context: RouteContext) {
     unit.reservedMoveInDate = parseCalendarDate(parsed.data.desiredMoveInDate)
     unit.reservedPrice = parsed.data.reservationPrice
     await unit.save()
+
+    await sendTemplatedNotification({
+      templateName: 'Reservation Receipt',
+      notificationType: 'custom',
+      tenant: tenant as any,
+      unitNumber: unit.unitNumber,
+      unitSize: unit.size,
+      monthlyRate: parsed.data.reservationPrice,
+      dueDate: unit.reservedMoveInDate,
+    })
 
     return NextResponse.json({
       success: true,

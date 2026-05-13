@@ -5,6 +5,7 @@ import { authOptions } from '@/lib/auth'
 import { connectDB } from '@/lib/db'
 import { parsePaginationParams } from '@/lib/utils'
 import WaitingList from '@/models/WaitingList'
+import { sendTemplatedNotification } from '@/lib/sendNotification'
 
 export async function GET(req: NextRequest) {
   try {
@@ -79,6 +80,19 @@ export async function POST(req: NextRequest) {
         ? new Date(parsed.data.desiredMoveInDate)
         : undefined,
       status: 'waiting',
+    })
+
+    // Template builder expects firstName/lastName — split the waitlist "name".
+    const [firstName, ...rest] = parsed.data.name.trim().split(/\s+/)
+    await sendTemplatedNotification({
+      templateName: 'Waiting List Confirmation',
+      notificationType: 'custom',
+      tenant: {
+        firstName: firstName ?? '',
+        lastName: rest.join(' '),
+        email: parsed.data.email,
+        phone: parsed.data.phone,
+      } as any,
     })
 
     return NextResponse.json({ success: true, data: entry }, { status: 201 })

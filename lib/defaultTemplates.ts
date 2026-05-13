@@ -195,6 +195,92 @@ export const DEFAULT_TEMPLATES = [
     description: 'General account information email.',
   },
   {
+    name: 'Late Notice',
+    type: 'default' as const,
+    emailSubject: 'Late Payment Notice — [[FACILITY_NAME]]',
+    emailContent: `<p>Dear [[CUSTOMER_NAME]],</p>
+<p>Your rent payment of <strong>[[BALANCE]]</strong> for unit <strong>[[UNIT_NUMBER]]</strong> is past due.</p>
+<p>A late fee has been applied to your account. Please make your payment as soon as possible to avoid further action.</p>
+<p>[[FACILITY_NAME]]<br/>[[FACILITY_PHONE]]</p>`,
+    textContent: '[[FACILITY_NAME]]: Your payment of [[BALANCE]] for unit [[UNIT_NUMBER]] is past due. A late fee has been applied.',
+    postcardContent: '',
+    emailEnabled: true,
+    textEnabled: true,
+    printEnabled: false,
+    rule: 'late' as const,
+    description: 'Sent when an account becomes past due and a late fee is applied.',
+  },
+  {
+    name: 'Lockout Notice',
+    type: 'default' as const,
+    emailSubject: 'Access Suspended — [[FACILITY_NAME]]',
+    emailContent: `<p>Dear [[CUSTOMER_NAME]],</p>
+<p>Due to non-payment, your gate access to <strong>[[FACILITY_NAME]]</strong> has been <strong>suspended</strong>.</p>
+<p>Your outstanding balance of <strong>[[BALANCE]]</strong> must be paid to restore access.</p>
+<p>Please contact us at [[FACILITY_PHONE]] immediately to resolve this matter.</p>
+<p>[[FACILITY_NAME]]</p>`,
+    textContent: '[[FACILITY_NAME]]: Your gate access has been SUSPENDED due to non-payment. Contact us at [[FACILITY_PHONE]] immediately. Outstanding: [[BALANCE]].',
+    postcardContent: '',
+    emailEnabled: true,
+    textEnabled: true,
+    printEnabled: false,
+    rule: 'late' as const,
+    description: 'Sent when gate access is revoked for non-payment.',
+  },
+  {
+    name: 'Pre-Lien Notice',
+    type: 'default' as const,
+    emailSubject: 'Pre-Lien Notice — [[FACILITY_NAME]]',
+    emailContent: `<p>Dear [[CUSTOMER_NAME]],</p>
+<p>This is a formal pre-lien notice regarding your storage unit at <strong>[[FACILITY_NAME]]</strong>.</p>
+<p>Your account is past due with an outstanding balance of <strong>[[BALANCE]]</strong>.</p>
+<p>If payment is not received within 15 days, a lien will be placed on your stored property in accordance with state law.</p>
+<p>Please contact us at [[FACILITY_PHONE]] immediately to make arrangements.</p>
+<p>[[FACILITY_NAME]]</p>`,
+    textContent: 'IMPORTANT: Pre-lien notice for your [[FACILITY_NAME]] storage unit. Outstanding: [[BALANCE]]. Contact [[FACILITY_PHONE]] to avoid a lien.',
+    postcardContent: '',
+    emailEnabled: true,
+    textEnabled: true,
+    printEnabled: true,
+    rule: 'pre_lien' as const,
+    description: 'Formal pre-lien notice — sent when account reaches pre-lien escalation threshold.',
+  },
+  {
+    name: 'Lien Notice',
+    type: 'default' as const,
+    emailSubject: 'Lien Notice — [[FACILITY_NAME]]',
+    emailContent: `<p>Dear [[CUSTOMER_NAME]],</p>
+<p>This is a formal lien notice regarding your storage unit at <strong>[[FACILITY_NAME]]</strong>.</p>
+<p>Your account is past due. A lien has been placed on your stored property.</p>
+<p>Your property may be sold at public auction if the outstanding balance of <strong>[[BALANCE]]</strong> is not paid in full.</p>
+<p>Contact us at [[FACILITY_PHONE]] immediately to resolve this matter.</p>
+<p>[[FACILITY_NAME]]</p>`,
+    textContent: 'URGENT: A lien has been placed on your [[FACILITY_NAME]] storage property. Outstanding: [[BALANCE]]. Call [[FACILITY_PHONE]] immediately.',
+    postcardContent: '',
+    emailEnabled: true,
+    textEnabled: true,
+    printEnabled: true,
+    rule: 'lien' as const,
+    description: 'Formal lien notice — sent when a lien is placed on stored property.',
+  },
+  {
+    name: 'Auction Notice',
+    type: 'default' as const,
+    emailSubject: 'Auction Notice — [[FACILITY_NAME]]',
+    emailContent: `<p>Dear [[CUSTOMER_NAME]],</p>
+<p>Your storage unit at <strong>[[FACILITY_NAME]]</strong> is scheduled for <strong>public auction on [[DUE_DATE]]</strong> in accordance with state lien law.</p>
+<p>Your outstanding balance is <strong>[[BALANCE]]</strong>.</p>
+<p>To stop the auction, your full balance plus all accumulated fees must be paid before the auction date. Contact us immediately at [[FACILITY_PHONE]].</p>
+<p>[[FACILITY_NAME]]</p>`,
+    textContent: 'FINAL NOTICE: Your [[FACILITY_NAME]] unit is scheduled for AUCTION on [[DUE_DATE]]. Pay [[BALANCE]] to stop the sale. Call [[FACILITY_PHONE]].',
+    postcardContent: '',
+    emailEnabled: true,
+    textEnabled: true,
+    printEnabled: true,
+    rule: 'auction' as const,
+    description: 'Final notice — sent when an auction is scheduled for the tenant\u2019s property.',
+  },
+  {
     name: 'Automatic Payment Receipt',
     type: 'default' as const,
     emailSubject: 'Autopay Payment Processed — [[facilityName]]',

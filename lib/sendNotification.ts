@@ -5,6 +5,7 @@ import { sendSMS } from '@/lib/twilio'
 import { replacePlaceholders } from '@/lib/templatePlaceholders'
 import { getSettings } from '@/lib/getSettings'
 import { formatMoney } from '@/lib/utils'
+import { DEFAULT_TEMPLATES } from '@/lib/defaultTemplates'
 import type { ITenantDocument } from '@/models/Tenant'
 import type { NotificationType } from '@/types'
 
@@ -131,16 +132,22 @@ interface SendTemplatedArgs extends BuildPlaceholderArgs {
 export async function sendTemplatedNotification(args: SendTemplatedArgs): Promise<void> {
   const { templateName, notificationType, tenant } = args
   try {
-    const template = await NotificationTemplate.findOne({ name: templateName, active: true })
+    // 1) Prefer the live DB template (admin may have customised it).
+    // 2) Fall back to DEFAULT_TEMPLATES so cron jobs aren't gated on someone
+    //    first opening the templates page to trigger the seed.
+    const dbTemplate = await NotificationTemplate.findOne({ name: templateName, active: true }).lean()
+    const fallback = DEFAULT_TEMPLATES.find((t) => t.name === templateName)
+    const template = dbTemplate ?? fallback
+
     if (!template) {
-      console.warn(`[sendTemplatedNotification] Template "${templateName}" not found`)
+      console.warn(`[sendTemplatedNotification] Template "${templateName}" not found in DB or defaults`)
       return
     }
 
     const placeholders = await buildPlaceholders(args)
-    const subject = replacePlaceholders(template.emailSubject, placeholders)
-    const emailBody = replacePlaceholders(template.emailContent, placeholders)
-    const smsBody = replacePlaceholders(template.textContent, placeholders)
+    const subject = replacePlaceholders(template.emailSubject ?? '', placeholders)
+    const emailBody = replacePlaceholders(template.emailContent ?? '', placeholders)
+    const smsBody = replacePlaceholders(template.textContent ?? '', placeholders)
 
     const sentEmail = template.emailEnabled && tenant.email
     const sentSms = template.textEnabled && tenant.phone

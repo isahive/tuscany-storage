@@ -1,13 +1,17 @@
 import { connectDB } from '@/lib/db'
 import Lease from '@/models/Lease'
 import Tenant from '@/models/Tenant'
+import Unit from '@/models/Unit'
 import Notification from '@/models/Notification'
-import { sendSMS } from '@/lib/twilio'
-import { sendEmail } from '@/lib/email'
-import { formatMoney } from '@/lib/utils'
+import { sendTemplatedNotification } from '@/lib/sendNotification'
 import type { ILeaseDocument } from '@/models/Lease'
 import type { ITenantDocument } from '@/models/Tenant'
 
+/**
+ * D-3 payment reminders. Picks leases whose billingDay is 3 days from now and
+ * sends each tenant the "Invoice Reminder" template (placeholders resolved from
+ * tenant + unit + settings). Admin-edited template content takes effect here.
+ */
 export async function runReminders(): Promise<void> {
   console.log('[Reminders] Starting D-3 payment reminder job...')
   await connectDB()
@@ -18,7 +22,6 @@ export async function runReminders(): Promise<void> {
 
   const targetDay = threeDaysFromNow.getDate()
 
-  // Find all active leases where billingDay matches 3 days from now
   const leases = await Lease.find({
     status: 'active',
     billingDay: targetDay,
@@ -33,84 +36,35 @@ export async function runReminders(): Promise<void> {
   for (const lease of leases) {
     try {
       const tenant = await Tenant.findById(lease.tenantId) as ITenantDocument | null
+      if (!tenant) { skipped++; continue }
+      if (tenant.status === 'moved_out') { skipped++; continue }
 
-      if (!tenant) {
-        console.log(`[Reminders] Tenant not found for lease ${lease._id}, skipping`)
-        skipped++
-        continue
-      }
-
-      if (tenant.status === 'moved_out') {
-        console.log(`[Reminders] Tenant ${tenant.email} is moved out, skipping`)
-        skipped++
-        continue
-      }
-
-      // Check if we already sent a reminder for this billing cycle
+      // Skip if a reminder for this billing cycle already went out.
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
-      const existingReminder = await Notification.findOne({
+      const existing = await Notification.findOne({
         tenantId: tenant._id,
         type: 'payment_reminder',
         createdAt: { $gte: startOfMonth },
       })
+      if (existing) { skipped++; continue }
 
-      if (existingReminder) {
-        console.log(`[Reminders] Reminder already sent to ${tenant.email} this month, skipping`)
-        skipped++
-        continue
-      }
+      const unit = await Unit.findById(lease.unitId).lean()
+      const dueDate = new Date(threeDaysFromNow.getFullYear(), threeDaysFromNow.getMonth(), targetDay)
 
-      const amountFormatted = formatMoney(lease.monthlyRate)
-      const dueDate = new Date(
-        threeDaysFromNow.getFullYear(),
-        threeDaysFromNow.getMonth(),
-        targetDay
-      )
-      const dueDateStr = dueDate.toLocaleDateString('en-US', {
-        month: 'long',
-        day: 'numeric',
-        year: 'numeric',
+      await sendTemplatedNotification({
+        templateName: 'Invoice Reminder',
+        notificationType: 'payment_reminder',
+        tenant,
+        unitNumber: (unit as any)?.unitNumber,
+        unitSize: (unit as any)?.size,
+        monthlyRate: lease.monthlyRate,
+        balance: tenant.balance ?? lease.monthlyRate,
+        dueDate,
       })
 
-      const smsBody = `Tuscany Village Storage: Your rent payment of ${amountFormatted} is due on ${dueDateStr}. Log in to your portal to pay or set up autopay.`
-
-      const emailSubject = `Payment Reminder - ${amountFormatted} due ${dueDateStr}`
-      const emailBody = `
-        <h2>Payment Reminder</h2>
-        <p>Hi ${tenant.firstName},</p>
-        <p>This is a friendly reminder that your storage unit rent payment of <strong>${amountFormatted}</strong> is due on <strong>${dueDateStr}</strong>.</p>
-        <p>You can pay online through your tenant portal or set up autopay for hassle-free monthly payments.</p>
-        <p>If you've already made your payment, please disregard this notice.</p>
-        <br/>
-        <p>Thank you,<br/>Tuscany Village Self Storage</p>
-      `
-
-      // Determine channel
-      const channel = tenant.smsOptIn ? 'both' : 'email'
-
-      // Send SMS if opted in
-      if (tenant.smsOptIn) {
-        await sendSMS(tenant.phone, smsBody)
-      }
-
-      // Send email
-      await sendEmail(tenant.email, emailSubject, emailBody)
-
-      // Create notification record
-      await Notification.create({
-        tenantId: tenant._id,
-        type: 'payment_reminder',
-        channel,
-        subject: emailSubject,
-        body: smsBody,
-        status: 'sent',
-        sentAt: new Date(),
-      })
-
-      console.log(`[Reminders] Reminder sent to ${tenant.email} (${channel})`)
       sent++
     } catch (err: any) {
-      console.error(`[Reminders] Error sending reminder for lease ${lease._id}:`, err.message)
+      console.error(`[Reminders] Error for lease ${lease._id}:`, err.message)
       errors++
     }
   }

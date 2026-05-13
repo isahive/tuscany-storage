@@ -6,6 +6,7 @@ import Tenant from '@/models/Tenant'
 import Lease from '@/models/Lease'
 import Unit from '@/models/Unit'
 import Settings from '@/models/Settings'
+import { sendTemplatedNotification } from '@/lib/sendNotification'
 
 const schema = z.object({
   unitId: z.string(),
@@ -188,6 +189,17 @@ export async function POST(req: NextRequest) {
       })
       clientSecret = intent.client_secret
     }
+
+    // Welcome / account credentials email (template: "Account Information").
+    // Fire-and-forget — sendTemplatedNotification never throws.
+    await sendTemplatedNotification({
+      templateName: 'Account Information',
+      notificationType: 'custom',
+      tenant: tenant as any,
+      unitNumber: unit.unitNumber,
+      unitSize: unit.size,
+      monthlyRate: unit.price,
+    })
 
     return NextResponse.json({
       success: true,
