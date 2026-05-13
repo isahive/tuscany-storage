@@ -1,14 +1,6 @@
-import type { ISettingsDocument } from '@/models/Settings'
-
 interface BrandingSource {
   facilityName?: string
-  facilityAddress?: string
-  facilityCity?: string
-  facilityState?: string
-  facilityZip?: string
-  facilityPhone?: string
   emailLogoUrl?: string
-  emailFooterHtml?: string
 }
 
 /** Public path to the bundled brand logo — used when Settings.emailLogoUrl is blank. */
@@ -22,33 +14,18 @@ function absolutize(url: string): string {
   return `${base.replace(/\/$/, '')}${url.startsWith('/') ? '' : '/'}${url}`
 }
 
-function defaultFooter(s: BrandingSource): string {
-  const lines = [
-    s.facilityName ?? '',
-    s.facilityAddress ?? '',
-    [s.facilityCity, s.facilityState, s.facilityZip].filter(Boolean).join(', ').replace(/, ([A-Z]{2}), /, ', $1 ').trim(),
-  ].filter(Boolean)
-  return lines.map((l) => `<div>${l}</div>`).join('')
-}
-
 /**
- * Wrap a template body in the standard tenant-email layout:
+ * Wrap a template body in the tenant-email shell: full-width logo banner on top,
+ * template HTML below. No footer is appended — admins control the entire body,
+ * including the closing signature (templates usually end with
+ * `[[FACILITY_NAME]] / [[FACILITY_PHONE]]` but they can leave it blank).
  *
- *   ┌────────────────────────────────────────┐
- *   │           full-width logo              │
- *   ├────────────────────────────────────────┤
- *   │  body html (from the template)         │
- *   ├────────────────────────────────────────┤
- *   │  facility signature                    │
- *   └────────────────────────────────────────┘
- *
- * Width is fixed at 640px (the email-safe max) — the logo image is set to
+ * Width is fixed at 640px (the email-safe max). The logo image is set to
  * `width: 100%` so it scales to fill the container, matching the live admin's
  * full-width banner.
  */
 export function wrapTenantEmail(bodyHtml: string, settings: BrandingSource): string {
   const logoSrc = absolutize(settings.emailLogoUrl?.trim() || DEFAULT_LOGO_PATH)
-  const footer = settings.emailFooterHtml?.trim() || defaultFooter(settings)
 
   return `<!doctype html>
 <html>
@@ -70,11 +47,6 @@ export function wrapTenantEmail(bodyHtml: string, settings: BrandingSource): str
             <tr>
               <td style="padding:0 16px;font-size:15px;line-height:1.6;color:#1c0f06;">
                 ${bodyHtml}
-              </td>
-            </tr>
-            <tr>
-              <td style="padding:32px 16px 0 16px;border-top:1px solid #ede5d8;margin-top:24px;font-size:14px;line-height:1.6;color:#1c0f06;">
-                ${footer}
               </td>
             </tr>
           </table>
