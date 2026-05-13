@@ -5,6 +5,8 @@ import { connectDB } from '@/lib/db'
 import { sendEmail } from '@/lib/email'
 import { replacePlaceholders } from '@/lib/templatePlaceholders'
 import { buildPlaceholders } from '@/lib/sendNotification'
+import { wrapTenantEmail } from '@/lib/emailLayout'
+import { getSettings } from '@/lib/getSettings'
 import Tenant from '@/models/Tenant'
 import Notification from '@/models/Notification'
 import NotificationTemplate from '@/models/NotificationTemplate'
@@ -58,8 +60,11 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Load tenants
-    const tenants = await Tenant.find({ _id: { $in: tenantIds } }).lean()
+    // Load tenants + settings (shared branding context for the wrapper)
+    const [tenants, settings] = await Promise.all([
+      Tenant.find({ _id: { $in: tenantIds } }).lean(),
+      getSettings(),
+    ])
 
     const results: Array<{ tenantId: string; email: string; status: string; error?: string }> = []
 
@@ -73,7 +78,8 @@ export async function POST(req: NextRequest) {
       })
 
       const finalSubject = replacePlaceholders(emailSubject, placeholderData)
-      const finalHtml = replacePlaceholders(emailHtml, placeholderData)
+      const finalHtmlBody = replacePlaceholders(emailHtml, placeholderData)
+      const finalHtml = wrapTenantEmail(finalHtmlBody, settings)
 
       try {
         await sendEmail(tenant.email, finalSubject, finalHtml)

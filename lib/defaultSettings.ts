@@ -37,6 +37,10 @@ export const DEFAULT_SETTINGS = {
   setupFeeAmount: 0,
   setupFeeName: 'Setup Fee',
   setupFeeDescription: '',
+  // Email branding — when blank, the wrapper falls back to the public logo
+  // path + an auto-generated address signature from facility settings.
+  emailLogoUrl: '',
+  emailFooterHtml: '',
   // Rental options
   enablePrepay: false,
   disablePartialPaymentsForLockedOut: false,

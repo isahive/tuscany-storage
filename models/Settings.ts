@@ -120,6 +120,11 @@ export interface ISettingsDocument extends Document {
   printInvoiceReminders: boolean
   printFormat: 'letter' | 'postcard'
   invoiceHeader: string
+  /** Full-width logo banner shown at the top of every tenant-facing email. */
+  emailLogoUrl?: string
+  /** Optional override for the email signature/footer block. When empty, the
+   *  footer is rendered from facility name + address. */
+  emailFooterHtml?: string
 
   // ── Agreement ─────────────────────────────────────────────────────────────
   agreementTitle: string
@@ -287,6 +292,8 @@ const SettingsSchema = new Schema<ISettingsDocument>(
     printInvoiceReminders:      { type: Boolean, default: false },
     printFormat:                { type: String, enum: ['letter', 'postcard'], default: 'letter' },
     invoiceHeader:              { type: String, default: '' },
+    emailLogoUrl:               { type: String, default: '' },
+    emailFooterHtml:            { type: String, default: '' },
 
     // Agreement
     agreementTitle:    { type: String, default: 'Storage Lease Agreement' },

@@ -96,6 +96,9 @@ const updateSettingsSchema = z
     // Agreement
     agreementTitle: z.string(),
     agreementTemplate: z.string(),
+    // Email branding
+    emailLogoUrl: z.string(),
+    emailFooterHtml: z.string(),
     // Customer form fields
     customerFormFields: z.array(z.object({
       key: z.string(),

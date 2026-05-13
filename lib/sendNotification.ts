@@ -6,6 +6,7 @@ import { replacePlaceholders } from '@/lib/templatePlaceholders'
 import { getSettings } from '@/lib/getSettings'
 import { formatMoney } from '@/lib/utils'
 import { DEFAULT_TEMPLATES } from '@/lib/defaultTemplates'
+import { wrapTenantEmail } from '@/lib/emailLayout'
 import type { ITenantDocument } from '@/models/Tenant'
 import type { NotificationType } from '@/types'
 
@@ -153,7 +154,11 @@ export async function sendTemplatedNotification(args: SendTemplatedArgs): Promis
     const sentSms = template.textEnabled && tenant.phone
 
     if (sentEmail) {
-      await sendEmail(tenant.email, subject, emailBody)
+      // Wrap with facility logo banner + signature footer so the email looks
+      // identical to the live admin's branded layout.
+      const settings = await getSettings()
+      const wrapped = wrapTenantEmail(emailBody, settings)
+      await sendEmail(tenant.email, subject, wrapped)
     }
     if (sentSms) {
       await sendSMS(tenant.phone, smsBody)
