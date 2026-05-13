@@ -13,6 +13,7 @@ const positionsSchema = z.object({
       gridX: z.number().int().min(0),
       gridY: z.number().int().min(0),
       gridFloor: z.number().int().min(1),
+      gridRotation: z.union([z.literal(0), z.literal(90)]).optional(),
     })
   ).min(1),
 })
@@ -36,10 +37,10 @@ export async function PATCH(req: NextRequest) {
     await connectDB()
 
     const results = await Promise.all(
-      parsed.data.positions.map(({ id, gridX, gridY, gridFloor }) =>
+      parsed.data.positions.map(({ id, gridX, gridY, gridFloor, gridRotation }) =>
         Unit.findByIdAndUpdate(
           id,
-          { gridX, gridY, gridFloor },
+          { gridX, gridY, gridFloor, gridRotation: gridRotation ?? 0 },
           { new: true, runValidators: true }
         )
       )

@@ -43,6 +43,21 @@ interface FormData {
   alternateContactName: string
   alternateEmail: string
   alternatePhone: string
+  alternateAddress: string
+  alternateCity: string
+  alternateState: string
+  alternateZip: string
+  // Personal info extras
+  ssn: string
+  employerName: string
+  employerPhone: string
+  emergencyContact: string
+  emergencyPhone: string
+  // Security
+  securityQuestion: string
+  securityAnswer: string
+  // Admin-defined custom fields (keyed by FieldConfig.key)
+  customFields: Record<string, string>
   // Login Information
   username: string
   email: string
@@ -265,7 +280,7 @@ function Step1PersonalInfo({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [uploadingId, setUploadingId] = useState(false)
-  const { get, show, req } = useFormFieldSettings()
+  const { fields, get, show, req } = useFormFieldSettings()
   const set = <K extends keyof FormData>(k: K) => (v: FormData[K]) => setForm({ ...form, [k]: v })
 
   // Auto-fill username from email
@@ -324,13 +339,30 @@ function Step1PersonalInfo({
           zip: form.zip,
           driversLicenseNumber: form.driversLicenseNumber || undefined,
           driversLicenseState: form.driversLicenseState || undefined,
+          // Alternate contact
+          alternateContactName: form.alternateContactName || undefined,
           alternatePhone: form.alternatePhone || undefined,
           alternateEmail: form.alternateEmail || undefined,
-          alternateContactName: form.alternateContactName || undefined,
+          alternateAddress: form.alternateAddress || undefined,
+          alternateCity: form.alternateCity || undefined,
+          alternateState: form.alternateState || undefined,
+          alternateZip: form.alternateZip || undefined,
+          // Personal info extras
+          ssn: form.ssn || undefined,
+          employerName: form.employerName || undefined,
+          employerPhone: form.employerPhone || undefined,
+          emergencyContact: form.emergencyContact || undefined,
+          emergencyPhone: form.emergencyPhone || undefined,
+          securityQuestion: form.securityQuestion || undefined,
+          securityAnswer: form.securityAnswer || undefined,
+          // Photo + meta
           idPhotoUrl: form.idPhotoUrl || undefined,
           smsConsent: form.smsConsent,
           howDidYouHear: form.howDidYouHear || undefined,
           howDidYouHearOther: form.howDidYouHearOther || undefined,
+          // Admin-defined custom fields
+          customFields:
+            Object.keys(form.customFields).length > 0 ? form.customFields : undefined,
         }),
       })
       const json = await res.json()
@@ -452,18 +484,52 @@ function Step1PersonalInfo({
       </section>
 
       {/* Alternate Contact */}
-      {(show('alternateContactName') || show('alternateEmail') || show('alternatePhone')) && (
+      {(show('alternateContact') || show('alternateContactName') || show('alternateEmail') || show('alternatePhone') || show('alternateAddress')) && (
         <section>
           <SectionHeader>Alternate Contact</SectionHeader>
           <div className="space-y-4">
-            {show('alternateContactName') && (
+            {(show('alternateContact') || show('alternateContactName')) && (
               <Field
-                label="Alternate contact"
+                label={get('alternateContact')?.label ?? get('alternateContactName')?.label ?? 'Alternate contact'}
                 value={form.alternateContactName}
                 onChange={set('alternateContactName')}
-                required={req('alternateContactName')}
+                required={req('alternateContact') || req('alternateContactName')}
               />
             )}
+            {show('alternateAddress') && (
+              <Field
+                label={get('alternateAddress')?.label ?? 'Alternate Address'}
+                value={form.alternateAddress}
+                onChange={set('alternateAddress')}
+                required={req('alternateAddress')}
+              />
+            )}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {show('alternateCity') && (
+                <Field
+                  label={get('alternateCity')?.label ?? 'Alternate City'}
+                  value={form.alternateCity}
+                  onChange={set('alternateCity')}
+                  required={req('alternateCity')}
+                />
+              )}
+              {show('alternateState') && (
+                <Field
+                  label={get('alternateState')?.label ?? 'Alternate State/Province'}
+                  value={form.alternateState}
+                  onChange={set('alternateState')}
+                  required={req('alternateState')}
+                />
+              )}
+              {show('alternateZip') && (
+                <Field
+                  label={get('alternateZip')?.label ?? 'Alternate Zip/Postal Code'}
+                  value={form.alternateZip}
+                  onChange={set('alternateZip')}
+                  required={req('alternateZip')}
+                />
+              )}
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {show('alternateEmail') && (
                 <Field
@@ -484,6 +550,126 @@ function Step1PersonalInfo({
                 />
               )}
             </div>
+          </div>
+        </section>
+      )}
+
+      {/* Personal Information extras (SSN, Employer, Emergency) */}
+      {(show('ssn') || show('employerName') || show('employerPhone') || show('emergencyContact') || show('emergencyPhone')) && (
+        <section>
+          <SectionHeader>Additional Personal Information</SectionHeader>
+          <div className="space-y-4">
+            {show('ssn') && (
+              <Field
+                label={get('ssn')?.label ?? 'Social security number'}
+                value={form.ssn}
+                onChange={set('ssn')}
+                required={req('ssn')}
+              />
+            )}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {show('employerName') && (
+                <Field
+                  label={get('employerName')?.label ?? 'Employer name'}
+                  value={form.employerName}
+                  onChange={set('employerName')}
+                  required={req('employerName')}
+                />
+              )}
+              {show('employerPhone') && (
+                <Field
+                  label={get('employerPhone')?.label ?? 'Employer phone'}
+                  value={form.employerPhone}
+                  onChange={set('employerPhone')}
+                  type="tel"
+                  required={req('employerPhone')}
+                />
+              )}
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {show('emergencyContact') && (
+                <Field
+                  label={get('emergencyContact')?.label ?? 'Emergency contact'}
+                  value={form.emergencyContact}
+                  onChange={set('emergencyContact')}
+                  required={req('emergencyContact')}
+                />
+              )}
+              {show('emergencyPhone') && (
+                <Field
+                  label={get('emergencyPhone')?.label ?? 'Emergency phone'}
+                  value={form.emergencyPhone}
+                  onChange={set('emergencyPhone')}
+                  type="tel"
+                  required={req('emergencyPhone')}
+                />
+              )}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Security question/answer */}
+      {(show('securityQuestion') || show('securityAnswer')) && (
+        <section>
+          <SectionHeader>Security</SectionHeader>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {show('securityQuestion') && (
+              <Field
+                label="Security question"
+                value={form.securityQuestion}
+                onChange={set('securityQuestion')}
+                required={req('securityQuestion')}
+              />
+            )}
+            {show('securityAnswer') && (
+              <Field
+                label="Security answer"
+                value={form.securityAnswer}
+                onChange={set('securityAnswer')}
+                required={req('securityAnswer')}
+              />
+            )}
+          </div>
+        </section>
+      )}
+
+      {/* Custom admin-defined fields (isCustom: true in form-fields settings) */}
+      {fields.filter((f) => f.isCustom && f.showOnSignup).length > 0 && (
+        <section>
+          <SectionHeader>Additional Information</SectionHeader>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {fields
+              .filter((f) => f.isCustom && f.showOnSignup)
+              .sort((a, b) => a.order - b.order)
+              .map((f) => {
+                if (f.fieldType === 'select') {
+                  return (
+                    <SelectField
+                      key={f.key}
+                      label={f.label}
+                      value={form.customFields[f.key] ?? ''}
+                      onChange={(v) =>
+                        setForm({ ...form, customFields: { ...form.customFields, [f.key]: v } })
+                      }
+                      options={f.options ?? []}
+                      required={f.requiredOnSignup}
+                    />
+                  )
+                }
+                return (
+                  <Field
+                    key={f.key}
+                    label={f.label}
+                    value={form.customFields[f.key] ?? ''}
+                    onChange={(v) =>
+                      setForm({ ...form, customFields: { ...form.customFields, [f.key]: v } })
+                    }
+                    hint={f.helpText || undefined}
+                    required={f.requiredOnSignup}
+                  />
+                )
+              })}
           </div>
         </section>
       )}
@@ -1234,6 +1420,18 @@ export default function ReservePage() {
     alternateContactName: '',
     alternateEmail: '',
     alternatePhone: '',
+    alternateAddress: '',
+    alternateCity: '',
+    alternateState: '',
+    alternateZip: '',
+    ssn: '',
+    employerName: '',
+    employerPhone: '',
+    emergencyContact: '',
+    emergencyPhone: '',
+    securityQuestion: '',
+    securityAnswer: '',
+    customFields: {},
     username: '',
     email: '',
     password: '',

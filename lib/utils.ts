@@ -1,8 +1,12 @@
 export const formatMoney = (cents: number): string =>
   new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(cents / 100)
 
-export const formatDate = (date: string | Date): string =>
-  new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(date))
+export const formatDate = (date: string | Date | null | undefined): string => {
+  if (!date) return '—'
+  const d = new Date(date)
+  if (isNaN(d.getTime())) return '—'
+  return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(d)
+}
 
 export function calculateProratedAmount(monthlyRate: number, startDate: Date): number {
   const daysInMonth = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0).getDate()

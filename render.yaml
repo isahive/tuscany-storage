@@ -1,0 +1,47 @@
+# Render Blueprint — declares the web service + scheduled cron job.
+# Apply: connect this repo in Render, choose "Blueprint" deploy, point at this file.
+
+services:
+  # ── Main Next.js web service ──────────────────────────────────────────────
+  - type: web
+    name: tuscany-storage
+    runtime: node
+    plan: starter
+    region: ohio
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      - key: MONGODB_URI
+        sync: false
+      - key: NEXTAUTH_URL
+        sync: false
+      - key: NEXTAUTH_SECRET
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+        sync: false
+      - key: CRON_SECRET
+        generateValue: true
+
+  # ── Daily recurring-billing cron at 08:00 UTC (03:00 ET) ──────────────────
+  # Calls the in-app endpoint with the shared secret so it reuses the same
+  # Mongo connection logic + models as the rest of the app.
+  - type: cron
+    name: tuscany-recurring-billing
+    runtime: node
+    region: ohio
+    schedule: "0 8 * * *"
+    buildCommand: npm install
+    startCommand: node scripts/run-recurring-billing.js
+    envVars:
+      - key: APP_URL
+        sync: false       # set to https://your-render-app.onrender.com
+      - key: CRON_SECRET
+        fromService:
+          type: web
+          name: tuscany-storage
+          envVarKey: CRON_SECRET

@@ -14,20 +14,37 @@ const schema = z.object({
   email: z.string().email(),
   phone: z.string().min(7),
   password: z.string().min(8),
+  // Primary address
   address: z.string().optional(),
   city: z.string().optional(),
   state: z.string().optional(),
   zip: z.string().optional(),
+  // Identification
   driversLicense: z.string().optional(),
   driversLicenseNumber: z.string().optional(),
   driversLicenseState: z.string().optional(),
+  idPhotoUrl: z.string().optional(),
+  // Alternate contact
+  alternateContactName: z.string().optional(),
   alternatePhone: z.string().optional(),
   alternateEmail: z.string().optional(),
-  alternateContactName: z.string().optional(),
-  idPhotoUrl: z.string().optional(),
+  alternateAddress: z.string().optional(),
+  alternateCity: z.string().optional(),
+  alternateState: z.string().optional(),
+  alternateZip: z.string().optional(),
+  // Personal info extras
+  ssn: z.string().optional(),
+  employerName: z.string().optional(),
+  employerPhone: z.string().optional(),
+  emergencyContact: z.string().optional(),
+  emergencyPhone: z.string().optional(),
+  securityQuestion: z.string().optional(),
+  securityAnswer: z.string().optional(),
+  // Meta
   smsConsent: z.boolean().optional(),
   howDidYouHear: z.string().optional(),
   howDidYouHearOther: z.string().optional(),
+  customFields: z.record(z.string(), z.string()).optional(),
 })
 
 export async function POST(req: NextRequest) {
@@ -42,8 +59,12 @@ export async function POST(req: NextRequest) {
       unitId, firstName, lastName, email, phone, password,
       address, city, state, zip,
       driversLicense, driversLicenseNumber, driversLicenseState,
-      alternatePhone, alternateEmail, alternateContactName,
-      idPhotoUrl, smsConsent, howDidYouHear, howDidYouHearOther,
+      idPhotoUrl,
+      alternateContactName, alternatePhone, alternateEmail,
+      alternateAddress, alternateCity, alternateState, alternateZip,
+      ssn, employerName, employerPhone, emergencyContact, emergencyPhone,
+      securityQuestion, securityAnswer,
+      smsConsent, howDidYouHear, howDidYouHearOther, customFields,
     } = parsed.data
 
     await connectDB()
@@ -87,12 +108,29 @@ export async function POST(req: NextRequest) {
       driversLicenseNumber,
       driversLicenseState,
       idPhotoUrl,
-      alternatePhone, alternateEmail, alternateContactName,
+      // Alternate contact (all 7 fields)
+      alternateContactName,
+      alternatePhone,
+      alternateEmail,
+      alternateAddress,
+      alternateCity,
+      alternateState,
+      alternateZip,
+      // Personal info extras
+      ssn,
+      employerName,
+      employerPhone,
+      emergencyContact,
+      emergencyPhone,
+      securityQuestion,
+      securityAnswer,
+      // Meta
       smsConsent: smsConsent ?? false,
       smsOptIn: smsConsent ?? false,
       howDidYouHear,
       howDidYouHearOther,
       referralSource: howDidYouHear,
+      customFields: customFields ?? {},
       gateCode,
       role: 'tenant',
       status: 'active',

@@ -21,6 +21,16 @@ export interface ILeaseDocument extends Document {
   lastRateChangeDate?: Date
   auctionDate?: Date
   auctionScheduledAt?: Date
+  /** True = this rental is ignored by rate-management reminders. */
+  exemptFromRateManagement?: boolean
+  /** Per-lease override of Settings.prorationModel. */
+  prorationModel?: 'none' | 'custom' | 'first_month_full_prorate_now' | 'first_month_full_then_prorate' | 'prorate_first_month' | 'prorate_both'
+  /** 0 = "Don't Charge Tax". Otherwise percentage applied to taxable line items. */
+  taxRate?: number
+  /** Cents — one-time setup fee billed at move-in. */
+  setupFee?: number
+  /** Email/text channels for the auto-sent lease agreement. */
+  agreementNotify?: { email: boolean; text: boolean }
   createdAt: Date
   updatedAt: Date
 }
@@ -50,6 +60,17 @@ const LeaseSchema = new Schema<ILeaseDocument>(
     lastRateChangeDate: { type: Date },
     auctionDate: { type: Date },
     auctionScheduledAt: { type: Date },
+    exemptFromRateManagement: { type: Boolean, default: false },
+    prorationModel: {
+      type: String,
+      enum: ['none', 'custom', 'first_month_full_prorate_now', 'first_month_full_then_prorate', 'prorate_first_month', 'prorate_both'],
+    },
+    taxRate: { type: Number, default: 0 },
+    setupFee: { type: Number, default: 0 },
+    agreementNotify: {
+      email: { type: Boolean, default: false },
+      text:  { type: Boolean, default: false },
+    },
   },
   { timestamps: true }
 )

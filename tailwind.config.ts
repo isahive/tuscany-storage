@@ -14,22 +14,12 @@ const config: Config = {
         cream:  { DEFAULT: '#FAF7F2' },
         mid:    { DEFAULT: '#EDE5D8' },
         muted:  { DEFAULT: '#8A7B6B' },
-        olive:  { DEFAULT: '#86A87C' },
+        olive:  { DEFAULT: '#8CA87C', dark: '#7E9770', darker: '#708663' },
       },
       fontFamily: {
-        // Switch these to match ACTIVE_FONTS in layout.tsx:
-        // Option 0 (original): Playfair Display + DM Sans
-        // serif: ['"Playfair Display"', 'Georgia', 'serif'],
-        // sans:  ['"DM Sans"', 'Arial', 'sans-serif'],
-        // Option 1: Outfit + Inter
-        serif: ['Outfit', 'sans-serif'],
-        sans:  ['Inter', 'sans-serif'],
-        // Option 2: Poppins + Open Sans
-        // serif: ['Poppins', 'sans-serif'],
-        // sans:  ['"Open Sans"', 'sans-serif'],
-        // Option 3: Plus Jakarta Sans (single font)
-        // serif: ['"Plus Jakarta Sans"', 'sans-serif'],
-        // sans:  ['"Plus Jakarta Sans"', 'sans-serif'],
+        // Match live tuscanystorage.com — Bootstrap default system stack
+        sans:  ['system-ui', '-apple-system', '"Segoe UI"', 'Roboto', '"Helvetica Neue"', '"Noto Sans"', '"Liberation Sans"', 'Arial', 'sans-serif'],
+        serif: ['system-ui', '-apple-system', '"Segoe UI"', 'Roboto', '"Helvetica Neue"', 'sans-serif'],
       },
       backgroundImage: {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',

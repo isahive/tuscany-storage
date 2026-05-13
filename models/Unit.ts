@@ -18,6 +18,12 @@ export interface IUnitDocument extends Document {
   gridX?: number
   gridY?: number
   gridFloor?: number
+  gridRotation?: 0 | 90
+  // Reservation fields — populated when status='reserved'
+  reservedTenantId?: Types.ObjectId
+  reservedAt?: Date
+  reservedMoveInDate?: Date
+  reservedPrice?: number   // cents
   createdAt: Date
   updatedAt: Date
 }
@@ -48,6 +54,11 @@ const UnitSchema = new Schema<IUnitDocument>(
     gridX: { type: Number },
     gridY: { type: Number },
     gridFloor: { type: Number, default: 1 },
+    gridRotation: { type: Number, enum: [0, 90], default: 0 },
+    reservedTenantId:   { type: Schema.Types.ObjectId, ref: 'Tenant' },
+    reservedAt:         { type: Date },
+    reservedMoveInDate: { type: Date },
+    reservedPrice:      { type: Number },
   },
   { timestamps: true }
 )

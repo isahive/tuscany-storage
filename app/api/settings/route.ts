@@ -34,7 +34,7 @@ const updateSettingsSchema = z
     billingCycleAnchor: z.enum(['first_of_month', 'signup_day', 'custom_day']),
     billingCycleCustomDay: z.number().int().min(1).max(28),
     // Proration
-    prorationModel: z.enum(['none', 'prorate_first_month', 'first_month_full_then_prorate', 'prorate_both']),
+    prorationModel: z.enum(['none', 'custom', 'first_month_full_prorate_now', 'first_month_full_then_prorate', 'prorate_first_month', 'prorate_both']),
     prorationDaysBasis: z.enum(['actual_days_in_month', 'thirty_day_month']),
     // Fees
     lateFeeAfterDays: z.number().int().min(0),
@@ -61,9 +61,10 @@ const updateSettingsSchema = z
     // Lockout
     lockoutRequireApprovalAuto: z.boolean(),
     lockoutRequireApprovalManual: z.boolean(),
-    // Custom fees
+    // All fees — code tags system-managed entries
     customFees: z.array(z.object({
       id: z.string(),
+      code: z.string().optional(),
       name: z.string(),
       amount: z.number().int().min(0),
       description: z.string(),

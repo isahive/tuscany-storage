@@ -31,11 +31,9 @@ interface Template {
   type: 'default' | 'custom'
   rule?: string
   daysPastDue?: number
-  channels: {
-    email: boolean
-    text: boolean
-    print: boolean
-  }
+  emailEnabled?: boolean
+  textEnabled?: boolean
+  printEnabled?: boolean
 }
 
 function ChannelIcon({ enabled }: { enabled: boolean }) {
@@ -60,8 +58,9 @@ export default function TemplatesPage() {
     try {
       const res = await fetch('/api/admin/templates')
       if (!res.ok) throw new Error('Failed to load templates')
-      const data = await res.json()
-      setTemplates(data)
+      const json = await res.json()
+      if (!json.success) throw new Error(json.error ?? 'Failed to load templates')
+      setTemplates(Array.isArray(json.data) ? json.data : [])
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to load templates')
     } finally {
@@ -168,8 +167,8 @@ export default function TemplatesPage() {
                   sx={{ cursor: 'pointer', '&:hover': { bgcolor: '#FAF7F2' } }}
                 >
                   <TableCell sx={{ fontWeight: 500 }}>{t.name}</TableCell>
-                  <TableCell align="center"><ChannelIcon enabled={t.channels?.email} /></TableCell>
-                  <TableCell align="center"><ChannelIcon enabled={t.channels?.text} /></TableCell>
+                  <TableCell align="center"><ChannelIcon enabled={!!t.emailEnabled} /></TableCell>
+                  <TableCell align="center"><ChannelIcon enabled={!!t.textEnabled} /></TableCell>
                   <TableCell sx={{ color: 'text.secondary' }}>{t.description || '—'}</TableCell>
                 </TableRow>
               ))
@@ -233,9 +232,9 @@ export default function TemplatesPage() {
                     )}
                   </TableCell>
                   <TableCell align="center">{t.daysPastDue ?? '—'}</TableCell>
-                  <TableCell align="center"><ChannelIcon enabled={t.channels?.email} /></TableCell>
-                  <TableCell align="center"><ChannelIcon enabled={t.channels?.text} /></TableCell>
-                  <TableCell align="center"><ChannelIcon enabled={t.channels?.print} /></TableCell>
+                  <TableCell align="center"><ChannelIcon enabled={!!t.emailEnabled} /></TableCell>
+                  <TableCell align="center"><ChannelIcon enabled={!!t.textEnabled} /></TableCell>
+                  <TableCell align="center"><ChannelIcon enabled={!!t.printEnabled} /></TableCell>
                   <TableCell align="right">
                     <IconButton
                       size="small"

@@ -8,8 +8,16 @@
     "build": "NODE_OPTIONS=--max-old-space-size=4096 next build",
     "start": "next start",
     "lint": "next lint",
-    "seed": "ts-node --compiler-options '{\"module\":\"commonjs\"}' scripts/seed.ts",
-    "migrate": "ts-node --compiler-options '{\"module\":\"commonjs\"}' scripts/migrate.ts"
+    "seed": "ts-node --project tsconfig.scripts.json scripts/seed.ts",
+    "seed:promo": "ts-node --project tsconfig.scripts.json scripts/seed-promo.ts",
+    "seed:customers": "ts-node --project tsconfig.scripts.json scripts/seed-customers.ts",
+    "seed:products": "ts-node --project tsconfig.scripts.json scripts/seed-products.ts",
+    "seed:settings": "ts-node --project tsconfig.scripts.json scripts/seed-settings.ts",
+    "seed:fees": "ts-node --project tsconfig.scripts.json scripts/seed-fees.ts",
+    "sync:units": "ts-node --project tsconfig.scripts.json scripts/sync-units.ts",
+    "billing:preview": "node scripts/run-recurring-billing.js --dry",
+    "billing:run": "node scripts/run-recurring-billing.js",
+    "migrate": "ts-node --project tsconfig.scripts.json scripts/migrate.ts"
   },
   "repository": {
     "type": "git",

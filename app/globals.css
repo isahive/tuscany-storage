@@ -8,11 +8,7 @@
   }
 
   body {
-    @apply bg-cream text-brown font-sans antialiased;
-  }
-
-  h1, h2, h3, h4 {
-    @apply font-serif;
+    @apply bg-white text-gray-800 font-sans antialiased;
   }
 }
 

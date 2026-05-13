@@ -20,7 +20,13 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import SaveIcon from '@mui/icons-material/Save'
 
 type BillingCycleAnchor = 'first_of_month' | 'signup_day' | 'custom_day'
-type ProrationModel = 'none' | 'prorate_first_month' | 'first_month_full_then_prorate' | 'prorate_both'
+type ProrationModel =
+  | 'none'
+  | 'custom'
+  | 'first_month_full_prorate_now'
+  | 'first_month_full_then_prorate'
+  | 'prorate_first_month'
+  | 'prorate_both'
 type ProrationDaysBasis = 'actual_days_in_month' | 'thirty_day_month'
 
 interface FormState {
@@ -361,10 +367,12 @@ export default function RentalSettingsPage() {
           value={form.prorationModel}
           onChange={(v) => setField('prorationModel', v)}
           options={[
-            { value: 'none',                          label: 'No proration — charge full month every cycle' },
-            { value: 'prorate_first_month',           label: 'Prorate the first month, full months thereafter' },
-            { value: 'first_month_full_then_prorate', label: 'Charge first FULL calendar month upfront, then prorate the partial period', hint: 'Industry standard — matches Storable behavior.' },
-            { value: 'prorate_both',                  label: 'Prorate first AND second months' },
+            { value: 'none',                            label: 'No Prorating' },
+            { value: 'custom',                          label: 'Custom Prorating', hint: 'Admin enters a custom first-charge amount per rental.' },
+            { value: 'first_month_full_prorate_now',    label: 'Bill for first full month, Prorate second month billed now' },
+            { value: 'first_month_full_then_prorate',   label: 'Bill for first full month, Prorate second month billed later', hint: 'Industry standard — matches Storable behavior.' },
+            { value: 'prorate_first_month',             label: 'Prorate this month and bill full billing cycle starting next month' },
+            { value: 'prorate_both',                    label: 'Prorate this month and bill now for the first billing cycle' },
           ]}
         />
         <RadioGroupField<ProrationDaysBasis>

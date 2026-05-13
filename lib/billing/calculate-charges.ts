@@ -4,7 +4,13 @@ export interface CalculateChargesInput {
   settings: {
     billingCycleAnchor: 'first_of_month' | 'signup_day' | 'custom_day'
     billingCycleCustomDay: number
-    prorationModel: 'none' | 'prorate_first_month' | 'first_month_full_then_prorate' | 'prorate_both'
+    prorationModel:
+      | 'none'
+      | 'custom'
+      | 'first_month_full_prorate_now'
+      | 'first_month_full_then_prorate'
+      | 'prorate_first_month'
+      | 'prorate_both'
     prorationDaysBasis: 'actual_days_in_month' | 'thirty_day_month'
     taxRate: number
   }
@@ -211,6 +217,83 @@ export function calculateCharges(input: CalculateChargesInput): ChargeBreakdown 
     }
 
     recurringStart = anchor
+  } else if (settings.prorationModel === 'first_month_full_prorate_now') {
+    // Bill full first month rent + prorated second month rent (and protection) all due today.
+    // Then recurring at next anchor + 1 cycle.
+    const fullPeriodStart = anchor
+    const fullPeriodEnd = endOfMonth(anchor)
+
+    dueLines.push({
+      label: 'First Full Month Rent',
+      amount: monthlyRent,
+      type: 'rent',
+      periodStart: fullPeriodStart,
+      periodEnd: fullPeriodEnd,
+    })
+
+    if (promotion && promotion.beginsImmediately && promotion.beginsAfterCycles === 0) {
+      const discount = applyPromotion(monthlyRent, promotion)
+      if (discount > 0) {
+        dueLines.push({
+          label: `Promotion: ${promotion.name}`,
+          amount: -discount,
+          type: 'promotion',
+          description: promotion.description,
+        })
+      }
+    }
+
+    if (protectionPrice > 0 && protectionPlan) {
+      dueLines.push({
+        label: `Protection Plan: ${protectionPlan.name}`,
+        amount: protectionPrice,
+        type: 'protection',
+      })
+    }
+
+    const days = daysInPartialPeriod(sd, anchor)
+    const dim = daysInMonth(anchor, settings.prorationDaysBasis)
+    const proratedRent = proratedAmount(monthlyRent, days, dim)
+
+    dueLines.push({
+      label: 'Prorated rent for partial period',
+      amount: proratedRent,
+      type: 'rent',
+      description: `${days} days @ ${dim}-day month`,
+      periodStart: sd,
+      periodEnd: addDays(anchor, -1),
+    })
+
+    if (protectionPrice > 0 && protectionPlan) {
+      const proratedProtection = proratedAmount(protectionPrice, days, dim)
+      dueLines.push({
+        label: `Prorated Protection Plan: ${protectionPlan.name}`,
+        amount: proratedProtection,
+        type: 'protection',
+        description: `${days} days @ ${dim}-day month`,
+      })
+    }
+
+    recurringStart = addMonths(anchor, 1)
+  } else if (settings.prorationModel === 'custom') {
+    // Admin types in their own first-charge amount. We don't auto-prorate; just
+    // record the monthly rent and protection at face value and let the rent-unit
+    // endpoint persist whatever line items the admin assembled by hand.
+    dueLines.push({
+      label: 'First Month Rent',
+      amount: monthlyRent,
+      type: 'rent',
+      periodStart: sd,
+      periodEnd: anchor,
+    })
+    if (protectionPrice > 0 && protectionPlan) {
+      dueLines.push({
+        label: `Protection Plan: ${protectionPlan.name}`,
+        amount: protectionPrice,
+        type: 'protection',
+      })
+    }
+    recurringStart = addMonths(anchor, 1)
   } else if (settings.prorationModel === 'first_month_full_then_prorate') {
     // Storable model: pay first FULL future month today, catch up on partial period at next anchor
     const fullPeriodStart = anchor

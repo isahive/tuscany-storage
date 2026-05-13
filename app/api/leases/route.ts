@@ -3,7 +3,6 @@ import { getServerSession } from 'next-auth'
 import { z } from 'zod'
 import { authOptions } from '@/lib/auth'
 import { connectDB } from '@/lib/db'
-import { parsePaginationParams } from '@/lib/utils'
 import Lease from '@/models/Lease'
 
 export async function GET(req: NextRequest) {
@@ -16,7 +15,8 @@ export async function GET(req: NextRequest) {
     await connectDB()
 
     const { searchParams } = req.nextUrl
-    const { page, limit, skip } = parsePaginationParams(searchParams)
+    const rawLimit = searchParams.get('limit') || '20'
+    const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10))
     const tenantId = searchParams.get('tenantId')
     const unitId = searchParams.get('unitId')
     const status = searchParams.get('status')
@@ -33,10 +33,19 @@ export async function GET(req: NextRequest) {
     if (unitId) filter.unitId = unitId
     if (status) filter.status = status
 
-    const [items, total] = await Promise.all([
-      Lease.find(filter).populate('unitId', 'unitNumber size').skip(skip).limit(limit).sort({ createdAt: -1 }),
-      Lease.countDocuments(filter),
-    ])
+    const total = await Lease.countDocuments(filter)
+    const parsedLimit = parseInt(rawLimit, 10)
+    const limit =
+      rawLimit === 'all' || isNaN(parsedLimit) || parsedLimit < 1
+        ? total
+        : Math.min(parsedLimit, total)
+    const skip = (page - 1) * limit
+
+    const items = await Lease.find(filter)
+      .populate('unitId', 'unitNumber size')
+      .skip(skip)
+      .limit(limit)
+      .sort({ createdAt: -1 })
 
     return NextResponse.json({
       success: true,

@@ -227,6 +227,15 @@ export default function UnitsPage() {
         <Button
           variant="contained"
           size="small"
+          startIcon={<GridViewIcon />}
+          onClick={() => router.push('/admin/units/canvas')}
+          sx={{ bgcolor: '#8CA87C', '&:hover': { bgcolor: '#7E9770' } }}
+        >
+          Canvas
+        </Button>
+        <Button
+          variant="contained"
+          size="small"
           startIcon={<AddIcon />}
           onClick={() => router.push('/admin/units/new')}
         >

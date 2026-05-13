@@ -32,14 +32,23 @@ export interface ISettingsDocument extends Document {
   billingCycleCustomDay: number  // 1-28, only used when anchor is 'custom_day'
 
   // ── Proration Model ───────────────────────────────────────────────────────
-  prorationModel: 'none' | 'prorate_first_month' | 'first_month_full_then_prorate' | 'prorate_both'
+  prorationModel: 'none' | 'custom' | 'first_month_full_prorate_now' | 'first_month_full_then_prorate' | 'prorate_first_month' | 'prorate_both'
   prorationDaysBasis: 'actual_days_in_month' | 'thirty_day_month'
 
   // ── Fees (cents) ─────────────────────────────────────────────────────────
   lateFeeAfterDays: number
   lateFeeAmount: number
+  lateFeeName: string
+  lateFeeDescription: string
   nsfFeeAmount: number
+  nsfFeeName: string
+  nsfFeeDescription: string
   auctionFeeAmount: number
+  auctionFeeName: string
+  auctionFeeDescription: string
+  setupFeeAmount: number
+  setupFeeName: string
+  setupFeeDescription: string
 
   // ── Rental options ────────────────────────────────────────────────────────
   enablePrepay: boolean
@@ -66,9 +75,10 @@ export interface ISettingsDocument extends Document {
   lockoutRequireApprovalAuto: boolean   // auto (paid full balance)
   lockoutRequireApprovalManual: boolean // manual (manager removed)
 
-  // ── Custom fees ──────────────────────────────────────────────────────────
+  // ── Fees (all stored here — including system fees flagged with `code`) ───
   customFees: Array<{
     id: string
+    code?: string  // 'late' | 'nsf' | 'auction' for system-managed fees
     name: string
     amount: number // cents
     description: string
@@ -173,7 +183,7 @@ const SettingsSchema = new Schema<ISettingsDocument>(
     // Proration Model
     prorationModel: {
       type: String,
-      enum: ['none', 'prorate_first_month', 'first_month_full_then_prorate', 'prorate_both'],
+      enum: ['none', 'custom', 'first_month_full_prorate_now', 'first_month_full_then_prorate', 'prorate_first_month', 'prorate_both'],
       default: 'first_month_full_then_prorate',
     },
     prorationDaysBasis: {
@@ -183,10 +193,19 @@ const SettingsSchema = new Schema<ISettingsDocument>(
     },
 
     // Fees
-    lateFeeAfterDays: { type: Number, default: 5 },
-    lateFeeAmount:    { type: Number, default: 2000 },
-    nsfFeeAmount:     { type: Number, default: 3500 },
-    auctionFeeAmount: { type: Number, default: 5000 },
+    lateFeeAfterDays:      { type: Number, default: 5 },
+    lateFeeAmount:         { type: Number, default: 2000 },
+    lateFeeName:           { type: String, default: 'Late Fee' },
+    lateFeeDescription:    { type: String, default: '' },
+    nsfFeeAmount:          { type: Number, default: 3500 },
+    nsfFeeName:            { type: String, default: 'NSF / Returned Check Fee' },
+    nsfFeeDescription:     { type: String, default: 'Non-sufficient funds or returned check' },
+    auctionFeeAmount:      { type: Number, default: 5000 },
+    auctionFeeName:        { type: String, default: 'Auction / Sale Fee' },
+    auctionFeeDescription: { type: String, default: 'Lien sale processing fee' },
+    setupFeeAmount:        { type: Number, default: 0 },
+    setupFeeName:          { type: String, default: 'Setup Fee' },
+    setupFeeDescription:   { type: String, default: '' },
 
     // Rental options
     enablePrepay:                       { type: Boolean, default: false },
@@ -217,10 +236,11 @@ const SettingsSchema = new Schema<ISettingsDocument>(
     lockoutRequireApprovalAuto:   { type: Boolean, default: false },
     lockoutRequireApprovalManual: { type: Boolean, default: false },
 
-    // Custom fees
+    // All fees (system + admin-defined) — `code` tags system-managed entries.
     customFees: {
       type: [{
         id:          { type: String, required: true },
+        code:        { type: String },
         name:        { type: String, required: true },
         amount:      { type: Number, required: true },
         description: { type: String, default: '' },

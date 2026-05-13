@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import {
-  Alert,
   Avatar,
   Box,
   Button,
@@ -11,10 +10,6 @@ import {
   CardContent,
   Chip,
   CircularProgress,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
   Divider,
   Grid,
   IconButton,
@@ -39,7 +34,16 @@ import HomeIcon from '@mui/icons-material/Home'
 import BadgeIcon from '@mui/icons-material/Badge'
 import CreditCardIcon from '@mui/icons-material/CreditCard'
 import AttachFileIcon from '@mui/icons-material/AttachFile'
+import AutorenewIcon from '@mui/icons-material/Autorenew'
+import AddCardIcon from '@mui/icons-material/AddCard'
+import LocalOfferIcon from '@mui/icons-material/LocalOffer'
+import PaymentsIcon from '@mui/icons-material/Payments'
+import AddBusinessIcon from '@mui/icons-material/AddBusiness'
+import BookmarkAddIcon from '@mui/icons-material/BookmarkAdd'
+import MarkEmailReadIcon from '@mui/icons-material/MarkEmailRead'
+import VpnKeyIcon from '@mui/icons-material/VpnKey'
 import { formatMoney, formatDate } from '@/lib/utils'
+import { useSetAdminPageTitle } from '@/lib/admin-page-title'
 import type { TenantStatus } from '@/types'
 
 // ── Status helpers ──────────────────────────────────────────────────────────
@@ -60,12 +64,36 @@ interface TenantData {
   _id: string
   firstName: string; lastName: string
   email: string; phone: string
-  alternatePhone?: string; alternateEmail?: string
+  // Primary address
   address?: string; city?: string; state?: string; zip?: string
-  driversLicense?: string; idPhotoUrl?: string
+  // Alternate contact
+  alternateContactName?: string
+  alternatePhone?: string
+  alternateEmail?: string
+  alternateAddress?: string
+  alternateCity?: string
+  alternateState?: string
+  alternateZip?: string
+  // Personal info
+  driversLicense?: string
+  driversLicenseNumber?: string
+  driversLicenseState?: string
+  ssn?: string
+  employerName?: string
+  employerPhone?: string
+  emergencyContact?: string
+  emergencyPhone?: string
+  securityQuestion?: string
+  securityAnswer?: string
+  idPhotoUrl?: string
+  // Other
+  referralSource?: string
+  howDidYouHear?: string
+  howDidYouHearOther?: string
   gateCode?: string; status: TenantStatus; role: string
   autopayEnabled: boolean; smsOptIn: boolean
   stripeCustomerId?: string; defaultPaymentMethodId?: string
+  customFields?: Record<string, string>
   createdAt: string; updatedAt: string
 }
 
@@ -110,114 +138,6 @@ function InfoRow({ label, value, icon, href }: {
   )
 }
 
-// ── Edit Profile Dialog ─────────────────────────────────────────────────────
-
-function EditProfileDialog({ open, onClose, tenant, onSaved }: {
-  open: boolean; onClose: () => void; tenant: TenantData; onSaved: () => void
-}) {
-  const [form, setForm] = useState({
-    firstName: tenant.firstName,
-    lastName: tenant.lastName,
-    email: tenant.email,
-    phone: tenant.phone,
-    alternatePhone: tenant.alternatePhone ?? '',
-    alternateEmail: tenant.alternateEmail ?? '',
-    address: tenant.address ?? '',
-    city: tenant.city ?? '',
-    state: tenant.state ?? '',
-    zip: tenant.zip ?? '',
-    driversLicense: tenant.driversLicense ?? '',
-  })
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    setForm({
-      firstName: tenant.firstName,
-      lastName: tenant.lastName,
-      email: tenant.email,
-      phone: tenant.phone,
-      alternatePhone: tenant.alternatePhone ?? '',
-      alternateEmail: tenant.alternateEmail ?? '',
-      address: tenant.address ?? '',
-      city: tenant.city ?? '',
-      state: tenant.state ?? '',
-      zip: tenant.zip ?? '',
-      driversLicense: tenant.driversLicense ?? '',
-    })
-  }, [tenant])
-
-  const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement>) =>
-    setForm((f) => ({ ...f, [k]: e.target.value }))
-
-  async function handleSave() {
-    setSaving(true); setError(null)
-    try {
-      const res = await fetch(`/api/tenants/${tenant._id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
-      })
-      const json = await res.json()
-      if (!res.ok || !json.success) throw new Error(json.error ?? 'Failed to update')
-      onSaved()
-      onClose()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong')
-    } finally { setSaving(false) }
-  }
-
-  return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle sx={{ fontWeight: 600 }}>Edit Profile</DialogTitle>
-      <DialogContent>
-        {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-        <Grid container spacing={2} sx={{ mt: 0 }}>
-          <Grid item xs={6}>
-            <TextField label="First Name" fullWidth size="small" value={form.firstName} onChange={set('firstName')} />
-          </Grid>
-          <Grid item xs={6}>
-            <TextField label="Last Name" fullWidth size="small" value={form.lastName} onChange={set('lastName')} />
-          </Grid>
-          <Grid item xs={12}>
-            <TextField label="Email" fullWidth size="small" value={form.email} onChange={set('email')} />
-          </Grid>
-          <Grid item xs={6}>
-            <TextField label="Phone" fullWidth size="small" value={form.phone} onChange={set('phone')} />
-          </Grid>
-          <Grid item xs={6}>
-            <TextField label="Alt Phone" fullWidth size="small" value={form.alternatePhone} onChange={set('alternatePhone')} />
-          </Grid>
-          <Grid item xs={12}>
-            <TextField label="Alt Email" fullWidth size="small" value={form.alternateEmail} onChange={set('alternateEmail')} />
-          </Grid>
-          <Grid item xs={12}>
-            <TextField label="Address" fullWidth size="small" value={form.address} onChange={set('address')} />
-          </Grid>
-          <Grid item xs={5}>
-            <TextField label="City" fullWidth size="small" value={form.city} onChange={set('city')} />
-          </Grid>
-          <Grid item xs={3}>
-            <TextField label="State" fullWidth size="small" value={form.state} onChange={set('state')} />
-          </Grid>
-          <Grid item xs={4}>
-            <TextField label="ZIP" fullWidth size="small" value={form.zip} onChange={set('zip')} />
-          </Grid>
-          <Grid item xs={12}>
-            <TextField label="Driver's License #" fullWidth size="small" value={form.driversLicense} onChange={set('driversLicense')} />
-          </Grid>
-        </Grid>
-      </DialogContent>
-      <DialogActions sx={{ px: 3, pb: 2 }}>
-        <Button onClick={onClose} sx={{ color: 'text.secondary' }}>Cancel</Button>
-        <Button variant="contained" onClick={handleSave} disabled={saving} disableElevation>
-          {saving ? 'Saving...' : 'Save Changes'}
-        </Button>
-      </DialogActions>
-    </Dialog>
-  )
-}
-
 // ── Main Page ───────────────────────────────────────────────────────────────
 
 export default function TenantDetailPage() {
@@ -232,9 +152,12 @@ export default function TenantDetailPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [balance, setBalance] = useState<number>(0)
-  const [editOpen, setEditOpen] = useState(false)
   const [noteText, setNoteText] = useState('')
   const [noteSaving, setNoteSaving] = useState(false)
+  const [showExtended, setShowExtended] = useState(false)
+
+  // Publish title for breadcrumb (shows the customer name instead of the raw ID)
+  useSetAdminPageTitle(tenant ? `${tenant.firstName} ${tenant.lastName}` : null)
 
   const loadData = useCallback(async () => {
     try {
@@ -308,8 +231,8 @@ export default function TenantDetailPage() {
   return (
     <Box>
       {/* Header */}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
-        <IconButton aria-label="Back to tenants list" onClick={() => router.push('/admin/tenants')}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+        <IconButton aria-label="Back to customers list" onClick={() => router.push('/admin/tenants')}>
           <ArrowBackIcon />
         </IconButton>
         <Box sx={{ flex: 1 }}>
@@ -321,20 +244,42 @@ export default function TenantDetailPage() {
             {activeUnit !== '—' && <Typography variant="body2" sx={{ color: 'text.secondary' }}>Unit {activeUnit}</Typography>}
           </Box>
         </Box>
-        <Box sx={{ display: 'flex', gap: 1 }}>
-          <Button variant="outlined" size="small" startIcon={<EditIcon />} onClick={() => setEditOpen(true)}>
-            Edit Profile
+      </Box>
+
+      {/* Action buttons row — matches live admin */}
+      <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 3 }}>
+        {[
+          { label: 'Recurring Billing',  icon: <AutorenewIcon fontSize="small" />,     onClick: () => router.push(`/admin/tenants/${tenantId}/recurring-billing`) },
+          { label: 'Add Credit',          icon: <AddCardIcon fontSize="small" />,        onClick: () => router.push(`/admin/tenants/${tenantId}/add-credit`) },
+          { label: 'Fees/Products',       icon: <LocalOfferIcon fontSize="small" />,     onClick: () => router.push(`/admin/tenants/${tenantId}/fees-products`) },
+          { label: 'Make a Payment',      icon: <PaymentsIcon fontSize="small" />,       onClick: () => router.push(`/admin/tenants/${tenantId}/make-payment`) },
+          { label: 'Edit Profile',        icon: <EditIcon fontSize="small" />,           onClick: () => router.push(`/admin/tenants/${tenantId}/edit`) },
+          { label: 'Rent Unit',           icon: <AddBusinessIcon fontSize="small" />,    onClick: () => router.push(`/admin/tenants/${tenantId}/rent-unit`) },
+          { label: 'Reserve Unit',        icon: <BookmarkAddIcon fontSize="small" />,    onClick: () => router.push(`/admin/tenants/${tenantId}/reserve-unit`) },
+          { label: 'Letters',             icon: <MarkEmailReadIcon fontSize="small" />,  onClick: () => router.push(`/admin/communications?tenantId=${tenantId}`) },
+          { label: 'Gate Access',         icon: <VpnKeyIcon fontSize="small" />,         onClick: handleStatusToggle },
+        ].map((b) => (
+          <Button
+            key={b.label}
+            variant="contained"
+            size="small"
+            startIcon={b.icon}
+            onClick={b.onClick}
+            disableElevation
+            sx={{
+              bgcolor: '#8CA87C',
+              color: 'white',
+              fontWeight: 600,
+              textTransform: 'none',
+              fontSize: '0.78rem',
+              px: 1.75,
+              py: 0.75,
+              '&:hover': { bgcolor: '#7E9770' },
+            }}
+          >
+            {b.label}
           </Button>
-          <Tooltip title={tenant.status === 'locked_out' ? 'Unlock Tenant' : 'Lock Out Tenant'}>
-            <Button
-              variant="outlined" size="small" color={tenant.status === 'locked_out' ? 'success' : 'error'}
-              startIcon={tenant.status === 'locked_out' ? <LockOpenIcon /> : <LockIcon />}
-              onClick={handleStatusToggle}
-            >
-              {tenant.status === 'locked_out' ? 'Unlock' : 'Lock Out'}
-            </Button>
-          </Tooltip>
-        </Box>
+        ))}
       </Box>
 
       <Grid container spacing={3}>
@@ -398,33 +343,150 @@ export default function TenantDetailPage() {
           {/* Customer Information */}
           <Card sx={{ mb: 2 }}>
             <CardContent>
-              <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 2 }}>
                 Customer Information
               </Typography>
 
               <Grid container spacing={3}>
                 <Grid item xs={12} sm={6}>
-                  <Typography variant="overline" sx={{ color: 'text.secondary', fontSize: '0.65rem' }}>Contact</Typography>
-                  <InfoRow label="Name" value={fullName} icon={<BadgeIcon fontSize="small" />} />
-                  <InfoRow label="Email" value={tenant.email} icon={<MailOutlineIcon fontSize="small" />} href={`mailto:${tenant.email}`} />
-                  <InfoRow label="Phone" value={tenant.phone} icon={<PhoneIcon fontSize="small" />} href={`tel:${tenant.phone}`} />
-                  {tenant.alternatePhone && <InfoRow label="Alt Phone" value={tenant.alternatePhone} icon={<PhoneIcon fontSize="small" />} />}
-                  {tenant.alternateEmail && <InfoRow label="Alt Email" value={tenant.alternateEmail} icon={<MailOutlineIcon fontSize="small" />} />}
-                  <InfoRow label="Address" value={fullAddress || '—'} icon={<HomeIcon fontSize="small" />} />
+                  <Typography variant="overline" sx={{ color: 'text.secondary', fontSize: '0.7rem', fontWeight: 700 }}>
+                    Contact
+                  </Typography>
+                  <InfoRow label="Name" value={fullName} />
+                  <InfoRow
+                    label="Email"
+                    value={tenant.email}
+                    href={`mailto:${tenant.email}`}
+                  />
+                  <InfoRow label="Phone" value={tenant.alternatePhone || '—'} />
+                  <InfoRow
+                    label="Cell Phone"
+                    value={tenant.phone || '—'}
+                    href={tenant.phone ? `tel:${tenant.phone}` : undefined}
+                  />
+                  <InfoRow label="Address" value={fullAddress || '—'} />
                 </Grid>
+
                 <Grid item xs={12} sm={6}>
-                  <Typography variant="overline" sx={{ color: 'text.secondary', fontSize: '0.65rem' }}>Account & Access</Typography>
-                  <InfoRow label="Login" value="Enabled" />
-                  <InfoRow label="Access Code" value={tenant.gateCode ?? 'None'} />
-                  <InfoRow label="Driver's License" value={tenant.driversLicense ?? '—'} />
-                  <InfoRow label="SMS Opt-In" value={tenant.smsOptIn ? 'Yes' : 'No'} />
-                  <InfoRow label="Payment Method" value={tenant.defaultPaymentMethodId ? 'Card on file' : 'None'}
-                    icon={<CreditCardIcon fontSize="small" />} />
+                  <Typography variant="overline" sx={{ color: 'text.secondary', fontSize: '0.7rem', fontWeight: 700 }}>
+                    Account &amp; Access
+                  </Typography>
+                  <InfoRow label="Login" value={tenant.status === 'locked_out' ? 'Disabled' : 'Enabled'} />
+                  <InfoRow label="Username" value={tenant.email} />
+                  <InfoRow label="Security question" value={tenant.securityQuestion || '—'} />
+                  <InfoRow label="Security answer" value={tenant.securityAnswer ? '••••••••' : '—'} />
+                  <InfoRow label="Access Code" value={tenant.gateCode || 'None'} />
                 </Grid>
               </Grid>
 
+              {/* Show Extended Information toggle */}
+              <Box sx={{ textAlign: 'center', mt: 2 }}>
+                <Button
+                  variant="text"
+                  size="small"
+                  onClick={() => setShowExtended((v) => !v)}
+                  sx={{ color: '#1d4ed8', textTransform: 'none', fontWeight: 500 }}
+                >
+                  {showExtended ? 'Hide Extended Information −' : 'Show Extended Information +'}
+                </Button>
+              </Box>
+
+              {showExtended && (
+                <>
+                  <Divider sx={{ my: 2 }} />
+                  <Grid container spacing={3}>
+                    <Grid item xs={12} sm={6}>
+                      <Typography
+                        variant="subtitle1"
+                        sx={{ fontWeight: 700, mb: 1, color: 'text.primary' }}
+                      >
+                        Alternate Contact Information
+                      </Typography>
+                      <InfoRow label="Contact" value={tenant.alternateContactName || '—'} />
+                      <InfoRow label="Address" value={tenant.alternateAddress || '—'} />
+                      <InfoRow label="City" value={tenant.alternateCity || '—'} />
+                      <InfoRow label="State/Province" value={tenant.alternateState || '—'} />
+                      <InfoRow label="Zip/Postal Code" value={tenant.alternateZip || '—'} />
+                      <InfoRow
+                        label="Phone Number"
+                        value={tenant.alternatePhone || '—'}
+                        href={tenant.alternatePhone ? `tel:${tenant.alternatePhone}` : undefined}
+                      />
+                      <InfoRow
+                        label="Email"
+                        value={tenant.alternateEmail || '—'}
+                        href={tenant.alternateEmail ? `mailto:${tenant.alternateEmail}` : undefined}
+                      />
+                    </Grid>
+
+                    <Grid item xs={12} sm={6}>
+                      <Typography
+                        variant="subtitle1"
+                        sx={{ fontWeight: 700, mb: 1, color: 'text.primary' }}
+                      >
+                        Personal Information
+                      </Typography>
+                      <InfoRow
+                        label="Drivers license number"
+                        value={tenant.driversLicenseNumber || tenant.driversLicense || '—'}
+                      />
+                      <InfoRow
+                        label="Drivers license state"
+                        value={tenant.driversLicenseState || '—'}
+                      />
+                      <InfoRow label="Social security number" value={tenant.ssn || '—'} />
+                      <InfoRow
+                        label="Employer"
+                        value={tenant.employerName || '—'}
+                      />
+                      <InfoRow
+                        label="Emergency"
+                        value={tenant.emergencyContact || '—'}
+                      />
+                      <InfoRow label="Source" value={tenant.referralSource || 'Website'} />
+                    </Grid>
+                  </Grid>
+
+                  {/* Additional Information — full width sub-section */}
+                  <Typography
+                    variant="subtitle1"
+                    sx={{ fontWeight: 700, mt: 3, mb: 1, color: 'text.primary' }}
+                  >
+                    Additional Information
+                  </Typography>
+                  <InfoRow
+                    label="How did you hear about us?"
+                    value={tenant.howDidYouHear || tenant.howDidYouHearOther || '—'}
+                  />
+                </>
+              )}
+
+              <Divider sx={{ my: 2 }} />
+              <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
+                <Button
+                  variant="contained"
+                  size="small"
+                  startIcon={<EditIcon />}
+                  onClick={() => router.push(`/admin/tenants/${tenantId}/edit`)}
+                  disableElevation
+                  sx={{ bgcolor: '#8CA87C', '&:hover': { bgcolor: '#7E9770' }, textTransform: 'none' }}
+                >
+                  Edit Profile
+                </Button>
+                <Button
+                  variant="contained"
+                  size="small"
+                  startIcon={<MarkEmailReadIcon />}
+                  onClick={() => router.push(`/admin/tenants/${tenantId}?tab=notifications`)}
+                  disableElevation
+                  sx={{ bgcolor: '#8CA87C', '&:hover': { bgcolor: '#7E9770' }, textTransform: 'none' }}
+                >
+                  Notification Preferences
+                </Button>
+              </Box>
+
               <Typography variant="caption" sx={{ display: 'block', textAlign: 'center', color: 'text.secondary', mt: 2 }}>
-                Created {formatDate(tenant.createdAt)}
+                Created {formatDate(tenant.createdAt)} by {fullName}
               </Typography>
             </CardContent>
           </Card>
@@ -572,13 +634,6 @@ export default function TenantDetailPage() {
         </Grid>
       </Grid>
 
-      {/* Edit dialog */}
-      <EditProfileDialog
-        open={editOpen}
-        onClose={() => setEditOpen(false)}
-        tenant={tenant}
-        onSaved={loadData}
-      />
     </Box>
   )
 }

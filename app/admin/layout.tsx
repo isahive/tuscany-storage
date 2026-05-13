@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { SessionProvider, useSession, signOut } from 'next-auth/react'
 import { ThemeProvider } from '@mui/material/styles'
 import CssBaseline from '@mui/material/CssBaseline'
@@ -42,6 +42,7 @@ import LogoutIcon from '@mui/icons-material/Logout'
 import NavigateNextIcon from '@mui/icons-material/NavigateNext'
 import { usePathname, useRouter } from 'next/navigation'
 import { theme } from '@/lib/theme'
+import { AdminPageTitleProvider, useAdminPageTitle } from '@/lib/admin-page-title'
 
 const DRAWER_WIDTH = 280
 
@@ -61,22 +62,74 @@ const NAV_ITEMS = [
   { label: 'Setup',           href: '/admin/settings',          icon: <SettingsIcon /> },
 ]
 
+const OBJECT_ID_RE = /^[a-f0-9]{24}$/i
+
 function buildBreadcrumbs(pathname: string) {
   const segments = pathname.split('/').filter(Boolean)
-  const crumbs: { label: string; href: string }[] = []
+  const crumbs: { label: string; href: string; isId?: boolean; collection?: string }[] = []
   let acc = ''
-  for (const seg of segments) {
+  for (let i = 0; i < segments.length; i++) {
+    const seg = segments[i]
     acc += `/${seg}`
     const nav = NAV_ITEMS.find((n) => n.href === acc)
     if (nav) {
       crumbs.push({ label: nav.label, href: acc })
+    } else if (OBJECT_ID_RE.test(seg)) {
+      // Mongo ObjectId — caller will resolve to a human label
+      crumbs.push({ label: seg, href: acc, isId: true, collection: segments[i - 1] })
     } else {
-      // dynamic segment — capitalise and strip brackets
       const label = seg.startsWith('[') ? 'Detail' : seg.charAt(0).toUpperCase() + seg.slice(1)
       crumbs.push({ label, href: acc })
     }
   }
   return crumbs
+}
+
+/**
+ * Looks up human-readable labels for ObjectId segments in the breadcrumb chain
+ * (e.g. /admin/tenants/{id}/edit → Customers / Silvio Lorenzana / Edit Profile).
+ * Results are cached in memory for the session.
+ */
+const idLabelCache = new Map<string, string>()
+
+function useResolvedIdLabels(crumbs: ReturnType<typeof buildBreadcrumbs>) {
+  const [labels, setLabels] = useState<Record<string, string>>({})
+  const idCrumbs = crumbs.filter((c) => c.isId)
+  const key = idCrumbs.map((c) => `${c.collection}:${c.label}`).join('|')
+
+  useEffect(() => {
+    if (idCrumbs.length === 0) return
+    let cancelled = false
+    Promise.all(
+      idCrumbs.map(async (c) => {
+        const cacheKey = `${c.collection}:${c.label}`
+        if (idLabelCache.has(cacheKey)) {
+          return [cacheKey, idLabelCache.get(cacheKey)!] as const
+        }
+        if (c.collection === 'tenants') {
+          try {
+            const res = await fetch(`/api/tenants/${c.label}`)
+            const json = await res.json()
+            if (json.success) {
+              const name = `${json.data.firstName ?? ''} ${json.data.lastName ?? ''}`.trim() || c.label
+              idLabelCache.set(cacheKey, name)
+              return [cacheKey, name] as const
+            }
+          } catch {}
+        }
+        return [cacheKey, c.label] as const
+      }),
+    ).then((entries) => {
+      if (cancelled) return
+      const next: Record<string, string> = {}
+      for (const [k, v] of entries) next[k] = v
+      setLabels(next)
+    })
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key])
+
+  return labels
 }
 
 function DrawerContent() {
@@ -188,7 +241,21 @@ function AdminShell({ children }: { children: React.ReactNode }) {
     .toUpperCase()
     .slice(0, 2)
 
+  const pageTitle = useAdminPageTitle()
   const breadcrumbs = buildBreadcrumbs(pathname)
+  const idLabels = useResolvedIdLabels(breadcrumbs)
+  for (const crumb of breadcrumbs) {
+    if (crumb.isId) {
+      const resolved = idLabels[`${crumb.collection}:${crumb.label}`]
+      if (resolved) crumb.label = resolved
+    }
+  }
+  if (pageTitle && breadcrumbs.length > 0) {
+    breadcrumbs[breadcrumbs.length - 1] = {
+      ...breadcrumbs[breadcrumbs.length - 1],
+      label: pageTitle,
+    }
+  }
 
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: 'background.default' }}>
@@ -338,7 +405,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     <SessionProvider>
       <ThemeProvider theme={theme}>
         <CssBaseline />
-        <AdminShell>{children}</AdminShell>
+        <AdminPageTitleProvider>
+          <AdminShell>{children}</AdminShell>
+        </AdminPageTitleProvider>
       </ThemeProvider>
     </SessionProvider>
   )

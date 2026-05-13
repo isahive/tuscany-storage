@@ -3,7 +3,6 @@ import { getServerSession } from 'next-auth'
 import { z } from 'zod'
 import { authOptions } from '@/lib/auth'
 import { connectDB } from '@/lib/db'
-import { parsePaginationParams } from '@/lib/utils'
 import Unit from '@/models/Unit'
 import '@/models/Lease'
 import '@/models/Tenant'
@@ -13,7 +12,8 @@ export async function GET(req: NextRequest) {
     await connectDB()
 
     const { searchParams } = req.nextUrl
-    const { page, limit, skip } = parsePaginationParams(searchParams)
+    const rawLimit = searchParams.get('limit') || '20'
+    const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10))
     const status = searchParams.get('status')
     const type = searchParams.get('type')
     const size = searchParams.get('size')
@@ -33,10 +33,18 @@ export async function GET(req: NextRequest) {
       filter.price = priceFilter
     }
 
-    const [items, total] = await Promise.all([
-      Unit.find(filter).skip(skip).limit(limit).sort({ unitNumber: 1 }),
-      Unit.countDocuments(filter),
-    ])
+    const total = await Unit.countDocuments(filter)
+    const parsedLimit = parseInt(rawLimit, 10)
+    const limit =
+      rawLimit === 'all' || isNaN(parsedLimit) || parsedLimit < 1
+        ? total
+        : Math.min(parsedLimit, total)
+    const skip = (page - 1) * limit
+
+    const items = await Unit.find(filter)
+      .skip(skip)
+      .limit(limit)
+      .sort({ unitNumber: 1 })
 
     return NextResponse.json({
       success: true,

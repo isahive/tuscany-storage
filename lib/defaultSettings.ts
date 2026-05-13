@@ -27,11 +27,16 @@ export const DEFAULT_SETTINGS = {
   // Proration
   prorationModel: 'first_month_full_then_prorate' as const,
   prorationDaysBasis: 'actual_days_in_month' as const,
-  // Fees
+  // Deprecated — kept only so the cron/lien-escalation code that hasn't been
+  // refactored yet can still read default amounts. The source of truth for
+  // every fee (including system fees) is `customFees` below.
   lateFeeAfterDays: 5,
   lateFeeAmount: 2000,
   nsfFeeAmount: 3500,
   auctionFeeAmount: 5000,
+  setupFeeAmount: 0,
+  setupFeeName: 'Setup Fee',
+  setupFeeDescription: '',
   // Rental options
   enablePrepay: false,
   disablePartialPaymentsForLockedOut: false,
@@ -54,7 +59,15 @@ export const DEFAULT_SETTINGS = {
   lockoutRequireApprovalAuto: false,
   lockoutRequireApprovalManual: false,
   // Custom fees
-  customFees: [] as Array<{ id: string; name: string; amount: number; description: string; active: boolean }>,
+  // Source of truth for ALL fees the system knows about — built-in and admin-defined.
+  // `code` (optional) tags a row as a system-managed fee so the cron / lien-escalation
+  // logic can find it by intent ('late', 'nsf', 'auction'). When `code` is absent the
+  // fee is purely user-defined.
+  customFees: [
+    { id: 'fee_late',    code: 'late',    name: 'Late Fee',               amount: 2000, description: '', active: true },
+    { id: 'fee_nsf',     code: 'nsf',     name: 'NSF / Returned Check',   amount: 3500, description: 'Non-sufficient funds or returned check', active: true },
+    { id: 'fee_auction', code: 'auction', name: 'Auction / Sale Fee',     amount: 5000, description: 'Lien sale processing fee', active: true },
+  ] as Array<{ id: string; code?: string; name: string; amount: number; description: string; active: boolean }>,
   // Late / Lien escalation
   lateLienEvents: [
     { id: 'evt_late_1',    status: 'late'       as const, daysPastDue: 1,  notifyEmail: false, notifyText: false, notifyLetter: false, notificationTemplate: '',                                                                                          fees: [],                                                              actions: [] },

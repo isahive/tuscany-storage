@@ -4,7 +4,6 @@ import { z } from 'zod'
 import bcrypt from 'bcryptjs'
 import { authOptions } from '@/lib/auth'
 import { connectDB } from '@/lib/db'
-import { parsePaginationParams } from '@/lib/utils'
 import Tenant from '@/models/Tenant'
 
 export async function GET(req: NextRequest) {
@@ -17,7 +16,10 @@ export async function GET(req: NextRequest) {
     await connectDB()
 
     const { searchParams } = req.nextUrl
-    const { page, limit, skip } = parsePaginationParams(searchParams)
+    // `limit=all` returns the entire collection. Numeric values are honored
+    // up to the actual collection size — no artificial cap.
+    const rawLimit = searchParams.get('limit') || '20'
+    const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10))
     const status = searchParams.get('status')
     const search = searchParams.get('search')
 
@@ -43,10 +45,21 @@ export async function GET(req: NextRequest) {
       filter._id = session.user.id
     }
 
-    const [items, total] = await Promise.all([
-      Tenant.find(filter).skip(skip).limit(limit).sort({ createdAt: -1 }),
-      Tenant.countDocuments(filter),
-    ])
+    const total = await Tenant.countDocuments(filter)
+
+    // Resolve effective limit: 'all' → entire collection, otherwise the
+    // requested value clamped to the actual collection size.
+    const parsedLimit = parseInt(rawLimit, 10)
+    const limit =
+      rawLimit === 'all' || isNaN(parsedLimit) || parsedLimit < 1
+        ? total
+        : Math.min(parsedLimit, total)
+    const skip = (page - 1) * limit
+
+    const items = await Tenant.find(filter)
+      .skip(skip)
+      .limit(limit)
+      .sort({ firstName: 1, lastName: 1 })
 
     return NextResponse.json({
       success: true,
@@ -70,17 +83,41 @@ const createTenantSchema = z.object({
   email: z.string().email(),
   phone: z.string().min(1),
   password: z.string().min(4),
-  alternatePhone: z.string().optional(),
-  alternateEmail: z.string().email().optional(),
+  // Primary address
   address: z.string().optional(),
   city: z.string().optional(),
   state: z.string().optional(),
   zip: z.string().optional(),
+  // Alternate contact
+  alternateContactName: z.string().optional(),
+  alternatePhone: z.string().optional(),
+  alternateEmail: z.string().email().optional().or(z.literal('')),
+  alternateAddress: z.string().optional(),
+  alternateCity: z.string().optional(),
+  alternateState: z.string().optional(),
+  alternateZip: z.string().optional(),
+  // Personal info
   driversLicense: z.string().optional(),
+  driversLicenseNumber: z.string().optional(),
+  driversLicenseState: z.string().optional(),
+  ssn: z.string().optional(),
+  employerName: z.string().optional(),
+  employerPhone: z.string().optional(),
+  emergencyContact: z.string().optional(),
+  emergencyPhone: z.string().optional(),
+  securityQuestion: z.string().optional(),
+  securityAnswer: z.string().optional(),
   idPhotoUrl: z.string().optional(),
+  // Auth / ops
   role: z.enum(['tenant', 'admin']).optional(),
+  gateCode: z.string().optional(),
   smsOptIn: z.boolean().optional(),
+  smsConsent: z.boolean().optional(),
   referralSource: z.string().optional(),
+  howDidYouHear: z.string().optional(),
+  howDidYouHearOther: z.string().optional(),
+  // Admin-defined custom fields (key/value bag)
+  customFields: z.record(z.string(), z.string()).optional(),
 })
 
 export async function POST(req: NextRequest) {
