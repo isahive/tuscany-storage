@@ -74,18 +74,35 @@ export const DEFAULT_TEMPLATES = [
   {
     name: 'Storage Agreement',
     type: 'default' as const,
-    emailSubject: 'Your Storage Agreement — [[facilityName]]',
-    emailContent: `<p>Dear [[tenantName]],</p>
-<p>Attached is your signed storage agreement for unit <strong>[[unitNumber]]</strong> at <strong>[[facilityName]]</strong>.</p>
-<p>Please keep this for your records. If you have any questions, contact us at [[facilityPhone]].</p>
-<p>[[facilityName]]</p>`,
-    textContent: '[[facilityName]]: Your storage agreement for unit [[unitNumber]] has been sent to [[email]]. Contact us at [[facilityPhone]] with questions.',
+    emailSubject: 'Your Storage Agreement — [[FACILITY_NAME]]',
+    emailContent: `<p>Dear [[CUSTOMER_NAME]],</p>
+<p>Attached is your signed storage agreement for unit <strong>[[UNIT_NUMBER]]</strong> at <strong>[[FACILITY_NAME]]</strong>.</p>
+<p>Please keep this for your records. If you have any questions, contact us at [[FACILITY_PHONE]].</p>
+<p>[[FACILITY_NAME]]</p>`,
+    textContent: '[[FACILITY_NAME]]: Your storage agreement for unit [[UNIT_NUMBER]] has been sent to [[CUSTOMER_EMAIL]]. Contact us at [[FACILITY_PHONE]] with questions.',
     postcardContent: '',
     emailEnabled: true,
     textEnabled: false,
     printEnabled: false,
     rule: 'manual' as const,
-    description: 'Sent with the signed storage agreement.',
+    description: 'Manual Only — Manually sent to a customer when viewing a storage agreement.',
+  },
+  {
+    name: 'Notice of Scheduled Rate Change',
+    type: 'default' as const,
+    emailSubject: 'Upcoming Rate Change — [[FACILITY_NAME]]',
+    emailContent: `<p>Dear [[CUSTOMER_NAME]],</p>
+<p>This notice is to inform you that a rental rate change has been <strong>scheduled</strong> for your unit at <strong>[[FACILITY_NAME]]</strong>.</p>
+<p>Effective <strong>[[DUE_DATE]]</strong>, the monthly rental rate for unit <strong>[[UNIT_NUMBER]]</strong> will change to <strong>[[MONTHLY_RATE]]</strong>.</p>
+<p>If you have any questions, please contact us at [[FACILITY_PHONE]].</p>
+<p>Thank you,<br/>[[FACILITY_NAME]]</p>`,
+    textContent: '[[FACILITY_NAME]]: A rate change is scheduled — unit [[UNIT_NUMBER]] new rate [[MONTHLY_RATE]] effective [[DUE_DATE]]. Call [[FACILITY_PHONE]] with questions.',
+    postcardContent: '',
+    emailEnabled: true,
+    textEnabled: true,
+    printEnabled: true,
+    rule: 'manual' as const,
+    description: 'Manual Only — Manually sent to one or more customers when scheduling rental price changes.',
   },
   {
     name: 'Move Out Receipt',

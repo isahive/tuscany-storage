@@ -240,12 +240,14 @@ function BatchCard({
   onToggle,
   onApprove,
   onReject,
+  onSendScheduledNotice,
 }: {
   batch: RateIncreaseBatch
   expanded: boolean
   onToggle: () => void
   onApprove: () => void
   onReject: () => void
+  onSendScheduledNotice: () => void
 }) {
   const sc = STATUS_CONFIG[batch.status]
   const totalCurrentRevenue = batch.units.reduce((sum, u) => sum + u.currentRate, 0)
@@ -562,6 +564,19 @@ function BatchCard({
                   }}
                 >
                   Reject Batch
+                </Button>
+                <Button
+                  variant="outlined"
+                  onClick={onSendScheduledNotice}
+                  sx={{
+                    color: '#3B82F6',
+                    borderColor: '#3B82F6',
+                    '&:hover': { borderColor: '#2563EB', bgcolor: '#EFF6FF' },
+                    textTransform: 'none',
+                    fontWeight: 600,
+                  }}
+                >
+                  Send Scheduled Notice
                 </Button>
                 <Button
                   variant="contained"
@@ -1003,6 +1018,20 @@ export default function RateManagementPage() {
             onToggle={() => toggleExpand(batch.id)}
             onApprove={() => openDialog(batch, 'approve')}
             onReject={() => openDialog(batch, 'reject')}
+            onSendScheduledNotice={async () => {
+              if (!confirm(`Send a scheduled rate change notice to ${batch.units.length} customer${batch.units.length !== 1 ? 's' : ''}?`)) return
+              const res = await fetch('/api/admin/rate-management/send-scheduled-notice', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  effectiveDate: batch.effectiveDate,
+                  units: batch.units.map((u) => ({ unitNumber: u.unitNumber, proposedRate: u.proposedRate })),
+                }),
+              })
+              const json = await res.json().catch(() => ({}))
+              if (!res.ok || !json.success) alert(json.error ?? 'Failed to send notices')
+              else alert(`Sent ${json.data?.sent ?? 0} notice${json.data?.sent === 1 ? '' : 's'}.`)
+            }}
           />
         ))}
       </Box>

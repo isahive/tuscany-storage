@@ -512,6 +512,7 @@ export default function TenantDetailPage() {
                         <TableCell>Billing Day</TableCell>
                         <TableCell>Status</TableCell>
                         <TableCell>Signed</TableCell>
+                        <TableCell align="right">Agreement</TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
@@ -530,6 +531,22 @@ export default function TenantDetailPage() {
                             </TableCell>
                             <TableCell>
                               {l.signedAt ? formatDate(l.signedAt) : <Typography variant="body2" color="warning.main">Unsigned</Typography>}
+                            </TableCell>
+                            <TableCell align="right">
+                              <Tooltip title="Email Storage Agreement to customer">
+                                <IconButton
+                                  size="small"
+                                  onClick={async () => {
+                                    if (!confirm('Email the Storage Agreement to this customer?')) return
+                                    const res = await fetch(`/api/admin/leases/${l._id}/send-agreement`, { method: 'POST' })
+                                    const json = await res.json().catch(() => ({}))
+                                    if (!res.ok || !json.success) alert(json.error ?? 'Failed to send')
+                                    else alert('Agreement sent.')
+                                  }}
+                                >
+                                  <MailOutlineIcon fontSize="small" sx={{ color: '#3B82F6' }} />
+                                </IconButton>
+                              </Tooltip>
                             </TableCell>
                           </TableRow>
                         )
