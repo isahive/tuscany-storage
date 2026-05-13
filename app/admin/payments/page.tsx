@@ -25,6 +25,7 @@ import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline'
 import HourglassEmptyIcon from '@mui/icons-material/HourglassEmpty'
 import RefreshIcon from '@mui/icons-material/Refresh'
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong'
+import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined'
 import { formatMoney, formatDate } from '@/lib/utils'
 import type { Payment, PaymentStatus, PaymentType } from '@/types'
 
@@ -372,22 +373,41 @@ export default function AdminPaymentsPage() {
     {
       field: '_id',
       headerName: 'Receipt',
-      width: 80,
+      width: 110,
       align: 'center',
       headerAlign: 'center',
       sortable: false,
       renderCell: (params: GridRenderCellParams) => {
         const row = params.row as Payment
-        return row.status === 'succeeded' ? (
-          <Tooltip title="View receipt">
-            <IconButton size="small" aria-label="View receipt" href={`/api/payments/${params.value}/receipt`} target="_blank">
-              <ReceiptLongIcon fontSize="small" sx={{ color: '#B8914A' }} />
-            </IconButton>
-          </Tooltip>
-        ) : (
-          <Typography variant="caption" sx={{ color: 'text.disabled' }}>
-            —
-          </Typography>
+        if (row.status !== 'succeeded') {
+          return <Typography variant="caption" sx={{ color: 'text.disabled' }}>—</Typography>
+        }
+        return (
+          <Box sx={{ display: 'flex', gap: 0.5 }}>
+            <Tooltip title="View receipt">
+              <IconButton size="small" aria-label="View receipt" href={`/api/payments/${params.value}/receipt`} target="_blank">
+                <ReceiptLongIcon fontSize="small" sx={{ color: '#B8914A' }} />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Email receipt to customer">
+              <IconButton
+                size="small"
+                aria-label="Send receipt"
+                onClick={async () => {
+                  if (!confirm('Email this receipt to the customer?')) return
+                  const res = await fetch(`/api/payments/${params.value}/send-receipt`, { method: 'POST' })
+                  const json = await res.json().catch(() => ({}))
+                  if (!res.ok || !json.success) {
+                    alert(json.error ?? 'Failed to send receipt')
+                  } else {
+                    alert('Receipt sent.')
+                  }
+                }}
+              >
+                <EmailOutlinedIcon fontSize="small" sx={{ color: '#3B82F6' }} />
+              </IconButton>
+            </Tooltip>
+          </Box>
         )
       },
     },

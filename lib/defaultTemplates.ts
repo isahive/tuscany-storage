@@ -281,6 +281,27 @@ export const DEFAULT_TEMPLATES = [
     description: 'Final notice — sent when an auction is scheduled for the tenant\u2019s property.',
   },
   {
+    name: 'Manually Sent Payment Receipt',
+    type: 'default' as const,
+    emailSubject: 'Payment Receipt — [[FACILITY_NAME]]',
+    emailContent: `<p>Dear [[CUSTOMER_NAME]],</p>
+<p>Per your request, here is your payment receipt:</p>
+<ul>
+<li><strong>Amount:</strong> [[PAYMENT_AMOUNT]]</li>
+<li><strong>Date:</strong> [[PAYMENT_DATE]]</li>
+<li><strong>Unit:</strong> [[UNIT_NUMBER]]</li>
+</ul>
+<p>If you have any questions, contact us at [[FACILITY_PHONE]].</p>
+<p>Thank you,<br/>[[FACILITY_NAME]]</p>`,
+    textContent: '[[FACILITY_NAME]]: Receipt — [[PAYMENT_AMOUNT]] on [[PAYMENT_DATE]] for unit [[UNIT_NUMBER]]. Questions? [[FACILITY_PHONE]]',
+    postcardContent: '',
+    emailEnabled: true,
+    textEnabled: false,
+    printEnabled: false,
+    rule: 'manual' as const,
+    description: 'Manual Only — Manually sent to a customer when viewing a previous payment receipt.',
+  },
+  {
     name: 'Automatic Payment Receipt',
     type: 'default' as const,
     emailSubject: 'Autopay Payment Processed — [[facilityName]]',
