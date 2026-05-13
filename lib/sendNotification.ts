@@ -9,41 +9,111 @@ import type { ITenantDocument } from '@/models/Tenant'
 import type { NotificationType } from '@/types'
 
 interface BuildPlaceholderArgs {
-  tenant: Pick<ITenantDocument, 'firstName' | 'lastName' | 'email' | 'phone' | 'gateCode'>
+  tenant: Pick<ITenantDocument,
+    'firstName' | 'lastName' | 'email' | 'phone' | 'gateCode'
+    | 'address' | 'city' | 'state' | 'zip'
+    | 'alternateContactName' | 'alternatePhone' | 'alternateEmail'
+    | 'alternateAddress' | 'alternateCity' | 'alternateState' | 'alternateZip'
+    | 'username'
+  > & { balance?: number }
   unitNumber?: string
+  unitSize?: string
   balance?: number
   monthlyRate?: number
+  deposit?: number
   paymentAmount?: number
   paymentDate?: Date
   dueDate?: Date
 }
 
-/** Build the placeholder dictionary for any template. */
+/**
+ * Build the placeholder dictionary for any template.
+ *
+ * The editor surfaces [[ALL_CAPS]] tokens (matches the live Storable admin) but
+ * older templates may still use [[camelCase]] keys. We populate both so neither
+ * format breaks.
+ */
 export async function buildPlaceholders(args: BuildPlaceholderArgs): Promise<Record<string, string>> {
   const settings = await getSettings()
-  const { tenant, unitNumber, balance, monthlyRate, paymentAmount, paymentDate, dueDate } = args
+  const {
+    tenant, unitNumber, unitSize, balance, monthlyRate, deposit,
+    paymentAmount, paymentDate, dueDate,
+  } = args
+
+  const money = (cents?: number) =>
+    cents !== undefined
+      ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(cents / 100)
+      : '$0.00'
   const fmtDate = (d?: Date) => (d ? d.toLocaleDateString('en-US') : '')
+
+  const fullName = `${tenant.firstName ?? ''} ${tenant.lastName ?? ''}`.trim()
+  const customerAddress = [tenant.address, tenant.city, tenant.state, tenant.zip].filter(Boolean).join(', ')
+  const alternateAddress = [tenant.alternateAddress, tenant.alternateCity, tenant.alternateState, tenant.alternateZip]
+    .filter(Boolean).join(', ')
+  const facilityAddress = [settings.facilityAddress, settings.facilityCity, settings.facilityState, settings.facilityZip]
+    .filter(Boolean).join(', ')
+  const portalUrl = process.env.NEXT_PUBLIC_APP_URL
+    ? `${process.env.NEXT_PUBLIC_APP_URL}/portal`
+    : '/portal'
+  const facilityUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
+  const today = fmtDate(new Date())
+
   return {
-    tenantName: `${tenant.firstName} ${tenant.lastName}`.trim(),
-    firstName: tenant.firstName ?? '',
-    lastName: tenant.lastName ?? '',
-    email: tenant.email ?? '',
-    phone: tenant.phone ?? '',
-    gateCode: tenant.gateCode ?? '',
-    unitNumber: unitNumber ?? '',
-    balance: balance !== undefined ? (balance / 100).toFixed(2) : '0.00',
-    monthlyRate: monthlyRate !== undefined ? (monthlyRate / 100).toFixed(2) : '0.00',
-    paymentAmount: paymentAmount !== undefined ? (paymentAmount / 100).toFixed(2) : '0.00',
-    paymentDate: fmtDate(paymentDate),
-    dueDate: fmtDate(dueDate),
-    todayDate: fmtDate(new Date()),
-    facilityName: settings.facilityName ?? 'Tuscany Village Self Storage',
-    facilityPhone: settings.facilityPhone ?? '',
-    facilityAddress: settings.facilityAddress ?? '',
-    facilityEmail: settings.facilityEmail ?? '',
-    portalUrl: process.env.NEXT_PUBLIC_APP_URL
-      ? `${process.env.NEXT_PUBLIC_APP_URL}/portal`
-      : '/portal',
+    // ── [[ALL_CAPS]] tokens — what the editor's Insert Placeholder dropdown
+    //    surfaces. These are the canonical names; keep them in sync with the
+    //    PLACEHOLDER_GROUPS list in the templates editor.
+    CUSTOMER_NAME:        fullName,
+    CUSTOMER_USERNAME:    tenant.username ?? tenant.email ?? '',
+    CUSTOMER_EMAIL:       tenant.email ?? '',
+    EMAIL_ADDRESS:        tenant.email ?? '',
+    CUSTOMER_PHONE:       tenant.phone ?? '',
+    CUSTOMER_PHONE_NUMBER: tenant.phone ?? '',
+    CUSTOMER_ADDRESS:     customerAddress,
+    CUSTOMER_ACCESS_CODE: tenant.gateCode ?? '',
+    GATE_CODE:            tenant.gateCode ?? '',
+    UNIT:                 unitNumber ?? '',
+    UNIT_NUMBER:          unitNumber ?? '',
+    UNIT_SIZE:            unitSize ?? '',
+    RENT:                 money(monthlyRate),
+    MONTHLY_RATE:         money(monthlyRate),
+    DEPOSIT:              money(deposit),
+    BALANCE:              money(balance ?? tenant.balance),
+    DUE_DATE:             fmtDate(dueDate),
+    DATE:                 today,
+    TODAY:                today,
+    PAYMENT_AMOUNT:       money(paymentAmount),
+    PAYMENT_DATE:         fmtDate(paymentDate),
+    FACILITY_NAME:        settings.facilityName ?? 'Tuscany Village Self Storage',
+    FACILITY_PHONE:       settings.facilityPhone ?? '',
+    FACILITY_EMAIL:       settings.facilityEmail ?? '',
+    FACILITY_ADDRESS:     facilityAddress,
+    FACILITY_URL:         facilityUrl,
+    PORTAL_URL:           portalUrl,
+    ALTERNATE_CONTACT:    tenant.alternateContactName ?? '',
+    ALTERNATE_PHONE_NUMBER: tenant.alternatePhone ?? '',
+    ALTERNATE_EMAIL:      tenant.alternateEmail ?? '',
+    ALTERNATE_ADDRESS:    alternateAddress,
+
+    // ── camelCase aliases — back-compat with templates seeded before the
+    //    editor switched to ALL_CAPS.
+    tenantName:      fullName,
+    firstName:       tenant.firstName ?? '',
+    lastName:        tenant.lastName ?? '',
+    email:           tenant.email ?? '',
+    phone:           tenant.phone ?? '',
+    gateCode:        tenant.gateCode ?? '',
+    unitNumber:      unitNumber ?? '',
+    balance:         balance !== undefined ? (balance / 100).toFixed(2) : '0.00',
+    monthlyRate:     monthlyRate !== undefined ? (monthlyRate / 100).toFixed(2) : '0.00',
+    paymentAmount:   paymentAmount !== undefined ? (paymentAmount / 100).toFixed(2) : '0.00',
+    paymentDate:     fmtDate(paymentDate),
+    dueDate:         fmtDate(dueDate),
+    todayDate:       today,
+    facilityName:    settings.facilityName ?? 'Tuscany Village Self Storage',
+    facilityPhone:   settings.facilityPhone ?? '',
+    facilityAddress: facilityAddress,
+    facilityEmail:   settings.facilityEmail ?? '',
+    portalUrl,
   }
 }
 

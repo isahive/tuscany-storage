@@ -4,10 +4,10 @@ import { authOptions } from '@/lib/auth'
 import { connectDB } from '@/lib/db'
 import { sendEmail } from '@/lib/email'
 import { replacePlaceholders } from '@/lib/templatePlaceholders'
+import { buildPlaceholders } from '@/lib/sendNotification'
 import Tenant from '@/models/Tenant'
 import Notification from '@/models/Notification'
 import NotificationTemplate from '@/models/NotificationTemplate'
-import Settings from '@/models/Settings'
 
 /**
  * POST /api/admin/email-batches — send email to selected tenants
@@ -58,29 +58,19 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Load facility settings for placeholders
-    const settings = await Settings.findOne({}).lean() as any
-
     // Load tenants
     const tenants = await Tenant.find({ _id: { $in: tenantIds } }).lean()
 
     const results: Array<{ tenantId: string; email: string; status: string; error?: string }> = []
 
     for (const tenant of tenants as any[]) {
-      const placeholderData: Record<string, string> = {
-        tenantName: `${tenant.firstName} ${tenant.lastName}`,
-        firstName: tenant.firstName,
-        lastName: tenant.lastName,
-        email: tenant.email,
-        phone: tenant.phone || '',
-        balance: ((tenant.balance || 0) / 100).toFixed(2),
-        facilityName: settings?.facilityName || 'Tuscany Village Self Storage',
-        facilityPhone: settings?.facilityPhone || '',
-        facilityAddress: settings?.facilityAddress || '',
-        facilityEmail: settings?.facilityEmail || '',
-        todayDate: new Date().toLocaleDateString('en-US'),
-        gateCode: tenant.gateCode || '',
-      }
+      // Bulk emails have no specific unit context — unit-scoped tokens resolve to
+      // empty string. buildPlaceholders surfaces both [[ALL_CAPS]] (matches the
+      // template editor) and [[camelCase]] (legacy) keys.
+      const placeholderData = await buildPlaceholders({
+        tenant,
+        balance: tenant.balance,
+      })
 
       const finalSubject = replacePlaceholders(emailSubject, placeholderData)
       const finalHtml = replacePlaceholders(emailHtml, placeholderData)

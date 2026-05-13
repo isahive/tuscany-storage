@@ -5,6 +5,7 @@ import Tenant from '@/models/Tenant'
 import Unit from '@/models/Unit'
 import Settings from '@/models/Settings'
 import { DEFAULT_SETTINGS } from '@/lib/defaultSettings'
+import { buildPlaceholders } from '@/lib/sendNotification'
 
 // Minimal TipTap JSON → HTML converter (no external deps)
 function nodeToHtml(node: any): string {
@@ -84,36 +85,26 @@ export async function GET(_req: NextRequest, context: RouteContext) {
       return NextResponse.json({ success: false, error: 'No agreement template has been configured.' }, { status: 404 })
     }
 
-    const fmt = (c: number) =>
-      new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(c / 100)
-
-    const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
-    const fullAddress = [tenant?.address, tenant?.city, tenant?.state, tenant?.zip].filter(Boolean).join(', ')
-
-    const tokens: Record<string, string> = {
-      '[[CUSTOMER_NAME]]': tenant ? `${tenant.firstName} ${tenant.lastName}` : '',
-      '[[CUSTOMER_ADDRESS]]': fullAddress,
-      '[[CUSTOMER_PHONE_NUMBER]]': tenant?.phone ?? '',
-      '[[EMAIL_ADDRESS]]': tenant?.email ?? '',
-      '[[CUSTOMER_USERNAME]]': tenant?.email ?? '',
-      '[[UNIT]]': unit?.unitNumber ?? '',
-      '[[UNIT_SIZE]]': unit?.size ?? '',
-      '[[RENT]]': fmt(unit?.price ?? 0),
-      '[[DEPOSIT]]': fmt(unit?.price ?? 0),
-      '[[CUSTOMER_ACCESS_CODE]]': tenant?.gateCode ?? '',
-      '[[DATE]]': today,
-      '[[TODAY]]': today,
-      '[[BALANCE]]': fmt(unit?.price ?? 0),
-      '[[FACILITY_NAME]]': 'Tuscany Village Self Storage',
-      '[[ALTERNATE_CONTACT]]': tenant ? `${tenant.firstName} ${tenant.lastName}` : '',
-      '[[ALTERNATE_ADDRESS]]': fullAddress,
-      '[[ALTERNATE_PHONE_NUMBER]]': tenant?.alternatePhone ?? '',
-      '[[ALTERNATE_EMAIL]]': tenant?.alternateEmail ?? '',
-    }
+    // Use the unified placeholder builder so the agreement matches what every
+    // template (email, sms, letters) substitutes — same token names, same
+    // resolution against tenant/unit/settings.
+    const placeholders = tenant
+      ? await buildPlaceholders({
+          tenant: tenant as any,
+          unitNumber: unit?.unitNumber,
+          unitSize: unit?.size,
+          monthlyRate: lease.monthlyRate,
+          deposit: lease.deposit,
+          balance: (tenant as any).balance,
+        })
+      : {}
 
     let html = nodeToHtml(effectiveTemplate)
-    for (const [token, value] of Object.entries(tokens)) {
-      html = html.replaceAll(token, `<span class="token-value">${value}</span>`)
+    for (const [key, value] of Object.entries(placeholders)) {
+      // Only wrap the ALL_CAPS variants so the agreement keeps its highlight
+      // styling — camelCase aliases substitute silently for legacy templates.
+      const wrapped = /^[A-Z_]+$/.test(key) ? `<span class="token-value">${value}</span>` : value
+      html = html.replaceAll(`[[${key}]]`, wrapped)
     }
 
     return NextResponse.json({
