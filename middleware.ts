@@ -14,6 +14,12 @@ export default withAuth(
       return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 })
     }
 
+    // Admins hitting tenant portal get bounced to the admin panel — they're
+    // not tenants and the portal would render a stub "Tenant" view.
+    if (pathname.startsWith('/portal') && role === 'admin') {
+      return NextResponse.redirect(new URL('/admin', req.url))
+    }
+
     return NextResponse.next()
   },
   {
