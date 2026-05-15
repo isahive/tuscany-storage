@@ -5,6 +5,7 @@ import { authOptions } from '@/lib/auth'
 import { connectDB } from '@/lib/db'
 import Tenant from '@/models/Tenant'
 import Payment from '@/models/Payment'
+import { nextBalanceAfter } from '@/lib/paymentBalance'
 
 interface RouteContext {
   params: Promise<{ id: string }>
@@ -46,12 +47,20 @@ export async function POST(req: NextRequest, context: RouteContext) {
 
     const { amount, description } = parsed.data
 
+    const balanceAfter = await nextBalanceAfter(Payment, tenant._id, {
+      direction: 'payment',
+      status: 'succeeded',
+      amount,
+    })
+
     const credit = await Payment.create({
       tenantId: tenant._id,
       amount,
       currency: 'usd',
       type: 'credit',
       status: 'succeeded',
+      direction: 'payment',
+      balanceAfter,
       attemptCount: 1,
       lastAttemptAt: new Date(),
       description: description ?? '',

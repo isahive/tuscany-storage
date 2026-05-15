@@ -6,6 +6,8 @@ import { connectDB } from '@/lib/db'
 import MoveOutRequest from '@/models/MoveOutRequest'
 import Lease from '@/models/Lease'
 import Unit from '@/models/Unit'
+import Tenant from '@/models/Tenant'
+import { sendTemplatedNotification } from '@/lib/sendNotification'
 
 interface RouteContext {
   params: Promise<{ id: string }>
@@ -72,6 +74,24 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
       await Unit.findByIdAndUpdate(moveOutRequest.unitId, {
         status: 'reserved',
       })
+
+      // Auto-send "Scheduled Move Out" — fires only when the requested date
+      // is in the future (Storable's contract for this template).
+      const requested = moveOutRequest.requestedMoveOutDate
+      if (requested && new Date(requested).getTime() > Date.now()) {
+        const tenant = await Tenant.findById(moveOutRequest.tenantId)
+        const unit = await Unit.findById(moveOutRequest.unitId).lean() as any
+        if (tenant) {
+          await sendTemplatedNotification({
+            templateName: 'Scheduled Move Out',
+            notificationType: 'custom',
+            tenant: tenant as any,
+            unitNumber: unit?.unitNumber,
+            unitSize: unit?.size,
+            dueDate: new Date(requested),
+          })
+        }
+      }
 
       // TODO: trigger waiting list notification flow — check if any waiting list
       // entries match this unit's size/type and notify the next eligible entry

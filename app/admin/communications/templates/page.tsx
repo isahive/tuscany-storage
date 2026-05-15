@@ -5,7 +5,6 @@ import {
   Box,
   Button,
   Chip,
-  IconButton,
   Paper,
   Table,
   TableBody,
@@ -19,8 +18,6 @@ import {
 } from '@mui/material'
 import { useRouter } from 'next/navigation'
 import AddIcon from '@mui/icons-material/Add'
-import EditIcon from '@mui/icons-material/Edit'
-import DeleteIcon from '@mui/icons-material/Delete'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import CancelIcon from '@mui/icons-material/Cancel'
 
@@ -36,17 +33,46 @@ interface Template {
   printEnabled?: boolean
 }
 
+interface LateLienEvent {
+  id: string
+  status: 'late' | 'locked_out' | 'pre_lien' | 'lien' | 'auction'
+  daysPastDue: number
+  notifyEmail: boolean
+  notifyText: boolean
+  notifyLetter: boolean
+  notificationTemplate: string
+}
+
+interface CustomTemplateRow {
+  key: string
+  template: Template
+  rule: string
+  daysPastDue: number | null
+  emailEnabled: boolean
+  textEnabled: boolean
+  printEnabled: boolean
+}
+
+const RULE_LABELS: Record<LateLienEvent['status'], string> = {
+  late: 'Late',
+  locked_out: 'Locked out',
+  pre_lien: 'Pre lien',
+  lien: 'Lien',
+  auction: 'Auction',
+}
+
 function ChannelIcon({ enabled }: { enabled: boolean }) {
   return enabled ? (
     <CheckCircleIcon sx={{ fontSize: 18, color: '#4CAF50' }} />
   ) : (
-    <CancelIcon sx={{ fontSize: 18, color: '#ccc' }} />
+    <CancelIcon sx={{ fontSize: 18, color: '#FF8A3D' }} />
   )
 }
 
 export default function TemplatesPage() {
   const router = useRouter()
   const [templates, setTemplates] = useState<Template[]>([])
+  const [lateLienEvents, setLateLienEvents] = useState<LateLienEvent[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -56,11 +82,22 @@ export default function TemplatesPage() {
 
   async function fetchTemplates() {
     try {
-      const res = await fetch('/api/admin/templates')
-      if (!res.ok) throw new Error('Failed to load templates')
-      const json = await res.json()
-      if (!json.success) throw new Error(json.error ?? 'Failed to load templates')
-      setTemplates(Array.isArray(json.data) ? json.data : [])
+      const [templatesRes, settingsRes] = await Promise.all([
+        fetch('/api/admin/templates'),
+        fetch('/api/settings'),
+      ])
+      if (!templatesRes.ok) throw new Error('Failed to load templates')
+      const templatesJson = await templatesRes.json()
+      if (!templatesJson.success) throw new Error(templatesJson.error ?? 'Failed to load templates')
+      setTemplates(Array.isArray(templatesJson.data) ? templatesJson.data : [])
+
+      if (settingsRes.ok) {
+        const settingsJson = await settingsRes.json()
+        const events = settingsJson.success && Array.isArray(settingsJson.data?.lateLienEvents)
+          ? settingsJson.data.lateLienEvents
+          : []
+        setLateLienEvents(events)
+      }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to load templates')
     } finally {
@@ -68,19 +105,35 @@ export default function TemplatesPage() {
     }
   }
 
-  async function handleDelete(id: string) {
-    if (!confirm('Are you sure you want to delete this template?')) return
-    try {
-      const res = await fetch(`/api/admin/templates/${id}`, { method: 'DELETE' })
-      if (!res.ok) throw new Error('Failed to delete template')
-      setTemplates((prev) => prev.filter((t) => t._id !== id))
-    } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : 'Delete failed')
-    }
-  }
-
   const defaultTemplates = templates.filter((t) => t.type === 'default')
   const customTemplates = templates.filter((t) => t.type === 'custom')
+  const customTemplateRows = customTemplates.map((template) => {
+    const events = lateLienEvents
+      .filter((event) => event.notificationTemplate === template.name)
+      .sort((a, b) => a.daysPastDue - b.daysPastDue)
+
+    const rows: CustomTemplateRow[] = events.length > 0
+      ? events.map((event) => ({
+          key: `${template._id}-${event.id}`,
+          template,
+          rule: RULE_LABELS[event.status],
+          daysPastDue: event.daysPastDue,
+          emailEnabled: event.notifyEmail,
+          textEnabled: event.notifyText,
+          printEnabled: event.notifyLetter,
+        }))
+      : [{
+          key: `${template._id}-manual`,
+          template,
+          rule: 'Manual only',
+          daysPastDue: null,
+          emailEnabled: false,
+          textEnabled: false,
+          printEnabled: false,
+        }]
+
+    return { template, rows }
+  })
 
   if (loading) {
     return (
@@ -197,64 +250,57 @@ export default function TemplatesPage() {
               <TableCell sx={{ fontWeight: 600, color: '#1C0F06' }} align="center">Email</TableCell>
               <TableCell sx={{ fontWeight: 600, color: '#1C0F06' }} align="center">Text</TableCell>
               <TableCell sx={{ fontWeight: 600, color: '#1C0F06' }} align="center">Print</TableCell>
-              <TableCell sx={{ fontWeight: 600, color: '#1C0F06' }} align="right">Actions</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {customTemplates.length === 0 ? (
+            {customTemplateRows.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} sx={{ textAlign: 'center', color: 'text.secondary', py: 4 }}>
+                <TableCell colSpan={6} sx={{ textAlign: 'center', color: 'text.secondary', py: 4 }}>
                   No custom templates yet. Click &quot;Create Template&quot; to add one.
                 </TableCell>
               </TableRow>
             ) : (
-              customTemplates.map((t) => (
-                <TableRow
-                  key={t._id}
-                  hover
-                  sx={{ '&:hover': { bgcolor: '#FAF7F2' } }}
-                >
-                  <TableCell sx={{ fontWeight: 500 }}>{t.name}</TableCell>
-                  <TableCell>
-                    {t.rule ? (
-                      <Chip
-                        label={t.rule}
-                        size="small"
-                        sx={{
-                          bgcolor: '#FAF7F2',
-                          color: '#B8914A',
-                          fontWeight: 600,
-                          border: '1px solid #EDE5D8',
-                        }}
-                      />
-                    ) : (
-                      '—'
+              customTemplateRows.flatMap(({ template, rows }) =>
+                rows.map((row, index) => (
+                  <TableRow
+                    key={row.key}
+                    hover
+                    sx={{ '&:hover': { bgcolor: '#FAF7F2' } }}
+                  >
+                    {index === 0 && (
+                      <TableCell rowSpan={rows.length} sx={{ fontWeight: 500, verticalAlign: 'middle' }}>
+                        {template.name}
+                      </TableCell>
                     )}
-                  </TableCell>
-                  <TableCell align="center">{t.daysPastDue ?? '—'}</TableCell>
-                  <TableCell align="center"><ChannelIcon enabled={!!t.emailEnabled} /></TableCell>
-                  <TableCell align="center"><ChannelIcon enabled={!!t.textEnabled} /></TableCell>
-                  <TableCell align="center"><ChannelIcon enabled={!!t.printEnabled} /></TableCell>
-                  <TableCell align="right">
-                    <IconButton
-                      size="small"
-                      aria-label="Edit template"
-                      onClick={() => router.push(`/admin/communications/templates/${t._id}`)}
-                      sx={{ color: '#B8914A' }}
-                    >
-                      <EditIcon fontSize="small" />
-                    </IconButton>
-                    <IconButton
-                      size="small"
-                      aria-label="Delete template"
-                      onClick={() => handleDelete(t._id)}
-                      sx={{ color: '#d32f2f', ml: 0.5 }}
-                    >
-                      <DeleteIcon fontSize="small" />
-                    </IconButton>
-                  </TableCell>
-                </TableRow>
-              ))
+                    <TableCell>
+                      {row.rule === 'Manual only' ? (
+                        <Typography variant="body2" sx={{ color: 'text.secondary' }}>Manual only</Typography>
+                      ) : (
+                        <Chip
+                          label={row.rule}
+                          size="small"
+                          onClick={() => router.push(`/admin/communications/templates/${template._id}`)}
+                          sx={{
+                            bgcolor: '#FAF7F2',
+                            color: '#B8914A',
+                            fontWeight: 600,
+                            border: '1px solid #EDE5D8',
+                            cursor: 'pointer',
+                            '&:hover': {
+                              bgcolor: '#F1EEE8',
+                              borderColor: '#D8C8A8',
+                            },
+                          }}
+                        />
+                      )}
+                    </TableCell>
+                    <TableCell align="center">{row.daysPastDue ?? '—'}</TableCell>
+                    <TableCell align="center"><ChannelIcon enabled={row.emailEnabled} /></TableCell>
+                    <TableCell align="center"><ChannelIcon enabled={row.textEnabled} /></TableCell>
+                    <TableCell align="center"><ChannelIcon enabled={row.printEnabled} /></TableCell>
+                  </TableRow>
+                )),
+              )
             )}
           </TableBody>
         </Table>

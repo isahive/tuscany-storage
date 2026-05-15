@@ -6,8 +6,6 @@ import { connectDB } from '@/lib/db'
 import MoveOutRequest from '@/models/MoveOutRequest'
 import { sendAdminNotification } from '@/lib/email'
 import Lease from '@/models/Lease'
-import Tenant from '@/models/Tenant'
-import { sendTemplatedNotification } from '@/lib/sendNotification'
 
 // ─── GET: Admin — list all move-out requests ──────────────────────────────────
 
@@ -148,17 +146,10 @@ export async function POST(req: NextRequest) {
       `
     ).catch(() => {})
 
-    // Tenant-facing confirmation — uses the editable "Move Out Request" template.
-    const fullTenant = await Tenant.findById(session.user.id)
-    if (fullTenant) {
-      await sendTemplatedNotification({
-        templateName: 'Move Out Request',
-        notificationType: 'custom',
-        tenant: fullTenant as any,
-        unitNumber: unit.unitNumber,
-        dueDate: new Date(requestedMoveOutDate),
-      })
-    }
+    // No tenant-facing email here — Storable's default templates don't include
+    // a "Move Out Request" template. The tenant receives "Scheduled Move Out"
+    // once an admin approves the request with a future date (handled in the
+    // PATCH /api/move-out/[id] route).
 
     return NextResponse.json({ success: true, data: moveOutRequest }, { status: 201 })
   } catch (error) {

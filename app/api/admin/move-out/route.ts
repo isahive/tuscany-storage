@@ -6,7 +6,7 @@ import { connectDB } from '@/lib/db'
 import Tenant from '@/models/Tenant'
 import Unit from '@/models/Unit'
 import Lease from '@/models/Lease'
-import AccessLog from '@/models/AccessLog'
+import { revokeGateAccess } from '@/lib/gateAccess'
 
 const moveOutSchema = z.object({
   leaseId: z.string().min(1),
@@ -44,20 +44,10 @@ export async function POST(req: NextRequest) {
     })
 
     // Step 3: Update tenant status
-    await Tenant.findByIdAndUpdate(lease.tenantId, {
-      status: 'moved_out',
-      $unset: { gateCode: 1 },
-    })
+    await Tenant.findByIdAndUpdate(lease.tenantId, { status: 'moved_out' })
 
-    // Step 4 & 5: Revoke gate code and create AccessLog
-    await AccessLog.create({
-      tenantId: lease.tenantId,
-      unitId: lease.unitId,
-      eventType: 'code_changed',
-      gateId: 'entrance',
-      source: 'admin',
-      notes: 'Gate code revoked during move-out',
-    })
+    // Step 4: Revoke every gate-access surface (code, cards, groups) + audit log
+    await revokeGateAccess(lease.tenantId, 'move_out', lease.unitId)
 
     // Fetch updated documents
     const [updatedLease, updatedTenant, updatedUnit] = await Promise.all([

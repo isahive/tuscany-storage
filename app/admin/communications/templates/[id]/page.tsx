@@ -344,6 +344,7 @@ interface TemplateForm {
   emailSubject: string
   emailContent: string
   textContent: string
+  postcardContent: string
   emailEnabled: boolean
   textEnabled: boolean
   printEnabled: boolean
@@ -358,6 +359,7 @@ const EMPTY_FORM: TemplateForm = {
   emailSubject: '',
   emailContent: '',
   textContent: '',
+  postcardContent: '',
   emailEnabled: true,
   textEnabled: false,
   printEnabled: false,
@@ -401,6 +403,7 @@ export default function TemplateEditorPage() {
           emailSubject: t.emailSubject || '',
           emailContent: t.emailContent || t.emailBody || '',  // back-compat with old field name
           textContent: t.textContent || t.textBody || '',
+          postcardContent: t.postcardContent || '',
           emailEnabled: t.emailEnabled ?? t.channels?.email ?? true,
           textEnabled:  t.textEnabled  ?? t.channels?.text  ?? false,
           printEnabled: t.printEnabled ?? t.channels?.print ?? false,
@@ -423,14 +426,18 @@ export default function TemplateEditorPage() {
   async function handleSave() {
     setError(null); setSaving(true)
     try {
+      if (!form.name.trim()) {
+        throw new Error('Title is required')
+      }
       const url = isNew ? '/api/admin/templates' : `/api/admin/templates/${id}`
       const method = isNew ? 'POST' : 'PUT'
       const body = {
-        name: form.name,
+        name: form.name.trim(),
         description: form.description,
         emailSubject: form.emailSubject,
         emailContent: form.emailContent,
         textContent: form.textContent,
+        postcardContent: form.postcardContent,
         emailEnabled: form.emailEnabled,
         textEnabled: form.textEnabled,
         printEnabled: form.printEnabled,
@@ -479,6 +486,29 @@ export default function TemplateEditorPage() {
       )}
 
       {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>{error}</Alert>}
+
+      {/* Template Details */}
+      <Section title="Template Details">
+        <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>Title</Typography>
+        <TextField
+          fullWidth
+          size="small"
+          value={form.name}
+          onChange={(e) => set('name', e.target.value)}
+          disabled={!isNew && form.type === 'default'}
+          sx={{ mb: 2 }}
+        />
+
+        <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>Description</Typography>
+        <TextField
+          fullWidth
+          size="small"
+          multiline
+          minRows={2}
+          value={form.description}
+          onChange={(e) => set('description', e.target.value)}
+        />
+      </Section>
 
       {/* Email Options */}
       <Section title="Email Options">
@@ -533,6 +563,30 @@ export default function TemplateEditorPage() {
         />
         <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 1 }}>
           The text won&apos;t be sent if left blank.
+        </Typography>
+      </Section>
+
+      {/* Postcard Options */}
+      <Section title="Postcard Options">
+        <FormControlLabel
+          control={
+            <Checkbox
+              checked={form.printEnabled}
+              onChange={(e) => set('printEnabled', e.target.checked)}
+              sx={{ color: '#3B82F6', '&.Mui-checked': { color: '#3B82F6' } }}
+            />
+          }
+          label="Automatic Print Enabled"
+          sx={{ mb: 2, '& .MuiTypography-root': { fontWeight: 600 } }}
+        />
+
+        <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>Postcard Content</Typography>
+        <EmailLetterEditor
+          value={form.postcardContent}
+          onChange={(html) => set('postcardContent', html)}
+        />
+        <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 1 }}>
+          The content will be truncated to fit on a standard postcard.
         </Typography>
       </Section>
 

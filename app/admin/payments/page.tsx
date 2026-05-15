@@ -36,6 +36,7 @@ const STATUS_CHIP_COLORS: Record<PaymentStatus, { bg: string; color: string }> =
   failed:    { bg: '#FEE2E2', color: '#991B1B' },
   pending:   { bg: '#FEF3C7', color: '#92400E' },
   refunded:  { bg: '#F3F4F6', color: '#374151' },
+  voided:    { bg: '#FEE2E2', color: '#991B1B' },
 }
 
 // ── Summary card component ──────────────────────────────────────────────────
@@ -165,9 +166,10 @@ function StatusChip({ status }: { status: PaymentStatus }) {
 
 const TYPE_LABELS: Record<PaymentType, string> = {
   rent: 'Rent',
-  late_fee: 'Late Fee',
+  late_fee: 'Past Due Fee',
   deposit: 'Deposit',
   prorated: 'Prorated',
+  credit: 'Credit',
   other: 'Other',
 }
 
@@ -234,6 +236,8 @@ export default function AdminPaymentsPage() {
           currency: 'usd' as const,
           type: mapApiType(row.type),
           status: mapApiStatus(row.status),
+          direction: 'payment',
+          balanceAfter: 0,
           periodStart: row.date,
           periodEnd: row.date,
           attemptCount: row.status === 'failed' ? 1 : row.status === 'completed' || row.status === 'succeeded' ? 1 : 0,

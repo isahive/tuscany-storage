@@ -16,7 +16,9 @@ export async function GET(req: NextRequest) {
     await connectDB()
 
     const { searchParams } = req.nextUrl
-    const { page, limit, skip } = parsePaginationParams(searchParams)
+    // Billing history needs the full ledger per tenant — bump the cap to 2000
+    // so the Full Billing & Payments Report doesn't truncate long histories.
+    const { page, limit, skip } = parsePaginationParams(searchParams, { maxLimit: 2000 })
     const tenantId = searchParams.get('tenantId')
     const leaseId = searchParams.get('leaseId')
     const status = searchParams.get('status')

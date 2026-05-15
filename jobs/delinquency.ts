@@ -2,19 +2,34 @@ import { connectDB } from '@/lib/db'
 import Tenant from '@/models/Tenant'
 import Lease from '@/models/Lease'
 import Payment from '@/models/Payment'
+import { nextBalanceAfter } from '@/lib/paymentBalance'
 import Notification from '@/models/Notification'
 import AccessLog from '@/models/AccessLog'
 import { getSettings } from '@/lib/getSettings'
 import { sendTemplatedNotification } from '@/lib/sendNotification'
 import type { ITenantDocument } from '@/models/Tenant'
 import type { ILeaseDocument } from '@/models/Lease'
+import type { NotificationType } from '@/types'
 
 // Fallback thresholds (used if Settings.lateLienEvents is empty)
 const DEFAULT_lateFeeCents = 2500
 const DEFAULT_LATE_DAY = 5
 const DEFAULT_LOCKOUT_DAY = 10
-const DEFAULT_PRE_LIEN_DAY = 30
 const DEFAULT_LIEN_DAY = 45
+
+type LateLienStatus = 'late' | 'locked_out' | 'pre_lien' | 'lien' | 'auction'
+
+interface LateLienEvent {
+  id: string
+  status: LateLienStatus
+  daysPastDue: number
+  notifyEmail: boolean
+  notifyText: boolean
+  notifyLetter: boolean
+  notificationTemplate: string
+  fees: Array<{ name: string; amount: number }>
+  actions: string[]
+}
 
 function daysForStatus(
   events: Array<{ status: string; daysPastDue: number }> | undefined,
@@ -23,6 +38,18 @@ function daysForStatus(
 ): number {
   const ev = events?.find((e) => e.status === status)
   return ev?.daysPastDue ?? fallback
+}
+
+function notificationTypeForStatus(status: LateLienStatus): NotificationType {
+  if (status === 'late') return 'late_notice'
+  if (status === 'locked_out') return 'lockout_notice'
+  return 'custom'
+}
+
+function eventKeyFor(leaseId: unknown, eventId: string, periodStart: Date): string {
+  const yyyy = periodStart.getFullYear()
+  const mm = String(periodStart.getMonth() + 1).padStart(2, '0')
+  return `delinquency:${String(leaseId)}:${eventId}:${yyyy}-${mm}`
 }
 
 interface DelinquencyResult {
@@ -61,10 +88,9 @@ export async function runDelinquency(): Promise<DelinquencyResult[]> {
   // Load admin-configured thresholds + fees from Settings
   const settings = await getSettings()
   const lateFeeCents = settings.lateFeeAmount ?? DEFAULT_lateFeeCents
-  const events = settings.lateLienEvents as Array<{ status: string; daysPastDue: number }> | undefined
+  const events = (settings.lateLienEvents ?? []) as LateLienEvent[]
   const lateDay = settings.lateFeeAfterDays ?? daysForStatus(events, 'late', DEFAULT_LATE_DAY)
   const lockoutDay = daysForStatus(events, 'locked_out', DEFAULT_LOCKOUT_DAY)
-  const preLienDay = daysForStatus(events, 'pre_lien', DEFAULT_PRE_LIEN_DAY)
   const lienDay = daysForStatus(events, 'lien', DEFAULT_LIEN_DAY)
   // Auction day defaults to lien + 30 if not configured
   const auctionDay = daysForStatus(events, 'auction', lienDay + 30)
@@ -103,6 +129,9 @@ export async function runDelinquency(): Promise<DelinquencyResult[]> {
       // Calculate days since billing date
       const lastBillingDate = getLastBillingDate(lease.billingDay, now)
       const daysSinceBilling = daysBetween(lastBillingDate, now)
+      const periodStart = new Date(lastBillingDate)
+      const periodEnd = new Date(lastBillingDate)
+      periodEnd.setMonth(periodEnd.getMonth() + 1)
 
       // Check if payment was made for the current billing period
       const periodCovered = lastPayment && lastPayment.periodStart >= new Date(lastBillingDate.getFullYear(), lastBillingDate.getMonth(), 1)
@@ -127,17 +156,21 @@ export async function runDelinquency(): Promise<DelinquencyResult[]> {
         continue
       }
 
+      let currentStatus = tenant.status
+
       // LATE: mark delinquent, add late fee
-      if (daysSinceBilling >= lateDay && daysSinceBilling < lockoutDay && tenant.status === 'active') {
+      if (daysSinceBilling >= lateDay && currentStatus === 'active') {
         console.log(`[Delinquency] Day ${daysSinceBilling}: Marking ${tenant.email} as delinquent`)
 
         await Tenant.findByIdAndUpdate(tenant._id, { status: 'delinquent' })
+        currentStatus = 'delinquent'
 
         // Create late fee payment record
-        const periodStart = new Date(lastBillingDate)
-        const periodEnd = new Date(lastBillingDate)
-        periodEnd.setMonth(periodEnd.getMonth() + 1)
-
+        const lateFeeBalance = await nextBalanceAfter(Payment, tenant._id, {
+          direction: 'charge',
+          status: 'pending',
+          amount: lateFeeCents,
+        })
         await Payment.create({
           tenantId: tenant._id,
           leaseId: lease._id,
@@ -147,19 +180,11 @@ export async function runDelinquency(): Promise<DelinquencyResult[]> {
           currency: 'usd',
           type: 'late_fee',
           status: 'pending',
+          direction: 'charge',
+          balanceAfter: lateFeeBalance,
           periodStart,
           periodEnd,
           attemptCount: 0,
-        })
-
-        await sendTemplatedNotification({
-          templateName: 'Late Notice',
-          notificationType: 'late_notice',
-          tenant,
-          unitNumber: undefined,
-          monthlyRate: lease.monthlyRate,
-          balance: (tenant.balance ?? 0) + lateFeeCents,
-          dueDate: lastBillingDate,
         })
 
         results.push({
@@ -170,13 +195,14 @@ export async function runDelinquency(): Promise<DelinquencyResult[]> {
       }
 
       // LOCKED OUT: revoke gate access
-      if (daysSinceBilling >= lockoutDay && daysSinceBilling < preLienDay && tenant.status === 'delinquent') {
+      if (daysSinceBilling >= lockoutDay && currentStatus !== 'locked_out') {
         console.log(`[Delinquency] Day ${daysSinceBilling}: Locking out ${tenant.email}`)
 
         await Tenant.findByIdAndUpdate(tenant._id, {
           status: 'locked_out',
           ...(gateAutoLockout ? { gateCode: null } : {}),
         })
+        currentStatus = 'locked_out'
 
         // Log access revocation
         await AccessLog.create({
@@ -188,15 +214,6 @@ export async function runDelinquency(): Promise<DelinquencyResult[]> {
           notes: `Gate access revoked due to delinquency (${daysSinceBilling} days past due)`,
         })
 
-        await sendTemplatedNotification({
-          templateName: 'Lockout Notice',
-          notificationType: 'lockout_notice',
-          tenant,
-          monthlyRate: lease.monthlyRate,
-          balance: (tenant.balance ?? 0) + lateFeeCents,
-          dueDate: lastBillingDate,
-        })
-
         results.push({
           tenantEmail: tenant.email,
           action: 'locked_out_access_revoked',
@@ -204,79 +221,17 @@ export async function runDelinquency(): Promise<DelinquencyResult[]> {
         })
       }
 
-      // Pre-lien notice
-      if (daysSinceBilling >= preLienDay && daysSinceBilling < lienDay) {
-        // Check if pre-lien notice already sent
-        const existingPreLien = await Notification.findOne({
-          tenantId: tenant._id,
-          type: 'custom',
-          subject: /pre-lien/i,
-          createdAt: { $gte: lastBillingDate },
-        })
-
-        if (!existingPreLien) {
-          await sendTemplatedNotification({
-            templateName: 'Pre-Lien Notice',
-            notificationType: 'custom',
-            tenant,
-            monthlyRate: lease.monthlyRate,
-            balance: tenant.balance ?? 0,
-          })
-
-          results.push({
-            tenantEmail: tenant.email,
-            action: 'pre_lien_notice_sent',
-            daysPastDue: daysSinceBilling,
-          })
-        }
-      }
-
-      // Lien notice
-      if (daysSinceBilling >= lienDay) {
-        const existingLien = await Notification.findOne({
-          tenantId: tenant._id,
-          type: 'custom',
-          subject: /^Lien Notice/,
-          createdAt: { $gte: lastBillingDate },
-        })
-
-        if (!existingLien) {
-          await sendTemplatedNotification({
-            templateName: 'Lien Notice',
-            notificationType: 'custom',
-            tenant,
-            monthlyRate: lease.monthlyRate,
-            balance: tenant.balance ?? 0,
-          })
-
-          results.push({
-            tenantEmail: tenant.email,
-            action: 'lien_notice_sent',
-            daysPastDue: daysSinceBilling,
-          })
-        }
-      }
-
-      // Auction scheduling — schedule auction date 14 days out when threshold hit
-      if (daysSinceBilling >= auctionDay && !lease.auctionDate) {
-        const auctionDate = new Date()
-        auctionDate.setDate(auctionDate.getDate() + 14)
+      let auctionNoticeDate = lease.auctionDate
+      if (daysSinceBilling >= auctionDay && !auctionNoticeDate) {
+        auctionNoticeDate = new Date()
+        auctionNoticeDate.setDate(auctionNoticeDate.getDate() + 14)
 
         await Lease.findByIdAndUpdate(lease._id, {
-          auctionDate,
+          auctionDate: auctionNoticeDate,
           auctionScheduledAt: new Date(),
         })
 
-        console.log(`[Delinquency] Day ${daysSinceBilling}: Auction scheduled for ${tenant.email} on ${auctionDate.toLocaleDateString()}`)
-
-        await sendTemplatedNotification({
-          templateName: 'Auction Notice',
-          notificationType: 'custom',
-          tenant,
-          monthlyRate: lease.monthlyRate,
-          balance: tenant.balance ?? 0,
-          dueDate: auctionDate,
-        })
+        console.log(`[Delinquency] Day ${daysSinceBilling}: Auction scheduled for ${tenant.email} on ${auctionNoticeDate.toLocaleDateString()}`)
 
         results.push({
           tenantEmail: tenant.email,
@@ -284,6 +239,40 @@ export async function runDelinquency(): Promise<DelinquencyResult[]> {
           daysPastDue: daysSinceBilling,
         })
       }
+
+      // Late/Lien notifications: process every configured non-manual event at
+      // its own threshold. This supports multiple rules for the same template
+      // name, e.g. Past Due Notice at Late day 5 and Locked out day 9.
+      const dueEvents = events
+        .filter((event) => event.notificationTemplate.trim())
+        .filter((event) => event.notifyEmail || event.notifyText || event.notifyLetter)
+        .filter((event) => daysSinceBilling >= event.daysPastDue)
+        .sort((a, b) => a.daysPastDue - b.daysPastDue)
+
+      for (const event of dueEvents) {
+        const eventKey = eventKeyFor(lease._id, event.id, periodStart)
+        const alreadySent = await Notification.exists({ tenantId: tenant._id, eventKey })
+        if (alreadySent) continue
+
+        const templateName = event.notificationTemplate.trim()
+        await sendTemplatedNotification({
+          templateName,
+          notificationType: notificationTypeForStatus(event.status),
+          tenant,
+          unitNumber: undefined,
+          monthlyRate: lease.monthlyRate,
+          balance: (tenant.balance ?? 0) + (event.status === 'late' ? lateFeeCents : 0),
+          dueDate: event.status === 'auction' ? auctionNoticeDate : lastBillingDate,
+          eventKey,
+        })
+
+        results.push({
+          tenantEmail: tenant.email,
+          action: `${event.status}_template_sent:${templateName}`,
+          daysPastDue: daysSinceBilling,
+        })
+      }
+
     } catch (err: any) {
       console.error(`[Delinquency] Error processing tenant ${tenant.email}:`, err.message)
       results.push({

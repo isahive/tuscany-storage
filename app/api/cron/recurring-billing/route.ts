@@ -4,6 +4,7 @@ import Lease from '@/models/Lease'
 import Tenant from '@/models/Tenant'
 import Unit from '@/models/Unit'
 import Payment from '@/models/Payment'
+import { nextBalanceAfter } from '@/lib/paymentBalance'
 
 /**
  * POST /api/cron/recurring-billing
@@ -131,6 +132,12 @@ async function processLease(
       },
     })
 
+    const status = intent.status === 'succeeded' ? 'succeeded' : 'pending'
+    const balanceAfter = await nextBalanceAfter(Payment, tenant._id, {
+      direction: 'payment',
+      status,
+      amount,
+    })
     await Payment.create({
       tenantId: tenant._id,
       leaseId: lease._id,
@@ -140,7 +147,9 @@ async function processLease(
       amount,
       currency: 'usd',
       type: 'rent',
-      status: intent.status === 'succeeded' ? 'succeeded' : 'pending',
+      status,
+      direction: 'payment',
+      balanceAfter,
       periodStart,
       periodEnd,
       attemptCount: 1,
@@ -154,7 +163,12 @@ async function processLease(
       paymentIntentId: intent.id,
     }
   } catch (err: any) {
-    // Record the failure
+    // Record the failure (failed rows don't move balance — delta is 0)
+    const failedBalanceAfter = await nextBalanceAfter(Payment, tenant._id, {
+      direction: 'payment',
+      status: 'failed',
+      amount,
+    })
     await Payment.create({
       tenantId: tenant._id,
       leaseId: lease._id,
@@ -164,6 +178,8 @@ async function processLease(
       currency: 'usd',
       type: 'rent',
       status: 'failed',
+      direction: 'payment',
+      balanceAfter: failedBalanceAfter,
       periodStart,
       periodEnd,
       attemptCount: 1,

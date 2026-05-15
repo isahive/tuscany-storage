@@ -241,7 +241,7 @@ export async function POST(req: NextRequest) {
         monthlyRate: unit.price,
       })
       await sendTemplatedNotification({
-        templateName: 'Payment Receipt',
+        templateName: 'Automatic Payment Receipt',
         notificationType: 'payment_confirmation',
         tenant,
         unitNumber: unit.unitNumber,

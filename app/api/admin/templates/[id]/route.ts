@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { connectDB } from '@/lib/db'
 import NotificationTemplate from '@/models/NotificationTemplate'
+import { DEFAULT_CUSTOM_TEMPLATES } from '@/lib/defaultCustomTemplates'
 
 /** GET /api/admin/templates/[id] — get a single template */
 export async function GET(
@@ -64,7 +65,9 @@ export async function PUT(
   }
 }
 
-/** DELETE /api/admin/templates/[id] — delete a custom template (cannot delete defaults) */
+/** DELETE /api/admin/templates/[id] — delete an admin-created template.
+ *  Built-in default/custom templates match Storable behavior: editable, not deletable.
+ */
 export async function DELETE(
   _req: NextRequest,
   { params }: { params: { id: string } }
@@ -82,9 +85,10 @@ export async function DELETE(
       return NextResponse.json({ success: false, error: 'Template not found' }, { status: 404 })
     }
 
-    if (template.type === 'default') {
+    const seededCustomNames = new Set(DEFAULT_CUSTOM_TEMPLATES.map((t) => t.name))
+    if (template.type === 'default' || seededCustomNames.has(template.name)) {
       return NextResponse.json(
-        { success: false, error: 'Cannot delete default templates' },
+        { success: false, error: 'Cannot delete built-in templates' },
         { status: 400 }
       )
     }

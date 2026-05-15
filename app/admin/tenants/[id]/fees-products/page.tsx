@@ -134,7 +134,7 @@ export default function FeesProductsPage() {
           Fees/Products{tenantName ? ` — ${tenantName}` : ''}
         </Typography>
         <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-          <Button variant="outlined" size="small" onClick={() => router.push(`/admin/tenants/${tenantId}/recurring-billing`)} sx={{ textTransform: 'none' }}>
+          <Button variant="outlined" size="small" onClick={() => router.push(`/admin/tenants/${tenantId}/recurring-fees`)} sx={{ textTransform: 'none' }}>
             Recurring Fees
           </Button>
           <Button variant="outlined" size="small" onClick={() => router.push('/admin/settings/fees')} sx={{ textTransform: 'none' }}>

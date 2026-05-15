@@ -12,6 +12,8 @@ export interface INotificationDocument extends Document {
   failureReason?: string
   twilioMessageSid?: string
   resendMessageId?: string
+  templateName?: string
+  eventKey?: string
   createdAt: Date
   updatedAt: Date
 }
@@ -45,6 +47,8 @@ const NotificationSchema = new Schema<INotificationDocument>(
     failureReason: { type: String },
     twilioMessageSid: { type: String },
     resendMessageId: { type: String },
+    templateName: { type: String },
+    eventKey: { type: String },
   },
   { timestamps: true }
 )
@@ -52,5 +56,6 @@ const NotificationSchema = new Schema<INotificationDocument>(
 NotificationSchema.index({ tenantId: 1 })
 NotificationSchema.index({ status: 1 })
 NotificationSchema.index({ type: 1 })
+NotificationSchema.index({ eventKey: 1 }, { sparse: true })
 
 export default mongoose.models.Notification || mongoose.model<INotificationDocument>('Notification', NotificationSchema)

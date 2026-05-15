@@ -54,6 +54,7 @@ const STATUS_COLORS: Record<PaymentStatus, { bg: string; color: string; label: s
   failed:    { bg: '#FEE2E2', color: '#991B1B', label: 'Failed' },
   pending:   { bg: '#FEF3C7', color: '#92400E', label: 'Pending' },
   refunded:  { bg: '#F3F4F6', color: '#374151', label: 'Refunded' },
+  voided:    { bg: '#FEE2E2', color: '#991B1B', label: 'Voided' },
 }
 
 function brandLabel(brand: string) {
@@ -641,7 +642,7 @@ export default function PaymentsPage() {
                       </TableCell>
                       <TableCell>
                         <Typography variant="body2" sx={{ textTransform: 'capitalize', fontWeight: 500 }}>
-                          {payment.type === 'rent' ? 'Monthly Rent' : payment.type === 'deposit' ? 'Security Deposit' : payment.type === 'late_fee' ? 'Late Fee' : payment.type === 'prorated' ? 'Prorated Rent' : payment.type.replace('_', ' ')}
+                          {payment.type === 'rent' ? 'Monthly Rent' : payment.type === 'deposit' ? 'Security Deposit' : payment.type === 'late_fee' ? 'Past Due Fee' : payment.type === 'prorated' ? 'Prorated Rent' : payment.type.replace('_', ' ')}
                         </Typography>
                       </TableCell>
                       <TableCell>

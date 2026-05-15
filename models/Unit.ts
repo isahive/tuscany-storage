@@ -12,6 +12,18 @@ export interface IUnitDocument extends Document {
   price: number
   status: UnitStatus
   features: string[]
+  /** Multiple price points shown on the unit page (e.g. promo + standard). */
+  pricingOptions?: Array<{ amount: number; intervalMonths: number }>
+  /** Default deposit charged at move-in. Cents. */
+  defaultDeposit?: number
+  /** One-time fee charged at move-in. Cents. */
+  defaultSetupFee?: number
+  /** Total quoted at reservation. Cents. */
+  reservationPrice?: number
+  /** Display name of admin who created the unit — fed to the audit footer. */
+  createdByName?: string
+  /** Display name of admin who last edited the unit. */
+  updatedByName?: string
   currentTenantId?: Types.ObjectId
   currentLeaseId?: Types.ObjectId
   notes?: string
@@ -48,6 +60,20 @@ const UnitSchema = new Schema<IUnitDocument>(
       default: 'available',
     },
     features: [{ type: String }],
+    pricingOptions: {
+      type: [
+        {
+          amount: { type: Number, required: true },
+          intervalMonths: { type: Number, default: 1 },
+        },
+      ],
+      default: [],
+    },
+    defaultDeposit: { type: Number, default: 0 },
+    defaultSetupFee: { type: Number, default: 0 },
+    reservationPrice: { type: Number, default: 0 },
+    createdByName: { type: String },
+    updatedByName: { type: String },
     currentTenantId: { type: Schema.Types.ObjectId, ref: 'Tenant' },
     currentLeaseId: { type: Schema.Types.ObjectId, ref: 'Lease' },
     notes: { type: String },

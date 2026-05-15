@@ -1,5 +1,5 @@
 import mongoose, { Schema, Document, Types } from 'mongoose'
-import type { PaymentType, PaymentStatus } from '@/types'
+import type { PaymentType, PaymentStatus, PaymentDirection } from '@/types'
 
 export interface IPaymentDocument extends Document {
   tenantId: Types.ObjectId
@@ -11,6 +11,13 @@ export interface IPaymentDocument extends Document {
   currency: 'usd'
   type: PaymentType
   status: PaymentStatus
+  // 'charge' = billing line item the tenant owes; 'payment' = money received,
+  // refunded, or credited. Determines Charges vs Payments/Voids column.
+  direction: PaymentDirection
+  // Tenant's running balance (cents, signed) right after this row was applied.
+  // Persisted so the capped billing-history view shows correct per-row balance
+  // without re-walking the entire ledger on every render.
+  balanceAfter: number
   periodStart: Date
   periodEnd: Date
   attemptCount: number
@@ -23,6 +30,13 @@ export interface IPaymentDocument extends Document {
   dueDate?: Date        // when manual charges (fees/products) are due
   autoChargeOnDueDate?: boolean // if true, recurring-billing cron charges on dueDate
   taxRate?: number      // percentage (e.g. 9.75) applied on this line
+  /** Name on the card used for the payment — captured when it differs from the
+   *  tenant (family member, employer, etc). Preserved from the live CSV. */
+  cardholderName?: string
+  /** Human label of the payment instrument, e.g. "Visa *8300". */
+  paymentMethodLabel?: string
+  /** Source system the row came from (e.g. "storable-csv-2026-05-14"). */
+  importSource?: string
   createdAt: Date
   updatedAt: Date
 }
@@ -45,9 +59,17 @@ const PaymentSchema = new Schema<IPaymentDocument>(
     },
     status: {
       type: String,
-      enum: ['pending', 'succeeded', 'failed', 'refunded'],
+      enum: ['pending', 'succeeded', 'failed', 'refunded', 'voided'],
       default: 'pending',
     },
+    direction: {
+      type: String,
+      enum: ['charge', 'payment'],
+      default: 'charge',
+      required: true,
+      index: true,
+    },
+    balanceAfter: { type: Number, default: 0 },
     periodStart: { type: Date },
     periodEnd: { type: Date },
     attemptCount: { type: Number, default: 0 },
@@ -60,6 +82,9 @@ const PaymentSchema = new Schema<IPaymentDocument>(
     dueDate: { type: Date },
     autoChargeOnDueDate: { type: Boolean, default: false },
     taxRate: { type: Number, default: 0 },
+    cardholderName: { type: String },
+    paymentMethodLabel: { type: String },
+    importSource: { type: String, index: true },
   },
   { timestamps: true }
 )

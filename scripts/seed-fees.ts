@@ -17,7 +17,7 @@ const MONGODB_URI =
 
 const TUSCANY_FEES = [
   // System fees (have `code`)
-  { id: 'fee_late',    code: 'late',    name: 'Late Fee',           amount: 2000, description: 'Applied after 5 days past due',                       active: true },
+  { id: 'fee_late',    code: 'late',    name: 'Past Due Fee',       amount: 2000, description: 'Applied after 5 days past due',                       active: true },
   { id: 'fee_nsf',     code: 'nsf',     name: 'Returned check fee', amount: 1500, description: 'Non-sufficient funds or returned check',              active: true },
   { id: 'fee_auction', code: 'auction', name: 'Auction Fee',        amount: 5000, description: 'Fee for auction day related expenses',                active: true },
   // Tuscany custom fees

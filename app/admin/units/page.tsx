@@ -6,15 +6,8 @@ import {
   Alert,
   Box,
   Button,
-  Card,
-  CardContent,
   CircularProgress,
-  FormControl,
-  Grid,
   IconButton,
-  InputLabel,
-  MenuItem,
-  Select,
   Skeleton,
   Tooltip,
   Typography,
@@ -24,32 +17,12 @@ import MapIcon from '@mui/icons-material/Map'
 import GridViewIcon from '@mui/icons-material/GridView'
 import RefreshIcon from '@mui/icons-material/Refresh'
 import { formatMoney } from '@/lib/utils'
-import type { UnitStatus, UnitType } from '@/types'
-
-// ── Status config ─────────────────────────────────────────────────────────────
-
-const STATUS_COLORS: Record<UnitStatus, { bg: string; color: string; border: string }> = {
-  available:   { bg: '#D1FAE5', color: '#065F46', border: '#6EE7B7' },
-  occupied:    { bg: '#DBEAFE', color: '#1E3A5F', border: '#93C5FD' },
-  maintenance: { bg: '#FEF3C7', color: '#92400E', border: '#FCD34D' },
-  reserved:    { bg: '#EDE9FE', color: '#3B0764', border: '#C4B5FD' },
-}
-
-const STATUS_LABELS: Record<UnitStatus, string> = {
-  available:   'Available',
-  occupied:    'Occupied',
-  maintenance: 'Maintenance',
-  reserved:    'Reserved',
-}
-
-const TYPE_LABELS: Record<UnitType, string> = {
-  standard:           'Standard',
-  climate_controlled: 'Climate',
-  drive_up:           'Drive-Up',
-  vehicle_outdoor:    'Vehicle',
-}
-
-// ── API unit shape ─────────────────────────────────────────────────────────────
+import {
+  DISPLAY_STATUS_COLORS,
+  DISPLAY_STATUS_LABELS,
+  type UnitDisplayStatus,
+} from '@/lib/unitStatus'
+import type { UnitType } from '@/types'
 
 interface TenantRef {
   _id: string
@@ -64,89 +37,75 @@ interface UnitData {
   type: UnitType
   floor: 'ground' | 'upper'
   price: number
-  status: UnitStatus
+  status: 'available' | 'occupied' | 'maintenance' | 'reserved'
+  displayStatus: UnitDisplayStatus
   features: string[]
   notes?: string
   currentTenantId?: TenantRef | string | null
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// Order the legend exactly like the live screenshot.
+const LEGEND_ORDER: UnitDisplayStatus[] = [
+  'auction',
+  'available',
+  'late',
+  'lien',
+  'locked_out',
+  'reserved_marketplace',
+  'moving_out',
+  'pending',
+  'pre_lien',
+  'rented',
+  'reserved',
+  'unavailable',
+]
+
+// Sort sizes by total square footage so the headers come out 5x10, 10x10, …
+function sizeSortKey(size: string): number {
+  const m = size.match(/(\d+)\s*x\s*(\d+)/i)
+  if (!m) return Number.POSITIVE_INFINITY
+  return parseInt(m[1], 10) * parseInt(m[2], 10)
+}
+
+// Group label takes vehicle/outdoor units out of the size buckets so they
+// match the "Boat, RV, Camper & Trailer - Open Air (10 x 30)" header.
+function groupLabel(unit: UnitData): string {
+  if (unit.type === 'vehicle_outdoor') {
+    return `Boat, RV, Camper & Trailer - Open Air (${unit.size})`
+  }
+  return unit.size
+}
 
 function tenantName(unit: UnitData): string | null {
   if (!unit.currentTenantId || typeof unit.currentTenantId !== 'object') return null
   return `${unit.currentTenantId.firstName} ${unit.currentTenantId.lastName}`
 }
 
-// ── Unit card ─────────────────────────────────────────────────────────────────
-
-function UnitCard({ unit, onClick }: { unit: UnitData; onClick: () => void }) {
-  const sc = STATUS_COLORS[unit.status]
-  const name = tenantName(unit)
-
+function UnitPill({ unit, onClick }: { unit: UnitData; onClick: () => void }) {
+  const { bg, text } = DISPLAY_STATUS_COLORS[unit.displayStatus]
   return (
     <Box
       onClick={onClick}
       sx={{
-        border: `2px solid ${sc.border}`,
+        bgcolor: bg,
+        color: text,
         borderRadius: 1,
-        bgcolor: sc.bg,
-        p: 1.25,
+        px: 1.25,
+        py: 1,
+        minWidth: 56,
+        textAlign: 'center',
         cursor: 'pointer',
+        fontWeight: 700,
+        fontSize: '0.85rem',
+        userSelect: 'none',
         transition: 'transform 0.1s, box-shadow 0.1s',
-        '&:hover': { transform: 'translateY(-2px)', boxShadow: '0 4px 12px rgba(0,0,0,0.12)' },
-        minHeight: 80,
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'space-between',
+        '&:hover': { transform: 'translateY(-2px)', boxShadow: '0 4px 12px rgba(0,0,0,0.18)' },
       }}
     >
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <Typography variant="body2" sx={{ fontWeight: 700, color: sc.color, fontSize: '0.95rem' }}>
-          {unit.unitNumber}
-        </Typography>
-        <Typography variant="caption" sx={{ color: sc.color, opacity: 0.8 }}>
-          {TYPE_LABELS[unit.type]}
-        </Typography>
-      </Box>
-      <Box>
-        <Typography variant="caption" sx={{ color: sc.color, display: 'block' }}>
-          {unit.size}
-        </Typography>
-        {name ? (
-          <Typography
-            variant="caption"
-            sx={{ color: sc.color, opacity: 0.85, display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
-          >
-            {name}
-          </Typography>
-        ) : (
-          <Typography variant="caption" sx={{ color: sc.color, opacity: 0.7 }}>
-            {formatMoney(unit.price)}/mo
-          </Typography>
-        )}
-      </Box>
+      {unit.unitNumber}
     </Box>
   )
 }
-
-// ── Loading skeleton ──────────────────────────────────────────────────────────
-
-function UnitsSkeleton() {
-  return (
-    <Grid container spacing={1.5}>
-      {Array.from({ length: 24 }).map((_, i) => (
-        <Grid item key={i} xs={6} sm={4} md={3} lg={2}>
-          <Skeleton variant="rectangular" height={80} sx={{ borderRadius: 1 }} />
-        </Grid>
-      ))}
-    </Grid>
-  )
-}
-
-// ── Page ──────────────────────────────────────────────────────────────────────
-
-type StatusFilter = UnitStatus | 'all'
-type TypeFilter = UnitType | 'all'
 
 export default function UnitsPage() {
   const router = useRouter()
@@ -154,18 +113,13 @@ export default function UnitsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
-  const [typeFilter, setTypeFilter] = useState<TypeFilter>('all')
-  const [sizeFilter, setSizeFilter] = useState('all')
-
   const fetchUnits = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch('/api/units?limit=200')
+      const res = await fetch('/api/units?limit=all')
       const json = await res.json()
       if (!json.success) throw new Error(json.error ?? 'Failed to load units')
-      // API returns { data: { items, total } } or { data: [] }
       const items = Array.isArray(json.data) ? json.data : (json.data.items ?? [])
       setUnits(items)
     } catch (err) {
@@ -177,24 +131,28 @@ export default function UnitsPage() {
 
   useEffect(() => { fetchUnits() }, [fetchUnits])
 
-  const allSizes = useMemo(() => [...new Set(units.map((u) => u.size))].sort(), [units])
-
-  const filtered = useMemo(() => {
-    return units.filter((u) => {
-      const matchStatus = statusFilter === 'all' || u.status === statusFilter
-      const matchType   = typeFilter === 'all'   || u.type === typeFilter
-      const matchSize   = sizeFilter === 'all'   || u.size === sizeFilter
-      return matchStatus && matchType && matchSize
+  // Group by size header — keep insertion order by sqft, then sort units inside
+  // by their number for predictable layout.
+  const groups = useMemo(() => {
+    const map = new Map<string, UnitData[]>()
+    for (const u of units) {
+      const key = groupLabel(u)
+      if (!map.has(key)) map.set(key, [])
+      map.get(key)!.push(u)
+    }
+    // Standard rooms first (by sqft), then vehicle/outdoor at the end.
+    const ordered = [...map.entries()].sort((a, b) => {
+      const aVeh = a[0].startsWith('Boat')
+      const bVeh = b[0].startsWith('Boat')
+      if (aVeh && !bVeh) return 1
+      if (!aVeh && bVeh) return -1
+      return sizeSortKey(a[0]) - sizeSortKey(b[0])
     })
-  }, [units, statusFilter, typeFilter, sizeFilter])
-
-  const counts = useMemo(
-    () => units.reduce<Record<UnitStatus, number>>(
-      (acc, u) => { acc[u.status]++; return acc },
-      { available: 0, occupied: 0, maintenance: 0, reserved: 0 },
-    ),
-    [units],
-  )
+    for (const [, list] of ordered) {
+      list.sort((a, b) => a.unitNumber.localeCompare(b.unitNumber, undefined, { numeric: true }))
+    }
+    return ordered
+  }, [units])
 
   return (
     <Box>
@@ -202,7 +160,7 @@ export default function UnitsPage() {
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3, flexWrap: 'wrap' }}>
         <Typography
           variant="h5"
-          sx={{ fontFamily: '"Playfair Display", serif', color: 'secondary.main', fontWeight: 700, flexGrow: 1 }}
+          sx={{ fontFamily: '"Playfair Display", serif', color: '#1C0F06', fontWeight: 700, flexGrow: 1 }}
         >
           Units
         </Typography>
@@ -241,37 +199,7 @@ export default function UnitsPage() {
         >
           New Unit
         </Button>
-      </Box>
-
-      {/* Status summary — clickable to filter */}
-      <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', mb: 3 }}>
-        {(Object.keys(STATUS_COLORS) as UnitStatus[]).map((s) => {
-          const sc = STATUS_COLORS[s]
-          const active = statusFilter === s
-          return (
-            <Box
-              key={s}
-              onClick={() => setStatusFilter(active ? 'all' : s)}
-              sx={{
-                display: 'flex', alignItems: 'center', gap: 1,
-                px: 1.5, py: 0.75, borderRadius: 1,
-                bgcolor: sc.bg,
-                border: `1px solid ${active ? sc.color : sc.border}`,
-                cursor: 'pointer',
-                transition: 'border-color 0.15s',
-                fontWeight: active ? 700 : 400,
-              }}
-            >
-              <Typography variant="body2" sx={{ color: sc.color, fontWeight: active ? 700 : 600 }}>
-                {STATUS_LABELS[s]}
-              </Typography>
-              <Typography variant="body2" sx={{ color: sc.color, opacity: 0.8 }}>
-                {counts[s]}
-              </Typography>
-            </Box>
-          )
-        })}
-        <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, ml: 1 }}>
           {loading ? (
             <CircularProgress size={16} />
           ) : (
@@ -280,55 +208,11 @@ export default function UnitsPage() {
             </IconButton>
           )}
           <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-            {units.length} total units
+            {units.length} total
           </Typography>
         </Box>
       </Box>
 
-      {/* Filters */}
-      <Card sx={{ mb: 3, border: '1px solid #EDE5D8', boxShadow: 'none' }}>
-        <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
-            <FormControl size="small" sx={{ minWidth: 150 }}>
-              <InputLabel>Status</InputLabel>
-              <Select label="Status" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}>
-                <MenuItem value="all">All statuses</MenuItem>
-                <MenuItem value="available">Available</MenuItem>
-                <MenuItem value="occupied">Occupied</MenuItem>
-                <MenuItem value="maintenance">Maintenance</MenuItem>
-                <MenuItem value="reserved">Reserved</MenuItem>
-              </Select>
-            </FormControl>
-
-            <FormControl size="small" sx={{ minWidth: 160 }}>
-              <InputLabel>Type</InputLabel>
-              <Select label="Type" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value as TypeFilter)}>
-                <MenuItem value="all">All types</MenuItem>
-                <MenuItem value="standard">Standard</MenuItem>
-                <MenuItem value="climate_controlled">Climate Controlled</MenuItem>
-                <MenuItem value="drive_up">Drive-Up</MenuItem>
-                <MenuItem value="vehicle_outdoor">Vehicle / Outdoor</MenuItem>
-              </Select>
-            </FormControl>
-
-            <FormControl size="small" sx={{ minWidth: 120 }}>
-              <InputLabel>Size</InputLabel>
-              <Select label="Size" value={sizeFilter} onChange={(e) => setSizeFilter(e.target.value)}>
-                <MenuItem value="all">All sizes</MenuItem>
-                {allSizes.map((s) => (
-                  <MenuItem key={s} value={s}>{s}</MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-
-            <Typography variant="body2" sx={{ color: 'text.secondary', ml: 'auto' }}>
-              {filtered.length} unit{filtered.length !== 1 ? 's' : ''} shown
-            </Typography>
-          </Box>
-        </CardContent>
-      </Card>
-
-      {/* Error */}
       {error && (
         <Alert
           severity="error"
@@ -339,44 +223,82 @@ export default function UnitsPage() {
         </Alert>
       )}
 
-      {/* Grid */}
       {loading ? (
-        <UnitsSkeleton />
+        <Box>
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Box key={i} sx={{ mb: 4 }}>
+              <Skeleton variant="text" width={120} height={32} sx={{ mb: 1 }} />
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                {Array.from({ length: 16 }).map((__, j) => (
+                  <Skeleton key={j} variant="rectangular" width={60} height={40} sx={{ borderRadius: 1 }} />
+                ))}
+              </Box>
+            </Box>
+          ))}
+        </Box>
       ) : (
         <>
-          <Grid container spacing={1.5}>
-            {filtered.map((unit) => (
-              <Grid item key={unit._id} xs={6} sm={4} md={3} lg={2}>
-                <Tooltip
-                  title={tenantName(unit) ? `${tenantName(unit)} · ${formatMoney(unit.price)}/mo` : `${STATUS_LABELS[unit.status]} · ${formatMoney(unit.price)}/mo`}
-                  arrow
-                  placement="top"
-                >
-                  <Box>
-                    <UnitCard unit={unit} onClick={() => router.push(`/admin/units/${unit._id}`)} />
-                  </Box>
-                </Tooltip>
-              </Grid>
-            ))}
-          </Grid>
+          {groups.map(([label, list]) => (
+            <Box key={label} sx={{ mb: 4 }}>
+              <Typography
+                variant="h6"
+                sx={{ fontWeight: 700, color: '#1C0F06', mb: 1.5 }}
+              >
+                {label}
+              </Typography>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                {list.map((unit) => {
+                  const name = tenantName(unit)
+                  const title = name
+                    ? `${unit.unitNumber} · ${DISPLAY_STATUS_LABELS[unit.displayStatus]} · ${name}`
+                    : `${unit.unitNumber} · ${DISPLAY_STATUS_LABELS[unit.displayStatus]} · ${formatMoney(unit.price)}/mo`
+                  return (
+                    <Tooltip key={unit._id} title={title} arrow placement="top">
+                      <Box>
+                        <UnitPill unit={unit} onClick={() => router.push(`/admin/units/${unit._id}`)} />
+                      </Box>
+                    </Tooltip>
+                  )
+                })}
+              </Box>
+            </Box>
+          ))}
 
-          {filtered.length === 0 && (
+          {groups.length === 0 && (
             <Box sx={{ textAlign: 'center', py: 8 }}>
               <Typography variant="body1" sx={{ color: 'text.secondary' }}>
-                No units match the current filters.
+                No units configured yet.
               </Typography>
             </Box>
           )}
 
-          {/* Legend */}
+          {/* Legend — mirrors the live "Legend" footer 1:1. */}
           {units.length > 0 && (
-            <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', mt: 3, pt: 2, borderTop: '1px solid #EDE5D8' }}>
-              {(Object.keys(STATUS_COLORS) as UnitStatus[]).map((s) => (
-                <Box key={s} sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                  <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: STATUS_COLORS[s].border }} />
-                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>{STATUS_LABELS[s]}</Typography>
-                </Box>
-              ))}
+            <Box sx={{ mt: 5, pt: 3, borderTop: '1px solid #EDE5D8' }}>
+              <Typography variant="h6" sx={{ fontWeight: 700, color: '#1C0F06', mb: 1.5 }}>
+                Legend
+              </Typography>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
+                {LEGEND_ORDER.map((s) => {
+                  const { bg, text } = DISPLAY_STATUS_COLORS[s]
+                  return (
+                    <Box
+                      key={s}
+                      sx={{
+                        bgcolor: bg,
+                        color: text,
+                        px: 1.5,
+                        py: 0.75,
+                        borderRadius: 1,
+                        fontSize: '0.78rem',
+                        fontWeight: 700,
+                      }}
+                    >
+                      {DISPLAY_STATUS_LABELS[s]}
+                    </Box>
+                  )
+                })}
+              </Box>
             </Box>
           )}
         </>

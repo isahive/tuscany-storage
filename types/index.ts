@@ -8,8 +8,12 @@ export type UnitStatus = 'available' | 'occupied' | 'maintenance' | 'reserved'
 export type UnitType = 'standard' | 'climate_controlled' | 'drive_up' | 'vehicle_outdoor'
 export type UnitFloor = 'ground' | 'upper'
 export type LeaseStatus = 'active' | 'ended' | 'pending_moveout'
-export type PaymentStatus = 'pending' | 'succeeded' | 'failed' | 'refunded'
+export type PaymentStatus = 'pending' | 'succeeded' | 'failed' | 'refunded' | 'voided'
 export type PaymentType = 'rent' | 'late_fee' | 'deposit' | 'prorated' | 'credit' | 'other'
+/** Whether the row represents money owed (a billing line item) or money moved
+ *  (a payment received, refund issued, or credit applied). Drives whether the
+ *  row renders in the Charges or Payments/Voids column of billing history. */
+export type PaymentDirection = 'charge' | 'payment'
 export type EventType = 'entry' | 'exit' | 'denied' | 'code_changed'
 export type AccessEventType = EventType
 export type GateId = 'entrance' | 'exit' | 'unknown'
@@ -110,6 +114,11 @@ export interface IPayment {
   currency: 'usd'
   type: PaymentType
   status: PaymentStatus
+  direction: PaymentDirection
+  /** Tenant's outstanding balance (cents, signed) immediately after this row
+   *  was recorded. Persisted so billing-history views can show the correct
+   *  per-row balance without loading the full ledger on every page. */
+  balanceAfter: number
   periodStart: Date
   periodEnd: Date
   attemptCount: number
@@ -145,6 +154,8 @@ export interface INotification {
   failureReason?: string
   twilioMessageSid?: string
   resendMessageId?: string
+  templateName?: string
+  eventKey?: string
   createdAt: Date
   updatedAt: Date
 }
@@ -242,6 +253,8 @@ export interface Payment {
   currency: 'usd'
   type: PaymentType
   status: PaymentStatus
+  direction: PaymentDirection
+  balanceAfter: number
   periodStart: string
   periodEnd: string
   attemptCount: number

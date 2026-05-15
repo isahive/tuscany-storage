@@ -6,6 +6,7 @@ import { replacePlaceholders } from '@/lib/templatePlaceholders'
 import { getSettings } from '@/lib/getSettings'
 import { formatMoney } from '@/lib/utils'
 import { DEFAULT_TEMPLATES } from '@/lib/defaultTemplates'
+import { DEFAULT_CUSTOM_TEMPLATES } from '@/lib/defaultCustomTemplates'
 import { wrapTenantEmail } from '@/lib/emailLayout'
 import type { ITenantDocument } from '@/models/Tenant'
 import type { NotificationType } from '@/types'
@@ -122,6 +123,7 @@ export async function buildPlaceholders(args: BuildPlaceholderArgs): Promise<Rec
 interface SendTemplatedArgs extends BuildPlaceholderArgs {
   templateName: string
   notificationType: NotificationType
+  eventKey?: string
 }
 
 /**
@@ -131,13 +133,13 @@ interface SendTemplatedArgs extends BuildPlaceholderArgs {
  * Silent no-op if template missing or both channels disabled — never throws.
  */
 export async function sendTemplatedNotification(args: SendTemplatedArgs): Promise<void> {
-  const { templateName, notificationType, tenant } = args
+  const { templateName, notificationType, tenant, eventKey } = args
   try {
     // 1) Prefer the live DB template (admin may have customised it).
     // 2) Fall back to DEFAULT_TEMPLATES so cron jobs aren't gated on someone
     //    first opening the templates page to trigger the seed.
     const dbTemplate = await NotificationTemplate.findOne({ name: templateName, active: true }).lean()
-    const fallback = DEFAULT_TEMPLATES.find((t) => t.name === templateName)
+    const fallback = [...DEFAULT_TEMPLATES, ...DEFAULT_CUSTOM_TEMPLATES].find((t) => t.name === templateName)
     const template = dbTemplate ?? fallback
 
     if (!template) {
@@ -175,6 +177,8 @@ export async function sendTemplatedNotification(args: SendTemplatedArgs): Promis
         body: sentEmail ? emailBody : smsBody,
         status: 'sent',
         sentAt: new Date(),
+        templateName,
+        eventKey,
       })
     }
   } catch (err) {

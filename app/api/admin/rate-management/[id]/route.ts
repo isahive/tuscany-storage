@@ -4,9 +4,6 @@ import { z } from 'zod'
 import { authOptions } from '@/lib/auth'
 import { connectDB } from '@/lib/db'
 import RateChange from '@/models/RateChange'
-import Tenant from '@/models/Tenant'
-import Unit from '@/models/Unit'
-import { sendTemplatedNotification } from '@/lib/sendNotification'
 
 interface RouteContext {
   params: Promise<{ id: string }>
@@ -52,22 +49,9 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
     if (status === 'rejected' && rejectionReason) change.rejectionReason = rejectionReason
 
     if (status === 'approved') {
-      // Send 30-day notice to tenant via "Rate Change Notice" template (created if missing)
-      const tenant = await Tenant.findById(change.tenantId)
-      const unit = await Unit.findById(change.unitId).select('unitNumber').lean() as
-        | { unitNumber?: string }
-        | null
-      if (tenant) {
-        await sendTemplatedNotification({
-          templateName: 'Rate Change Notice',
-          notificationType: 'rate_change_notice',
-          tenant,
-          unitNumber: unit?.unitNumber,
-          monthlyRate: change.proposedRate,
-          dueDate: change.effectiveDate,
-        })
-        change.noticeSentAt = new Date()
-      }
+      // No auto email here — Storable's "Notice of Scheduled Rate Change"
+      // is Manual Only. Admin sends it via the "Send Scheduled Notice"
+      // button on the rate-management page.
     }
 
     await change.save()

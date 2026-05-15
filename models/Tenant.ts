@@ -47,6 +47,21 @@ export interface ITenantDocument extends Document {
   loginDisabled?: boolean
   role: TenantRole
   gateCode?: string
+  /** Extra gate-access cards/fobs (numeric IDs, never starting with 0). */
+  additionalCards?: string[]
+  /** Gate groups the customer belongs to (e.g. "Managers 24/7", "Renters"). */
+  gateGroups?: string[]
+  /** Optional auction date recorded on the manual lock-out form. */
+  lockoutAuctionDate?: Date
+  /** Free-text note saved on the manual lock-out form. */
+  lockoutNote?: string
+  /** When true (default), tenant is auto-locked after `automaticLockoutDays` of unpaid rent. */
+  automaticLockoutEnabled?: boolean
+  /** Days unpaid before auto-lockout fires (Storable default = 9). */
+  automaticLockoutDays?: number
+  /** Timestamp the tenant's gate access was last revoked. Powers the
+   *  "Locked out on …" line shown on the unit detail page. */
+  lockedOutAt?: Date
   stripeCustomerId?: string
   defaultPaymentMethodId?: string
   autopayEnabled: boolean
@@ -109,6 +124,13 @@ const TenantSchema = new Schema<ITenantDocument>(
     loginDisabled: { type: Boolean, default: false },
     role: { type: String, enum: ['tenant', 'admin'], default: 'tenant' },
     gateCode: { type: String },
+    additionalCards: { type: [String], default: [] },
+    gateGroups: { type: [String], default: [] },
+    lockoutAuctionDate: { type: Date },
+    lockoutNote: { type: String },
+    automaticLockoutEnabled: { type: Boolean, default: true },
+    automaticLockoutDays: { type: Number, default: 9, min: 0 },
+    lockedOutAt: { type: Date },
     stripeCustomerId: { type: String },
     defaultPaymentMethodId: { type: String },
     autopayEnabled: { type: Boolean, default: false },

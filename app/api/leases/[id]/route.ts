@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { authOptions } from '@/lib/auth'
 import { connectDB } from '@/lib/db'
 import Lease from '@/models/Lease'
+import { revokeGateAccess } from '@/lib/gateAccess'
 
 interface RouteContext {
   params: Promise<{ id: string }>
@@ -51,6 +52,7 @@ const updateLeaseSchema = z.object({
   status: z.enum(['active', 'ended', 'pending_moveout']).optional(),
   leaseDocumentUrl: z.string().optional(),
   lastRateChangeDate: z.string().datetime().optional(),
+  auctionDate: z.string().datetime().optional(),
 })
 
 const tenantUpdateLeaseSchema = z.object({
@@ -83,7 +85,7 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
       const updateData: Record<string, unknown> = {}
       for (const [key, value] of Object.entries(parsed.data)) {
         if (value !== undefined) {
-          if (['startDate', 'endDate', 'moveOutDate', 'lastRateChangeDate'].includes(key)) {
+          if (['startDate', 'endDate', 'moveOutDate', 'lastRateChangeDate', 'auctionDate'].includes(key)) {
             updateData[key] = new Date(value as string)
           } else {
             updateData[key] = value
@@ -92,6 +94,20 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
       }
 
       const updated = await Lease.findByIdAndUpdate(id, updateData, { new: true, runValidators: true })
+
+      // Side effect: if this PATCH ends the lease OR sets an auction date, revoke
+      // gate access. Mirrors the live Storable Easy behavior — a rental that exits
+      // active status loses code/cards/groups automatically.
+      const endedNow = parsed.data.status === 'ended' && lease.status !== 'ended'
+      const scheduledAuction = parsed.data.auctionDate && !lease.auctionDate
+      if (updated && (endedNow || scheduledAuction)) {
+        await revokeGateAccess(
+          updated.tenantId,
+          endedNow ? 'lease_ended' : 'auction',
+          updated.unitId,
+        )
+      }
+
       return NextResponse.json({ success: true, data: updated })
     } else {
       // Tenant can only set moveOutDate

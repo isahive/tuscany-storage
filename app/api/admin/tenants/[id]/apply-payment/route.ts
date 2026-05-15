@@ -6,6 +6,7 @@ import { authOptions } from '@/lib/auth'
 import { connectDB } from '@/lib/db'
 import Tenant from '@/models/Tenant'
 import Payment from '@/models/Payment'
+import { nextBalanceAfter } from '@/lib/paymentBalance'
 
 interface RouteContext {
   params: Promise<{ id: string }>
@@ -71,7 +72,8 @@ export async function POST(req: NextRequest, context: RouteContext) {
 
     let stripePaymentIntentId: string | undefined
     let stripeChargeId: string | undefined
-    let paymentStatus: 'succeeded' | 'pending' = 'succeeded'
+    let paymentStatus: 'succeeded' | 'pending' | 'failed' = 'succeeded'
+    let failureReason: string | undefined
 
     // ── Stripe-backed methods ──
     if (method === 'card' || method === 'ach') {
@@ -100,27 +102,44 @@ export async function POST(req: NextRequest, context: RouteContext) {
         await stripe.paymentMethods.attach(pmId, { customer: tenant.stripeCustomerId! })
       }
 
-      const intent = await stripe.paymentIntents.create({
-        amount,
-        currency: 'usd',
-        customer: tenant.stripeCustomerId,
-        payment_method: pmId,
-        payment_method_types: method === 'card' ? ['card'] : ['us_bank_account'],
-        confirm: true,
-        off_session: true,
-        metadata: {
-          tenantId: String(tenant._id),
-          method,
-          itemIds: itemIds.join(','),
-        },
-      })
+      try {
+        const intent = await stripe.paymentIntents.create({
+          amount,
+          currency: 'usd',
+          customer: tenant.stripeCustomerId,
+          payment_method: pmId,
+          payment_method_types: method === 'card' ? ['card'] : ['us_bank_account'],
+          confirm: true,
+          off_session: true,
+          metadata: {
+            tenantId: String(tenant._id),
+            method,
+            itemIds: itemIds.join(','),
+          },
+        })
 
-      stripePaymentIntentId = intent.id
-      stripeChargeId = typeof intent.latest_charge === 'string' ? intent.latest_charge : undefined
-      // ACH stays 'pending' until clearing (3-5 business days)
-      paymentStatus = intent.status === 'succeeded' ? 'succeeded' : 'pending'
+        stripePaymentIntentId = intent.id
+        stripeChargeId = typeof intent.latest_charge === 'string' ? intent.latest_charge : undefined
 
-      if (saveForFuture) {
+        if (intent.status === 'succeeded') {
+          paymentStatus = 'succeeded'
+        } else if (intent.status === 'requires_payment_method' || intent.status === 'canceled') {
+          paymentStatus = 'failed'
+          failureReason = intent.last_payment_error?.message ?? `Stripe status: ${intent.status}`
+        } else {
+          // ACH stays 'pending' until clearing (3-5 business days)
+          paymentStatus = 'pending'
+        }
+      } catch (stripeErr: any) {
+        // Stripe threw — typically a CardError (declined, expired, etc.).
+        // Log the failed attempt in billing history without touching balance.
+        paymentStatus = 'failed'
+        stripePaymentIntentId = stripeErr?.payment_intent?.id
+        stripeChargeId = stripeErr?.payment_intent?.latest_charge
+        failureReason = stripeErr?.message ?? 'Card declined'
+      }
+
+      if (paymentStatus === 'succeeded' && saveForFuture) {
         await stripe.customers.update(tenant.stripeCustomerId!, {
           invoice_settings: { default_payment_method: pmId },
         })
@@ -129,7 +148,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
     }
 
     // ── Record the payment ──
-    const paymentDescription = (() => {
+    const baseDescription = (() => {
       const desc = description?.trim()
       switch (method) {
         case 'card':         return desc ? `One Time Credit Card — ${desc}` : 'One Time Credit Card'
@@ -141,44 +160,66 @@ export async function POST(req: NextRequest, context: RouteContext) {
       }
     })()
 
+    // For failed attempts, append the decline reason so it surfaces in the
+    // billing history description (mirrors Storable's "Transaction declined: …").
+    const paymentDescription = paymentStatus === 'failed' && failureReason
+      ? `${baseDescription} — Transaction declined: ${failureReason}`
+      : baseDescription
+
+    const balanceAfter = await nextBalanceAfter(Payment, tenant._id, {
+      direction: 'payment',
+      status: paymentStatus,
+      amount,
+    })
+
     const paymentRow = await Payment.create({
       tenantId: tenant._id,
       amount,
       currency: 'usd',
       type: method === 'card' || method === 'ach' ? 'rent' : 'other',
       status: paymentStatus,
+      direction: 'payment',
+      balanceAfter,
       stripePaymentIntentId,
       stripeChargeId,
       description: paymentDescription,
+      failureReason,
       createdBy: session.user.id,
       attemptCount: 1,
       lastAttemptAt: new Date(),
     })
 
-    // ── Mark line items as paid ──
-    if (itemIds.length > 0) {
-      const objectIds = itemIds
-        .filter((s) => Types.ObjectId.isValid(s))
-        .map((s) => new Types.ObjectId(s))
-      await Payment.updateMany(
-        { _id: { $in: objectIds }, tenantId: tenant._id, status: 'pending' },
-        { $set: { status: 'succeeded', lastAttemptAt: new Date() } }
-      )
+    // Only confirmed-succeeded payments touch line items and balance.
+    // Pending (ACH awaiting clearing) and failed attempts are logged but the
+    // money is treated as not-yet-moved — a webhook later promotes a pending
+    // row to succeeded (or to failed) and re-runs this reconciliation.
+    if (paymentStatus === 'succeeded') {
+      // ── Mark line items as paid ──
+      if (itemIds.length > 0) {
+        const objectIds = itemIds
+          .filter((s) => Types.ObjectId.isValid(s))
+          .map((s) => new Types.ObjectId(s))
+        await Payment.updateMany(
+          { _id: { $in: objectIds }, tenantId: tenant._id, status: 'pending' },
+          { $set: { status: 'succeeded', lastAttemptAt: new Date() } }
+        )
+      }
+
+      // ── Reduce tenant balance ──
+      tenant.balance = (tenant.balance ?? 0) - amount
+      await tenant.save()
     }
 
-    // ── Reduce tenant balance ──
-    tenant.balance = (tenant.balance ?? 0) - amount
-    await tenant.save()
-
     return NextResponse.json({
-      success: true,
+      success: paymentStatus !== 'failed',
       data: {
         paymentId: String(paymentRow._id),
         status: paymentStatus,
         balance: tenant.balance,
         stripePaymentIntentId,
       },
-    })
+      error: paymentStatus === 'failed' ? (failureReason ?? 'Payment failed') : undefined,
+    }, { status: paymentStatus === 'failed' ? 402 : 200 })
   } catch (error: any) {
     const message = error?.message ?? 'Internal server error'
     return NextResponse.json({ success: false, error: message }, { status: 500 })

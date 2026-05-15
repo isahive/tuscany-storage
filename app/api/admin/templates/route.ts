@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { connectDB } from '@/lib/db'
 import NotificationTemplate from '@/models/NotificationTemplate'
 import { DEFAULT_TEMPLATES } from '@/lib/defaultTemplates'
+import { DEFAULT_CUSTOM_TEMPLATES } from '@/lib/defaultCustomTemplates'
 
 /** GET /api/admin/templates — list all templates (default first, then custom) */
 export async function GET() {
@@ -17,12 +18,26 @@ export async function GET() {
 
     // Insert any default templates that aren't yet in the DB (idempotent —
     // existing rows are left untouched so admin edits aren't overwritten).
-    const existingNames = new Set(
-      (await NotificationTemplate.find({}).select('name').lean()).map((t: any) => t.name),
-    )
-    const missing = DEFAULT_TEMPLATES.filter((t) => !existingNames.has(t.name))
+    const existing = await NotificationTemplate.find({}).select('name type').lean() as Array<{ name: string; type: 'default' | 'custom' }>
+    const existingNames = new Set(existing.map((t) => t.name))
+    const defaultNames = new Set(DEFAULT_TEMPLATES.map((t) => t.name))
+
+    const missing = [
+      ...DEFAULT_TEMPLATES.filter((t) => !existingNames.has(t.name)),
+      ...DEFAULT_CUSTOM_TEMPLATES.filter((t) => !existingNames.has(t.name)),
+    ]
     if (missing.length > 0) {
       await NotificationTemplate.insertMany(missing)
+    }
+
+    // Remove stale defaults — rows tagged type='default' whose name no longer
+    // appears in DEFAULT_TEMPLATES. Custom (admin-created) rows are never
+    // touched. This keeps the list in sync when we retire a default.
+    const stale = existing
+      .filter((t) => t.type === 'default' && !defaultNames.has(t.name))
+      .map((t) => t.name)
+    if (stale.length > 0) {
+      await NotificationTemplate.deleteMany({ type: 'default', name: { $in: stale } })
     }
 
     const templates = await NotificationTemplate.find({})

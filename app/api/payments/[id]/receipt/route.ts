@@ -94,7 +94,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 
     // Payment type labels
     const typeLabels: Record<string, string> = {
-      rent: 'Monthly Rent', late_fee: 'Late Fee', deposit: 'Security Deposit',
+      rent: 'Monthly Rent', late_fee: 'Past Due Fee', deposit: 'Security Deposit',
       prorated: 'Prorated Rent', other: 'Other Charge',
     }
 

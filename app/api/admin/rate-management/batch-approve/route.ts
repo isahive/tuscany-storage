@@ -5,9 +5,7 @@ import { authOptions } from '@/lib/auth'
 import { connectDB } from '@/lib/db'
 import RateChange from '@/models/RateChange'
 import Lease from '@/models/Lease'
-import Tenant from '@/models/Tenant'
 import Unit from '@/models/Unit'
-import { sendTemplatedNotification } from '@/lib/sendNotification'
 
 const schema = z.object({
   action: z.enum(['approve', 'reject']),
@@ -84,21 +82,7 @@ export async function POST(req: NextRequest) {
           ...(action === 'reject' && rejectionReason ? { rejectionReason } : {}),
         })
 
-        if (action === 'approve') {
-          const tenant = await Tenant.findById(lease.tenantId)
-          if (tenant) {
-            await sendTemplatedNotification({
-              templateName: 'Rate Change Notice',
-              notificationType: 'rate_change_notice',
-              tenant,
-              unitNumber: unit.unitNumber,
-              monthlyRate: u.proposedRate,
-              dueDate: effective,
-            })
-            change.noticeSentAt = new Date()
-            await change.save()
-          }
-        }
+        // No auto email — "Notice of Scheduled Rate Change" is Manual Only.
 
         results.push({ unitNumber: u.unitNumber, status: action === 'approve' ? 'approved' : 'rejected' })
       } catch (err) {

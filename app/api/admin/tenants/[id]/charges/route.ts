@@ -8,6 +8,7 @@ import Payment from '@/models/Payment'
 import Product from '@/models/Product'
 import Settings from '@/models/Settings'
 import Lease from '@/models/Lease'
+import { nextBalanceAfter } from '@/lib/paymentBalance'
 import { DEFAULT_SETTINGS } from '@/lib/defaultSettings'
 
 interface RouteContext {
@@ -106,6 +107,12 @@ export async function POST(req: NextRequest, context: RouteContext) {
     // Tie the charge to the tenant's active lease if there is one (for billing-history grouping)
     const activeLease = await Lease.findOne({ tenantId: tenant._id, status: 'active' })
 
+    const balanceAfter = await nextBalanceAfter(Payment, tenant._id, {
+      direction: 'charge',
+      status: 'pending',
+      amount: totalAmount,
+    })
+
     const charge = await Payment.create({
       tenantId: tenant._id,
       leaseId: activeLease?._id,
@@ -114,6 +121,8 @@ export async function POST(req: NextRequest, context: RouteContext) {
       currency: 'usd',
       type,
       status: 'pending',
+      direction: 'charge',
+      balanceAfter,
       description: description ? `${finalName} — ${description}` : finalName,
       createdBy: session.user.id,
       attemptCount: 0,

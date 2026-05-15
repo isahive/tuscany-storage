@@ -8,6 +8,7 @@ import Unit from '@/models/Unit'
 import Tenant from '@/models/Tenant'
 import Payment from '@/models/Payment'
 import { sendTemplatedNotification } from '@/lib/sendNotification'
+import { revokeGateAccess } from '@/lib/gateAccess'
 
 interface RouteContext {
   params: Promise<{ id: string }>
@@ -59,12 +60,15 @@ export async function POST(_req: NextRequest, context: RouteContext) {
       $unset: { currentTenantId: '', currentLeaseId: '' },
     })
 
-    // Stop autopay — billing must not continue past move-out
+    // Stop autopay + flip status — billing and gate access end at move-out
     const tenant = await Tenant.findByIdAndUpdate(
       request.tenantId,
-      { autopayEnabled: false },
+      { autopayEnabled: false, status: 'moved_out' },
       { new: true },
     )
+
+    // Wipe gate code, additional cards, gate groups + audit-log the revocation
+    await revokeGateAccess(request.tenantId, 'move_out', request.unitId)
 
     // Cancel any pending payments for this lease (not yet captured)
     await Payment.updateMany(

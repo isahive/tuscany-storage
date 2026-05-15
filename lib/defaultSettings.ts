@@ -67,7 +67,7 @@ export const DEFAULT_SETTINGS = {
   // logic can find it by intent ('late', 'nsf', 'auction'). When `code` is absent the
   // fee is purely user-defined.
   customFees: [
-    { id: 'fee_late',    code: 'late',    name: 'Late Fee',               amount: 2000, description: '', active: true },
+    { id: 'fee_late',    code: 'late',    name: 'Past Due Fee',           amount: 2000, description: '', active: true },
     { id: 'fee_nsf',     code: 'nsf',     name: 'NSF / Returned Check',   amount: 3500, description: 'Non-sufficient funds or returned check', active: true },
     { id: 'fee_auction', code: 'auction', name: 'Auction / Sale Fee',     amount: 5000, description: 'Lien sale processing fee', active: true },
   ] as Array<{ id: string; code?: string; name: string; amount: number; description: string; active: boolean }>,

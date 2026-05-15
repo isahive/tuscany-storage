@@ -55,12 +55,37 @@ export async function POST(req: NextRequest) {
           stripePaymentIntentId: paymentIntentId,
         });
         if (payment) {
+          const wasPending = payment.status === "pending";
           payment.status = "succeeded";
           payment.lastAttemptAt = new Date();
           if (paymentIntent.latest_charge) {
             payment.stripeChargeId = paymentIntent.latest_charge as string;
           }
           await payment.save();
+
+          // If the row was previously pending (e.g. ACH awaiting clearing),
+          // the synchronous apply-payment flow deferred touching items and
+          // balance. Reconcile them now that the money has actually moved.
+          if (wasPending) {
+            const itemIdsCsv = (paymentIntent.metadata?.itemIds ?? "") as string;
+            const itemIds = itemIdsCsv
+              .split(",")
+              .map((s) => s.trim())
+              .filter(Boolean);
+            if (itemIds.length > 0) {
+              const { Types } = await import("mongoose");
+              const objectIds = itemIds
+                .filter((s) => Types.ObjectId.isValid(s))
+                .map((s) => new Types.ObjectId(s));
+              await Payment.updateMany(
+                { _id: { $in: objectIds }, tenantId: payment.tenantId, status: "pending" },
+                { $set: { status: "succeeded", lastAttemptAt: new Date() } },
+              );
+            }
+            await Tenant.findByIdAndUpdate(payment.tenantId, {
+              $inc: { balance: -payment.amount },
+            });
+          }
 
           // Create receipt notification
           await Notification.create({
@@ -83,6 +108,7 @@ export async function POST(req: NextRequest) {
           stripePaymentIntentId: paymentIntentId,
         });
         if (payment) {
+          const wasSucceeded = payment.status === "succeeded";
           payment.status = "failed";
           payment.attemptCount += 1;
           payment.lastAttemptAt = new Date();
@@ -95,6 +121,31 @@ export async function POST(req: NextRequest) {
           }
 
           await payment.save();
+
+          // Defensive rollback: if Stripe somehow flips a previously-succeeded
+          // payment to failed (chargeback-style reversal before refund hits),
+          // restore the line items to pending and add the charge back to
+          // tenant.balance so the outstanding stays correct.
+          if (wasSucceeded) {
+            const itemIdsCsv = (paymentIntent.metadata?.itemIds ?? "") as string;
+            const itemIds = itemIdsCsv
+              .split(",")
+              .map((s) => s.trim())
+              .filter(Boolean);
+            if (itemIds.length > 0) {
+              const { Types } = await import("mongoose");
+              const objectIds = itemIds
+                .filter((s) => Types.ObjectId.isValid(s))
+                .map((s) => new Types.ObjectId(s));
+              await Payment.updateMany(
+                { _id: { $in: objectIds }, tenantId: payment.tenantId, status: "succeeded" },
+                { $set: { status: "pending", lastAttemptAt: new Date() } },
+              );
+            }
+            await Tenant.findByIdAndUpdate(payment.tenantId, {
+              $inc: { balance: payment.amount },
+            });
+          }
         }
         break;
       }

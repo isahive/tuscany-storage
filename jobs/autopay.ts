@@ -209,7 +209,7 @@ export async function runAutopay(): Promise<void> {
         })
       } else if (paymentStatus === 'failed') {
         await sendTemplatedNotification({
-          templateName: 'Failed Payment',
+          templateName: 'Failed Recurring Payment',
           notificationType: 'payment_failed',
           tenant,
           unitNumber: unit?.unitNumber,

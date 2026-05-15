@@ -26,22 +26,9 @@ import {
 } from '@mui/material'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import EditIcon from '@mui/icons-material/Edit'
-import LockIcon from '@mui/icons-material/Lock'
-import LockOpenIcon from '@mui/icons-material/LockOpen'
 import MailOutlineIcon from '@mui/icons-material/MailOutline'
-import PhoneIcon from '@mui/icons-material/Phone'
-import HomeIcon from '@mui/icons-material/Home'
-import BadgeIcon from '@mui/icons-material/Badge'
-import CreditCardIcon from '@mui/icons-material/CreditCard'
 import AttachFileIcon from '@mui/icons-material/AttachFile'
-import AutorenewIcon from '@mui/icons-material/Autorenew'
-import AddCardIcon from '@mui/icons-material/AddCard'
-import LocalOfferIcon from '@mui/icons-material/LocalOffer'
-import PaymentsIcon from '@mui/icons-material/Payments'
-import AddBusinessIcon from '@mui/icons-material/AddBusiness'
-import BookmarkAddIcon from '@mui/icons-material/BookmarkAdd'
 import MarkEmailReadIcon from '@mui/icons-material/MarkEmailRead'
-import VpnKeyIcon from '@mui/icons-material/VpnKey'
 import { formatMoney, formatDate } from '@/lib/utils'
 import { useSetAdminPageTitle } from '@/lib/admin-page-title'
 import type { TenantStatus } from '@/types'
@@ -106,7 +93,53 @@ interface LeaseData {
 
 interface PaymentData {
   _id: string; amount: number; type: string; status: string
-  periodStart: string; periodEnd: string; createdAt: string
+  direction?: 'charge' | 'payment'
+  balanceAfter?: number
+  periodStart?: string; periodEnd?: string; createdAt: string
+  description?: string; dueDate?: string
+}
+
+// Maps the raw PaymentType enum to the human label shown in the Item column —
+// "late_fee" was bleeding through as a slug, which is what Silvio flagged.
+const PAYMENT_ITEM_LABELS: Record<string, string> = {
+  rent: 'Monthly Rent',
+  late_fee: 'Past Due Fee',
+  deposit: 'Security Deposit',
+  prorated: 'Prorated Rent',
+  credit: 'Credit',
+  other: 'Fee',
+}
+
+function paymentItemLabel(p: PaymentData): string {
+  // Payment-direction rows show the method (Cash, Credit Card, Void, …),
+  // parsed from the description prefix written by apply-payment. Falls back
+  // to a generic "Payment" label.
+  if (p.direction === 'payment') {
+    if (p.status === 'voided') return 'Void'
+    if (p.type === 'credit') return 'Credit'
+    if (p.status === 'refunded') return 'Refund'
+    const prefix = p.description?.split('—')[0]?.trim()
+    return prefix || 'Payment'
+  }
+  return PAYMENT_ITEM_LABELS[p.type] ?? p.type
+}
+
+function paymentDescription(p: PaymentData): string {
+  if (p.description) return p.description
+  if (p.periodStart && p.periodEnd) {
+    return `Period: ${formatDate(p.periodStart)} – ${formatDate(p.periodEnd)}`
+  }
+  if (p.dueDate) return `Due ${formatDate(p.dueDate)}`
+  return ''
+}
+
+// Treat money-moved rows (payments received, credits issued, refunds, voids)
+// as belonging to the Payments/Voids column instead of Charges.
+// Note: a CHARGE row with status='voided' still shows in the Charges column —
+// the matching payment-direction void row is what surfaces in Payments/Voids.
+function isCreditEntry(p: PaymentData): boolean {
+  if (p.direction === 'payment') return true
+  return p.type === 'credit' || p.status === 'refunded' || p.amount < 0
 }
 
 interface NoteData {
@@ -152,6 +185,10 @@ export default function TenantDetailPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [balance, setBalance] = useState<number>(0)
+  const [outstanding, setOutstanding] = useState<number>(0)
+  const [credit, setCredit] = useState<number>(0)
+  const [recurringBillingActive, setRecurringBillingActive] = useState<boolean>(false)
+  const [recurringFeesCount, setRecurringFeesCount] = useState<number>(0)
   const [noteText, setNoteText] = useState('')
   const [noteSaving, setNoteSaving] = useState(false)
   const [showExtended, setShowExtended] = useState(false)
@@ -177,24 +214,19 @@ export default function TenantDetailPage() {
       setLeases(lJson.success ? (lJson.data?.items ?? []) : [])
       setPayments(pJson.success ? (pJson.data?.items ?? []) : [])
       setNotes(nJson.success ? nJson.data : [])
-      if (bJson.success) setBalance(bJson.data.balance)
+      if (bJson.success) {
+        setBalance(bJson.data.balance)
+        setOutstanding(bJson.data.outstanding ?? 0)
+        setCredit(bJson.data.credit ?? 0)
+        setRecurringBillingActive(!!bJson.data.recurringBillingActive)
+        setRecurringFeesCount(bJson.data.recurringFeesCount ?? 0)
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load tenant')
     } finally { setLoading(false) }
   }, [tenantId])
 
   useEffect(() => { loadData() }, [loadData])
-
-  async function handleStatusToggle() {
-    if (!tenant) return
-    const newStatus: TenantStatus = tenant.status === 'locked_out' ? 'active' : 'locked_out'
-    await fetch(`/api/tenants/${tenantId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: newStatus }),
-    })
-    loadData()
-  }
 
   async function handleAddNote() {
     if (!noteText.trim()) return
@@ -249,21 +281,20 @@ export default function TenantDetailPage() {
       {/* Action buttons row — matches live admin */}
       <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 3 }}>
         {[
-          { label: 'Recurring Billing',  icon: <AutorenewIcon fontSize="small" />,     onClick: () => router.push(`/admin/tenants/${tenantId}/recurring-billing`) },
-          { label: 'Add Credit',          icon: <AddCardIcon fontSize="small" />,        onClick: () => router.push(`/admin/tenants/${tenantId}/add-credit`) },
-          { label: 'Fees/Products',       icon: <LocalOfferIcon fontSize="small" />,     onClick: () => router.push(`/admin/tenants/${tenantId}/fees-products`) },
-          { label: 'Make a Payment',      icon: <PaymentsIcon fontSize="small" />,       onClick: () => router.push(`/admin/tenants/${tenantId}/make-payment`) },
-          { label: 'Edit Profile',        icon: <EditIcon fontSize="small" />,           onClick: () => router.push(`/admin/tenants/${tenantId}/edit`) },
-          { label: 'Rent Unit',           icon: <AddBusinessIcon fontSize="small" />,    onClick: () => router.push(`/admin/tenants/${tenantId}/rent-unit`) },
-          { label: 'Reserve Unit',        icon: <BookmarkAddIcon fontSize="small" />,    onClick: () => router.push(`/admin/tenants/${tenantId}/reserve-unit`) },
-          { label: 'Letters',             icon: <MarkEmailReadIcon fontSize="small" />,  onClick: () => router.push(`/admin/communications?tenantId=${tenantId}`) },
-          { label: 'Gate Access',         icon: <VpnKeyIcon fontSize="small" />,         onClick: handleStatusToggle },
+          { label: 'Recurring Billing',  onClick: () => router.push(`/admin/tenants/${tenantId}/recurring-billing`) },
+          { label: 'Add Credit',          onClick: () => router.push(`/admin/tenants/${tenantId}/add-credit`) },
+          { label: 'Fees/Products',       onClick: () => router.push(`/admin/tenants/${tenantId}/fees-products`) },
+          { label: 'Make a Payment',      onClick: () => router.push(`/admin/tenants/${tenantId}/make-payment`) },
+          { label: 'Edit Profile',        onClick: () => router.push(`/admin/tenants/${tenantId}/edit`) },
+          { label: 'Rent Unit',           onClick: () => router.push(`/admin/tenants/${tenantId}/rent-unit`) },
+          { label: 'Reserve Unit',        onClick: () => router.push(`/admin/tenants/${tenantId}/reserve-unit`) },
+          { label: 'Letters',             onClick: () => router.push(`/admin/tenants/${tenantId}/letters`) },
+          { label: 'Gate Access',         onClick: () => router.push(`/admin/tenants/${tenantId}/gate-access`) },
         ].map((b) => (
           <Button
             key={b.label}
             variant="contained"
             size="small"
-            startIcon={b.icon}
             onClick={b.onClick}
             disableElevation
             sx={{
@@ -311,30 +342,84 @@ export default function TenantDetailPage() {
 
           {/* Balance */}
           <Card>
-            <CardContent>
-              <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>
+            <Box sx={{ bgcolor: '#F3F4F6', px: 2.5, py: 1.5 }}>
+              <Typography variant="h6" sx={{ fontWeight: 700 }}>
                 Balance: {formatMoney(balance)}
               </Typography>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                <Typography variant="body2" sx={{ color: 'text.secondary' }}>Outstanding</Typography>
-                <Typography variant="body2" sx={{ color: balance > 0 ? '#DC2626' : '#065F46', fontWeight: 600 }}>
-                  {formatMoney(balance)}
+            </Box>
+            <Box>
+              {/* Row: Outstanding */}
+              <Box sx={{ display: 'grid', gridTemplateColumns: '1.1fr 1fr 1.2fr', alignItems: 'center', borderBottom: '1px solid #F3F0EB' }}>
+                <Typography variant="body2" sx={{ px: 2.5, py: 1.5, color: 'text.secondary' }}>Outstanding</Typography>
+                <Typography variant="body2" sx={{ px: 2.5, py: 1.5, bgcolor: outstanding > 0 ? '#FEE2E2' : '#FEF3C7', fontWeight: 600, textAlign: 'left' }}>
+                  {formatMoney(outstanding)}
                 </Typography>
+                <Box sx={{ px: 2.5, py: 1.5 }}>
+                  <MuiLink
+                    component="button"
+                    variant="body2"
+                    onClick={() => router.push(`/admin/tenants/${tenantId}/make-payment`)}
+                    sx={{ color: '#3F8EBF', fontWeight: 500 }}
+                  >
+                    Make a Payment
+                  </MuiLink>
+                </Box>
               </Box>
-              <Divider sx={{ my: 1.5 }} />
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                <Typography variant="body2" sx={{ color: 'text.secondary' }}>Autopay</Typography>
-                <Chip
-                  label={tenant.autopayEnabled ? 'Active' : 'Off'}
-                  size="small"
-                  sx={{
-                    bgcolor: tenant.autopayEnabled ? '#D1FAE5' : '#F3F4F6',
-                    color: tenant.autopayEnabled ? '#065F46' : '#374151',
-                    fontWeight: 600, fontSize: '0.7rem',
-                  }}
-                />
+
+              {/* Row: Credit */}
+              <Box sx={{ display: 'grid', gridTemplateColumns: '1.1fr 1fr 1.2fr', alignItems: 'center', borderBottom: '1px solid #F3F0EB' }}>
+                <Typography variant="body2" sx={{ px: 2.5, py: 1.5, color: 'text.secondary' }}>Credit</Typography>
+                <Typography variant="body2" sx={{ px: 2.5, py: 1.5, bgcolor: '#D1FAE5', fontWeight: 600, textAlign: 'left' }}>
+                  {formatMoney(credit)}
+                </Typography>
+                <Box sx={{ px: 2.5, py: 1.5 }}>
+                  <MuiLink
+                    component="button"
+                    variant="body2"
+                    onClick={() => router.push(`/admin/tenants/${tenantId}/add-credit`)}
+                    sx={{ color: '#3F8EBF', fontWeight: 500 }}
+                  >
+                    Add Credit
+                  </MuiLink>
+                </Box>
               </Box>
-            </CardContent>
+
+              {/* Row: Recurring Billing (visual gap matches live) */}
+              <Box sx={{ display: 'grid', gridTemplateColumns: '1.1fr 1fr 1.2fr', alignItems: 'center', borderBottom: '1px solid #F3F0EB', mt: 1 }}>
+                <Typography variant="body2" sx={{ px: 2.5, py: 1.5, color: 'text.secondary' }}>Recurring Billing</Typography>
+                <Typography variant="body2" sx={{ px: 2.5, py: 1.5, bgcolor: '#D1FAE5', fontWeight: 600, textAlign: 'left' }}>
+                  {recurringBillingActive ? 'Active' : 'Inactive'}
+                </Typography>
+                <Box sx={{ px: 2.5, py: 1.5 }}>
+                  <MuiLink
+                    component="button"
+                    variant="body2"
+                    onClick={() => router.push(`/admin/tenants/${tenantId}/recurring-billing`)}
+                    sx={{ color: '#3F8EBF', fontWeight: 500 }}
+                  >
+                    Edit Recurring Billing
+                  </MuiLink>
+                </Box>
+              </Box>
+
+              {/* Row: Recurring Fees */}
+              <Box sx={{ display: 'grid', gridTemplateColumns: '1.1fr 1fr 1.2fr', alignItems: 'center' }}>
+                <Typography variant="body2" sx={{ px: 2.5, py: 1.5, color: 'text.secondary' }}>Recurring Fees</Typography>
+                <Typography variant="body2" sx={{ px: 2.5, py: 1.5, bgcolor: '#D1FAE5', fontWeight: 600, textAlign: 'left' }}>
+                  {recurringFeesCount}
+                </Typography>
+                <Box sx={{ px: 2.5, py: 1.5 }}>
+                  <MuiLink
+                    component="button"
+                    variant="body2"
+                    onClick={() => router.push(`/admin/tenants/${tenantId}/recurring-fees`)}
+                    sx={{ color: '#3F8EBF', fontWeight: 500 }}
+                  >
+                    Edit Recurring Fees
+                  </MuiLink>
+                </Box>
+              </Box>
+            </Box>
           </Card>
         </Grid>
 
@@ -574,38 +659,100 @@ export default function TenantDetailPage() {
                     <TableHead>
                       <TableRow sx={{ '& th': { fontWeight: 600, color: 'text.secondary', fontSize: '0.75rem' } }}>
                         <TableCell>Date</TableCell>
-                        <TableCell>Type</TableCell>
-                        <TableCell>Amount</TableCell>
-                        <TableCell>Status</TableCell>
-                        <TableCell>Period</TableCell>
+                        <TableCell>Item</TableCell>
+                        <TableCell>Description</TableCell>
+                        <TableCell align="right">Charges</TableCell>
+                        <TableCell align="right">Payments/Voids</TableCell>
+                        <TableCell align="right">Balance</TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {payments.map((p) => (
-                        <TableRow key={p._id}>
-                          <TableCell>{formatDate(p.createdAt)}</TableCell>
-                          <TableCell sx={{ textTransform: 'capitalize' }}>{p.type.replace('_', ' ')}</TableCell>
-                          <TableCell sx={{ fontWeight: 500 }}>{formatMoney(p.amount)}</TableCell>
-                          <TableCell>
-                            <Chip
-                              label={p.status}
-                              size="small"
-                              sx={{
-                                fontSize: '0.7rem', fontWeight: 600,
-                                bgcolor: p.status === 'succeeded' ? '#D1FAE5' : p.status === 'failed' ? '#FEE2E2' : '#FEF3C7',
-                                color: p.status === 'succeeded' ? '#065F46' : p.status === 'failed' ? '#991B1B' : '#92400E',
-                              }}
-                            />
-                          </TableCell>
-                          <TableCell sx={{ fontSize: '0.8rem' }}>
-                            {formatDate(p.periodStart)} — {formatDate(p.periodEnd)}
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                      {(() => {
+                        // Sort newest→oldest and take the latest 10. balanceAfter
+                        // is persisted on each row at write time, so we don't
+                        // need to walk the full ledger to know the per-row
+                        // balance — the row knows its own.
+                        const rows = [...payments]
+                          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+                          .slice(0, 10)
+                          .map((p) => {
+                            const credit = isCreditEntry(p)
+                            const isFailed = p.status === 'failed'
+                            const charges = credit ? 0 : Math.abs(p.amount)
+                            const paymentsVoids = credit ? Math.abs(p.amount) : 0
+                            return { p, charges, paymentsVoids, balance: p.balanceAfter ?? 0, credit, isFailed }
+                          })
+                        return rows
+                          .map(({ p, charges, paymentsVoids, balance: rowBal, credit, isFailed }) => (
+                            <TableRow key={p._id}>
+                              <TableCell>{formatDate(p.createdAt)}</TableCell>
+                              <TableCell>{paymentItemLabel(p)}</TableCell>
+                              <TableCell sx={{ fontSize: '0.8rem', color: 'text.secondary' }}>
+                                {paymentDescription(p) || '—'}
+                              </TableCell>
+                              <TableCell align="right" sx={{ fontWeight: 500 }}>
+                                {charges > 0 ? formatMoney(charges) : '—'}
+                              </TableCell>
+                              <TableCell
+                                align="right"
+                                sx={{ fontWeight: 500, color: credit ? '#DC2626' : 'inherit' }}
+                              >
+                                {paymentsVoids > 0 ? (
+                                  <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75, justifyContent: 'flex-end' }}>
+                                    {formatMoney(paymentsVoids)}
+                                    {p.status === 'voided' && (
+                                      <Chip
+                                        label="VOID"
+                                        size="small"
+                                        sx={{ bgcolor: '#FEE2E2', color: '#991B1B', fontWeight: 700, fontSize: '0.65rem', height: 18 }}
+                                      />
+                                    )}
+                                    {p.status === 'refunded' && (
+                                      <Chip
+                                        label="REFUND"
+                                        size="small"
+                                        sx={{ bgcolor: '#FEF3C7', color: '#92400E', fontWeight: 700, fontSize: '0.65rem', height: 18 }}
+                                      />
+                                    )}
+                                    {p.status === 'failed' && (
+                                      <Chip
+                                        label="FAILED"
+                                        size="small"
+                                        sx={{ bgcolor: '#FEE2E2', color: '#991B1B', fontWeight: 700, fontSize: '0.65rem', height: 18 }}
+                                      />
+                                    )}
+                                  </Box>
+                                ) : '—'}
+                              </TableCell>
+                              <TableCell align="right" sx={{ fontWeight: 600 }}>
+                                {formatMoney(rowBal)}
+                              </TableCell>
+                            </TableRow>
+                          ))
+                      })()}
                     </TableBody>
                   </Table>
                 </TableContainer>
               )}
+
+              <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, mt: 2 }}>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  onClick={() => router.push(`/admin/tenants/${tenantId}/billing-history`)}
+                  sx={{ textTransform: 'none', borderColor: '#8CA87C', color: '#5C7350' }}
+                >
+                  Full Billing &amp; Payments Report
+                </Button>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  onClick={() => router.push(`/admin/tenants/${tenantId}/mass-void`)}
+                  sx={{ textTransform: 'none', borderColor: '#DC2626', color: '#DC2626' }}
+                >
+                  Mass Void Unpaid Line Items
+                </Button>
+              </Box>
             </CardContent>
           </Card>
 

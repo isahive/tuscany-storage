@@ -20,9 +20,13 @@ export function generateGateCode(): string {
   return crypto.randomInt(1000, 10000).toString()
 }
 
-export function parsePaginationParams(searchParams: URLSearchParams): { page: number; limit: number; skip: number } {
+export function parsePaginationParams(
+  searchParams: URLSearchParams,
+  opts: { maxLimit?: number } = {},
+): { page: number; limit: number; skip: number } {
+  const maxLimit = opts.maxLimit ?? 100
   const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10))
-  const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '20', 10)))
+  const limit = Math.min(maxLimit, Math.max(1, parseInt(searchParams.get('limit') || '20', 10)))
   const skip = (page - 1) * limit
   return { page, limit, skip }
 }
