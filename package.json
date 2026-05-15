@@ -21,6 +21,7 @@
     "backfill:leases": "ts-node --project tsconfig.scripts.json scripts/backfill-leases.ts",
     "backfill:payment-direction": "ts-node --project tsconfig.scripts.json scripts/backfill-payment-direction.ts",
     "backfill:balance-after": "ts-node --project tsconfig.scripts.json scripts/backfill-balance-after.ts",
+    "migrate:local-to-atlas": "ts-node --project tsconfig.scripts.json scripts/migrate-local-to-atlas.ts",
     "seed:alan-wolfe": "ts-node --project tsconfig.scripts.json scripts/seed-alan-wolfe.ts",
     "billing:preview": "node scripts/run-recurring-billing.js --dry",
     "billing:run": "node scripts/run-recurring-billing.js",
