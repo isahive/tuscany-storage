@@ -2,21 +2,22 @@
  * One-shot migration: wipes the Atlas database and copies every collection
  * from local Mongo into Atlas. Used to push the demo state to prod.
  *
- * Run:  npm run migrate:local-to-atlas
+ * Run:  ATLAS_MONGODB_URI=… npm run migrate:local-to-atlas
  *
- * Requires both URIs set:
- *   LOCAL_MONGODB_URI=mongodb://localhost:27017/tuscany-storage
- *   ATLAS_MONGODB_URI=mongodb+srv://…/tuscany-storage
+ * Requires:
+ *   ATLAS_MONGODB_URI   mongodb+srv://…/tuscany-storage  (REQUIRED — no default)
+ *   LOCAL_MONGODB_URI   mongodb://localhost:27017/tuscany-storage  (optional)
  *
- * Defaults pull from the values commented in .env.local so it works out of
- * the box on the dev box.
+ * NEVER hardcode the Atlas URI here. Read it from the environment.
  */
 import { MongoClient } from 'mongodb'
 
 const LOCAL_URI = process.env.LOCAL_MONGODB_URI || 'mongodb://localhost:27017/tuscany-storage'
-const ATLAS_URI =
-  process.env.ATLAS_MONGODB_URI ||
-  'mongodb+srv://<REDACTED>/tuscany-storage'
+if (!process.env.ATLAS_MONGODB_URI) {
+  console.error('ATLAS_MONGODB_URI env var is required. Refusing to run without it.')
+  process.exit(1)
+}
+const ATLAS_URI: string = process.env.ATLAS_MONGODB_URI
 
 function mask(uri: string): string {
   return uri.replace(/\/\/[^@]+@/, '//***@')
