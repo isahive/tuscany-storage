@@ -206,7 +206,7 @@ export default function NewRecurringFeePage() {
         <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>Tax Rate</Typography>
         <FormControl fullWidth size="small" sx={{ mb: 2 }}>
           <Select value={taxRate} onChange={(e) => setTaxRate(e.target.value as 'none')}>
-            <MenuItem value="none">Don't Charge Tax</MenuItem>
+            <MenuItem value="none">Don&apos;t Charge Tax</MenuItem>
           </Select>
         </FormControl>
 
