@@ -37,6 +37,18 @@ export interface IPaymentDocument extends Document {
   paymentMethodLabel?: string
   /** Source system the row came from (e.g. "storable-csv-2026-05-14"). */
   importSource?: string
+  /** When direction='payment', the charge rows this payment was applied
+   *  against. Lets the Refund Payment screen list the underlying line items
+   *  the way Storable Easy does (multi-item refund). */
+  appliedToItemIds?: Types.ObjectId[]
+  /** When direction='payment' status='refunded', the original payment row
+   *  this refund row reverses. Lets the billing history pair them up. */
+  refundOfPaymentId?: Types.ObjectId
+  /** Free-form reason captured at refund time (Storable parity). */
+  refundReason?: string
+  /** Refund method chosen on the Refund screen — return_to_card, cash, check,
+   *  other — separate from `description` so reports can group cleanly. */
+  refundMethod?: 'return_to_card' | 'cash' | 'check' | 'other'
   createdAt: Date
   updatedAt: Date
 }
@@ -85,6 +97,10 @@ const PaymentSchema = new Schema<IPaymentDocument>(
     cardholderName: { type: String },
     paymentMethodLabel: { type: String },
     importSource: { type: String, index: true },
+    appliedToItemIds: [{ type: Schema.Types.ObjectId, ref: 'Payment' }],
+    refundOfPaymentId: { type: Schema.Types.ObjectId, ref: 'Payment', index: true },
+    refundReason: { type: String },
+    refundMethod: { type: String, enum: ['return_to_card', 'cash', 'check', 'other'] },
   },
   { timestamps: true }
 )

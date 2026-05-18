@@ -172,6 +172,12 @@ export async function POST(req: NextRequest, context: RouteContext) {
       amount,
     })
 
+    // Resolve charge rows this payment is settling so the Refund screen can
+    // list line items the way Storable Easy does.
+    const appliedToObjectIds = itemIds
+      .filter((s) => Types.ObjectId.isValid(s))
+      .map((s) => new Types.ObjectId(s))
+
     const paymentRow = await Payment.create({
       tenantId: tenant._id,
       amount,
@@ -187,6 +193,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
       createdBy: session.user.id,
       attemptCount: 1,
       lastAttemptAt: new Date(),
+      appliedToItemIds: appliedToObjectIds.length > 0 ? appliedToObjectIds : undefined,
     })
 
     // Only confirmed-succeeded payments touch line items and balance.
@@ -195,12 +202,9 @@ export async function POST(req: NextRequest, context: RouteContext) {
     // row to succeeded (or to failed) and re-runs this reconciliation.
     if (paymentStatus === 'succeeded') {
       // ── Mark line items as paid ──
-      if (itemIds.length > 0) {
-        const objectIds = itemIds
-          .filter((s) => Types.ObjectId.isValid(s))
-          .map((s) => new Types.ObjectId(s))
+      if (appliedToObjectIds.length > 0) {
         await Payment.updateMany(
-          { _id: { $in: objectIds }, tenantId: tenant._id, status: 'pending' },
+          { _id: { $in: appliedToObjectIds }, tenantId: tenant._id, status: 'pending' },
           { $set: { status: 'succeeded', lastAttemptAt: new Date() } }
         )
       }

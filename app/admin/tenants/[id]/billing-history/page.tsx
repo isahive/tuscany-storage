@@ -11,6 +11,7 @@ import {
   Checkbox,
   Chip,
   CircularProgress,
+  Link as MuiLink,
   Snackbar,
   Table,
   TableBody,
@@ -278,7 +279,15 @@ export default function FullBillingHistoryPage() {
                             size="small"
                           />
                         </TableCell>
-                        <TableCell sx={{ whiteSpace: 'nowrap' }}>{formatDate(p.createdAt)}</TableCell>
+                        <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                          <MuiLink
+                            component="button"
+                            onClick={() => router.push(`/admin/tenants/${tenantId}/transaction/${p._id}`)}
+                            sx={{ color: '#DC2626', fontWeight: 500 }}
+                          >
+                            {formatDate(p.createdAt)}
+                          </MuiLink>
+                        </TableCell>
                         <TableCell>{paymentItemLabel(p)}</TableCell>
                         <TableCell sx={{ fontSize: '0.8rem', color: 'text.secondary' }}>
                           {paymentDescription(p) || '—'}

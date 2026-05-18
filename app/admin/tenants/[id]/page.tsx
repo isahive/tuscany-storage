@@ -685,7 +685,15 @@ export default function TenantDetailPage() {
                         return rows
                           .map(({ p, charges, paymentsVoids, balance: rowBal, credit, isFailed }) => (
                             <TableRow key={p._id}>
-                              <TableCell>{formatDate(p.createdAt)}</TableCell>
+                              <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                                <MuiLink
+                                  component="button"
+                                  onClick={() => router.push(`/admin/tenants/${tenantId}/transaction/${p._id}`)}
+                                  sx={{ color: '#DC2626', fontWeight: 500 }}
+                                >
+                                  {formatDate(p.createdAt)}
+                                </MuiLink>
+                              </TableCell>
                               <TableCell>{paymentItemLabel(p)}</TableCell>
                               <TableCell sx={{ fontSize: '0.8rem', color: 'text.secondary' }}>
                                 {paymentDescription(p) || '—'}
