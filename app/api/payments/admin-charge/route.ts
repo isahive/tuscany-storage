@@ -7,6 +7,13 @@ import { connectDB } from '@/lib/db'
 import Tenant from '@/models/Tenant'
 import Lease from '@/models/Lease'
 import Payment from '@/models/Payment'
+import {
+  adminKey,
+  getVerificationStatus,
+  recordFailedPayment,
+  recordManualCharge,
+  recordSuccessfulPayment,
+} from '@/lib/paymentVerification'
 
 const chargeSchema = z.object({
   tenantId: z.string().min(1),
@@ -35,6 +42,25 @@ export async function POST(req: NextRequest) {
     const amountCents = Math.round(amount * 100)
 
     await connectDB()
+
+    // ── Web Visitor Verification gate (admin-scoped) ──
+    // Storable trigger #4: refuses further manual charges once the admin has
+    // already pushed >3 in the last hour OR has hit the failed-streak limit.
+    // No Turnstile UI exists in the admin panel yet, so we simply 429 until
+    // the 24h cooldown clears (or until we build an admin clear-flow).
+    const vKey = adminKey(session.user.id)
+    const vStatus = await getVerificationStatus(vKey)
+    if (vStatus.required) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Manual charges are rate-limited. ${vStatus.reason ?? ''}`.trim(),
+          verificationRequired: true,
+          reason: vStatus.reason,
+        },
+        { status: 429 },
+      )
+    }
 
     const [tenant, lease] = await Promise.all([
       Tenant.findById(tenantId).select('+stripeCustomerId +defaultPaymentMethodId'),
@@ -85,6 +111,7 @@ export async function POST(req: NextRequest) {
         stripePaymentIntentId = intent.id
         paymentStatus = intent.status === 'succeeded' ? 'succeeded' : 'pending'
       } catch (stripeErr: unknown) {
+        await recordFailedPayment(vKey)
         const msg = stripeErr instanceof Error ? stripeErr.message : 'Stripe charge failed'
         return NextResponse.json({ success: false, error: msg }, { status: 402 })
       }
@@ -109,6 +136,14 @@ export async function POST(req: NextRequest) {
     await Tenant.findByIdAndUpdate(tenantId, {
       $inc: { balance: amountCents },
     })
+
+    if (paymentStatus === 'succeeded') {
+      await recordSuccessfulPayment(vKey)
+      // Count this successful manual charge against the trailing-hour window.
+      // If it pushes the admin over the threshold, the NEXT admin-charge call
+      // is the one that gets rejected — current charge already went through.
+      await recordManualCharge(vKey)
+    }
 
     return NextResponse.json({ success: true, data: payment }, { status: 201 })
   } catch (error) {

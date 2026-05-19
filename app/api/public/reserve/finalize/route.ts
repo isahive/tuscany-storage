@@ -11,6 +11,7 @@ import Promotion from '@/models/Promotion'
 import ProtectionPlan from '@/models/ProtectionPlan'
 import { DEFAULT_SETTINGS } from '@/lib/defaultSettings'
 import { calculateCharges } from '@/lib/billing/calculate-charges'
+import { nextBalanceAfter } from '@/lib/paymentBalance'
 import { sendTemplatedNotification } from '@/lib/sendNotification'
 
 const schema = z.object({
@@ -174,52 +175,99 @@ export async function POST(req: NextRequest) {
     }
 
     // ─── 6. Create Payment records from breakdown ──────────────────────────────
+    // Two-row pattern (Storable parity):
+    //   - One direction='charge' row per line item (deposit, rent, protection,
+    //     tax…) — these are what was invoiced.
+    //   - ONE direction='payment' row equal to the total — what the customer
+    //     actually paid via Stripe. Links back via `appliedToItemIds`.
+    // balanceDelta nets the two to zero so the new tenant's balance ends at 0.
     const now = new Date()
     const periodStart = new Date(now.getFullYear(), now.getMonth(), 1)
     const periodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59)
 
-    const paymentDocs: Array<Record<string, unknown>> = []
-    let suffixIdx = 0
+    interface LineSpec {
+      amount: number
+      type: 'rent' | 'deposit' | 'prorated' | 'other'
+      description: string
+      periodStart: Date
+      periodEnd: Date
+    }
+    const lines: LineSpec[] = []
     for (const line of breakdown.dueToday.lines) {
       if (line.amount === 0) continue
-      let type: 'rent' | 'deposit' | 'prorated' | 'other' = 'other'
+      let type: LineSpec['type'] = 'other'
       if (line.type === 'rent') type = line.label.toLowerCase().includes('prorat') ? 'prorated' : 'rent'
       else if (line.type === 'deposit') type = 'deposit'
       else type = 'other'
-
-      paymentDocs.push({
-        tenantId: lease.tenantId,
-        leaseId: lease._id,
-        unitId: lease.unitId,
-        stripePaymentIntentId: suffixIdx === 0 ? confirmedIntentId! : `${confirmedIntentId!}_${suffixIdx}`,
+      lines.push({
         amount: line.amount,
-        currency: 'usd',
         type,
-        status: 'succeeded',
+        description: line.label,
         periodStart: line.periodStart ?? periodStart,
         periodEnd: line.periodEnd ?? periodEnd,
-        attemptCount: 1,
       })
-      suffixIdx += 1
     }
-
-    if (paymentDocs.length === 0) {
-      // Fallback: simple deposit + rent
-      paymentDocs.push(
-        {
-          tenantId: lease.tenantId, leaseId: lease._id, unitId: lease.unitId,
-          stripePaymentIntentId: confirmedIntentId!, amount: (unit as any).price,
-          currency: 'usd', type: 'deposit', status: 'succeeded', periodStart, periodEnd, attemptCount: 1,
-        },
-        {
-          tenantId: lease.tenantId, leaseId: lease._id, unitId: lease.unitId,
-          stripePaymentIntentId: `${confirmedIntentId!}_rent`, amount: (unit as any).price,
-          currency: 'usd', type: 'rent', status: 'succeeded', periodStart, periodEnd, attemptCount: 1,
-        },
+    if (lines.length === 0) {
+      const price = (unit as any).price
+      lines.push(
+        { amount: price, type: 'deposit', description: 'Deposit', periodStart, periodEnd },
+        { amount: price, type: 'rent', description: 'Monthly Rent', periodStart, periodEnd },
       )
     }
 
-    await Promise.all(paymentDocs.map((doc) => Payment.create(doc)))
+    // ── Create the charges sequentially so balanceAfter walks correctly ──
+    const createdCharges: any[] = []
+    for (const l of lines) {
+      const balanceAfter = await nextBalanceAfter(Payment, lease.tenantId, {
+        direction: 'charge',
+        status: 'succeeded',
+        amount: l.amount,
+      })
+      const c = await Payment.create({
+        tenantId: lease.tenantId,
+        leaseId: lease._id,
+        unitId: lease.unitId,
+        amount: l.amount,
+        currency: 'usd',
+        type: l.type,
+        status: 'succeeded',
+        direction: 'charge',
+        balanceAfter,
+        description: l.description,
+        periodStart: l.periodStart,
+        periodEnd: l.periodEnd,
+        attemptCount: 1,
+      })
+      createdCharges.push(c)
+    }
+
+    // ── Create the matching payment row that settled the move-in total ──
+    const totalCents = lines.reduce((s, l) => s + l.amount, 0)
+    const paymentBalanceAfter = await nextBalanceAfter(Payment, lease.tenantId, {
+      direction: 'payment',
+      status: 'succeeded',
+      amount: totalCents,
+    })
+    await Payment.create({
+      tenantId: lease.tenantId,
+      leaseId: lease._id,
+      unitId: lease.unitId,
+      amount: totalCents,
+      currency: 'usd',
+      type: 'rent',
+      status: 'succeeded',
+      direction: 'payment',
+      balanceAfter: paymentBalanceAfter,
+      stripePaymentIntentId: confirmedIntentId!,
+      description: 'Move-in payment — Credit Card',
+      appliedToItemIds: createdCharges.map((c) => c._id),
+      attemptCount: 1,
+      lastAttemptAt: now,
+    })
+
+    // Sync the denormalized tenant.balance so the dashboard reads correctly
+    // without waiting for the next ledger walk.
+    await Tenant.findByIdAndUpdate(lease.tenantId, { balance: paymentBalanceAfter })
 
     // ─── 7. Increment counts ───────────────────────────────────────────────────
     if (appliedPromotion) {

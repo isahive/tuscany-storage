@@ -10,6 +10,12 @@
   body {
     @apply bg-white text-gray-800 font-sans antialiased;
   }
+
+  /* Headings inherit body font-sans (Inter) by default. Apply `font-display`
+     for any heading that should pop with the Outfit display face. */
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-sans;
+  }
 }
 
 @layer utilities {

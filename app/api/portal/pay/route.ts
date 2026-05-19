@@ -7,12 +7,21 @@ import { connectDB } from '@/lib/db'
 import Tenant from '@/models/Tenant'
 import Lease from '@/models/Lease'
 import Payment from '@/models/Payment'
+import {
+  getVerificationStatus,
+  recordFailedPayment,
+  recordSuccessfulPayment,
+  tenantKey,
+} from '@/lib/paymentVerification'
+import { verifyTurnstileToken } from '@/lib/turnstile'
 
 const schema = z.object({
   amount: z.number().int().positive(),          // cents
   type: z.enum(['rent', 'late_fee', 'deposit', 'prorated', 'other']).default('rent'),
   paymentMethodId: z.string().optional(),       // use specific PM; falls back to default
   note: z.string().optional(),
+  /** Cloudflare Turnstile token — required only when verification is active. */
+  turnstileToken: z.string().optional(),
 })
 
 // POST /api/portal/pay
@@ -30,9 +39,27 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: parsed.error.message }, { status: 400 })
     }
 
-    const { amount, type, paymentMethodId, note } = parsed.data
+    const { amount, type, paymentMethodId, note, turnstileToken } = parsed.data
 
     await connectDB()
+
+    // ── Web Visitor Verification gate ──
+    const vKey = tenantKey(session.user.id)
+    const vStatus = await getVerificationStatus(vKey)
+    if (vStatus.required) {
+      const ok = await verifyTurnstileToken(turnstileToken)
+      if (!ok) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Please complete the verification challenge before continuing.',
+            verificationRequired: true,
+            reason: vStatus.reason,
+          },
+          { status: 403 },
+        )
+      }
+    }
 
     const [tenant, lease] = await Promise.all([
       Tenant.findById(session.user.id).select('+stripeCustomerId +defaultPaymentMethodId'),
@@ -99,6 +126,7 @@ export async function POST(req: NextRequest) {
         stripePaymentIntentId = intent.id
         paymentStatus = intent.status === 'succeeded' ? 'succeeded' : 'pending'
       } catch (stripeErr: unknown) {
+        await recordFailedPayment(vKey)
         const msg = stripeErr instanceof Error ? stripeErr.message : 'Payment failed'
         return NextResponse.json({ success: false, error: msg }, { status: 402 })
       }
@@ -118,6 +146,10 @@ export async function POST(req: NextRequest) {
       attemptCount: 1,
       ...(note ? { description: note } : {}),
     })
+
+    if (paymentStatus === 'succeeded') {
+      await recordSuccessfulPayment(vKey)
+    }
 
     return NextResponse.json({ success: true, data: payment }, { status: 201 })
   } catch (error) {

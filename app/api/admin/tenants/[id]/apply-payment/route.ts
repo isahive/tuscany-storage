@@ -7,6 +7,7 @@ import { connectDB } from '@/lib/db'
 import Tenant from '@/models/Tenant'
 import Payment from '@/models/Payment'
 import { nextBalanceAfter } from '@/lib/paymentBalance'
+import { syncTenantStatusFromBalance } from '@/lib/tenantStatus'
 
 interface RouteContext {
   params: Promise<{ id: string }>
@@ -209,8 +210,9 @@ export async function POST(req: NextRequest, context: RouteContext) {
         )
       }
 
-      // ── Reduce tenant balance ──
+      // ── Reduce tenant balance + sync status ──
       tenant.balance = (tenant.balance ?? 0) - amount
+      syncTenantStatusFromBalance(tenant)
       await tenant.save()
     }
 

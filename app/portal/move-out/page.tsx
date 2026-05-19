@@ -1,33 +1,7 @@
 'use client'
 
-import { useState, useCallback, useEffect, DragEvent } from 'react'
-import {
-  Alert,
-  Box,
-  Button,
-  Card,
-  CardContent,
-  Checkbox,
-  Chip,
-  CircularProgress,
-  Dialog,
-  DialogContent,
-  DialogTitle,
-  DialogActions,
-  Divider,
-  FormControlLabel,
-  Step,
-  StepLabel,
-  Stepper,
-  Typography,
-} from '@mui/material'
-import CheckCircleIcon from '@mui/icons-material/CheckCircle'
-import CreditCardIcon from '@mui/icons-material/CreditCard'
-import CloudUploadIcon from '@mui/icons-material/CloudUpload'
-import StorageIcon from '@mui/icons-material/Storage'
-import CalendarMonthIcon from '@mui/icons-material/CalendarMonth'
-import EditIcon from '@mui/icons-material/Edit'
-import AddIcon from '@mui/icons-material/Add'
+import { useCallback, useEffect, useState, DragEvent } from 'react'
+import { useRouter } from 'next/navigation'
 import { loadStripe } from '@stripe/stripe-js'
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js'
 import { formatMoney, formatDate } from '@/lib/utils'
@@ -36,7 +10,7 @@ const stripePromise = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
   ? loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)
   : null
 
-// ─── Types ─────────────────────────────────────────────────────────────────────
+// ─── Types ───────────────────────────────────────────────────────────────────
 
 interface PaymentMethod {
   brand: string
@@ -45,23 +19,11 @@ interface PaymentMethod {
   expYear: number
 }
 
-// ─── Upload (R2 placeholder) ───────────────────────────────────────────────────
-
-async function uploadPhoto(_file: File): Promise<string> {
-  // TODO: replace with real Cloudflare R2 signed-upload flow
-  await new Promise((resolve) => setTimeout(resolve, 400))
-  return `https://storage.example.com/mock/${_file.name.replace(/\s+/g, '-')}`
-}
-
-// ─── Unit data type ──────────────────────────────────────────────────────────
-
 interface UnitInfo {
   unitNumber: string
   size: string
   monthlyRate: number
 }
-
-// ─── Move-out guidelines ──────────────────────────────────────────────────────
 
 const GUIDELINES = [
   'I will remove all belongings by the move-out date',
@@ -86,7 +48,48 @@ function brandLabel(brand: string) {
   return map[brand] ?? brand.charAt(0).toUpperCase() + brand.slice(1)
 }
 
-// ─── Stripe update card form ───────────────────────────────────────────────────
+async function uploadPhoto(file: File): Promise<string> {
+  // TODO: replace with real Cloudflare R2 signed-upload flow
+  await new Promise((resolve) => setTimeout(resolve, 400))
+  return `https://storage.example.com/mock/${file.name.replace(/\s+/g, '-')}`
+}
+
+// ─── Step indicator ─────────────────────────────────────────────────────────
+
+function StepIndicator({ activeStep }: { activeStep: number }) {
+  return (
+    <ol className="mb-8 flex items-center justify-between gap-2 text-sm">
+      {STEPS.map((label, idx) => {
+        const active = idx === activeStep
+        const done = idx < activeStep
+        return (
+          <li key={label} className="flex flex-1 flex-col items-center gap-2">
+            <div
+              className={`flex h-9 w-9 items-center justify-center rounded-full border-2 text-sm font-semibold ${
+                done
+                  ? 'border-olive bg-olive text-white'
+                  : active
+                  ? 'border-olive bg-white text-olive-darker'
+                  : 'border-gray-300 bg-white text-gray-400'
+              }`}
+            >
+              {done ? '✓' : idx + 1}
+            </div>
+            <span
+              className={`text-center text-xs ${
+                active ? 'font-semibold text-olive-darker' : 'text-gray-500'
+              }`}
+            >
+              {label}
+            </span>
+          </li>
+        )
+      })}
+    </ol>
+  )
+}
+
+// ─── Card-update form ───────────────────────────────────────────────────────
 
 function UpdateCardForm({
   onSuccess,
@@ -135,51 +138,88 @@ function UpdateCardForm({
   }
 
   return (
-    <Box>
-      {error && <Alert severity="error" sx={{ mb: 2, borderRadius: 1 }}>{error}</Alert>}
-      <Box
-        sx={{
-          border: '1px solid #EDE5D8',
-          borderRadius: 1.5,
-          p: 1.5,
-          mb: 2,
-          '&:focus-within': { borderColor: '#B8914A' },
-          transition: 'border-color 0.15s',
-        }}
-      >
+    <div>
+      {error && (
+        <div className="mb-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          {error}
+        </div>
+      )}
+      <div className="mb-4 rounded border border-gray-300 bg-white px-3 py-3 focus-within:border-olive">
         <CardElement
           options={{
             style: {
               base: {
                 fontSize: '16px',
                 color: '#1C0F06',
-                fontFamily: '"DM Sans", sans-serif',
+                fontFamily: 'system-ui, -apple-system, sans-serif',
                 '::placeholder': { color: '#9CA3AF' },
               },
               invalid: { color: '#EF4444' },
             },
           }}
         />
-      </Box>
-      <DialogActions sx={{ px: 0, pb: 0 }}>
-        <Button onClick={onCancel} sx={{ color: 'text.secondary', textTransform: 'none' }}>
+      </div>
+      <div className="flex justify-end gap-2">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="rounded border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+        >
           Cancel
-        </Button>
-        <Button
-          variant="contained"
+        </button>
+        <button
+          type="button"
           onClick={handleSubmit}
           disabled={saving || !stripe}
-          startIcon={saving ? <CircularProgress size={16} sx={{ color: 'white' }} /> : undefined}
-          sx={{ bgcolor: '#B8914A', '&:hover': { bgcolor: '#9A7A3E' }, textTransform: 'none', fontWeight: 600 }}
+          className="rounded bg-olive px-4 py-2 text-sm font-semibold text-white hover:bg-olive-dark disabled:cursor-not-allowed disabled:opacity-60"
         >
           {saving ? 'Saving…' : 'Save Card'}
-        </Button>
-      </DialogActions>
-    </Box>
+        </button>
+      </div>
+    </div>
   )
 }
 
-// ─── Step 1 ───────────────────────────────────────────────────────────────────
+// ─── Card-update modal ──────────────────────────────────────────────────────
+
+function CardUpdateModal({
+  open, hasCard, onSuccess, onCancel,
+}: {
+  open: boolean
+  hasCard: boolean
+  onSuccess: () => void
+  onCancel: () => void
+}) {
+  if (!open) return null
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      role="dialog"
+      aria-modal="true"
+      onClick={onCancel}
+    >
+      <div
+        className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h3 className="mb-3 text-lg font-semibold text-olive-darker">
+          {hasCard ? 'Update Payment Method' : 'Add Payment Method'}
+        </h3>
+        {stripePromise ? (
+          <Elements stripe={stripePromise}>
+            <UpdateCardForm onSuccess={onSuccess} onCancel={onCancel} />
+          </Elements>
+        ) : (
+          <div className="rounded border border-yellow-200 bg-yellow-50 px-3 py-2 text-sm text-yellow-800">
+            Online card updates are not available in this environment. Please contact the facility.
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ─── Step 1 ──────────────────────────────────────────────────────────────────
 
 interface Step1Props {
   unit: UnitInfo
@@ -196,227 +236,145 @@ interface Step1Props {
 }
 
 function Step1({
-  unit,
-  moveOutDate,
-  cardConfirmed,
-  checkedGuidelines,
-  paymentMethod,
-  loadingPayment,
-  onDateChange,
-  onCardConfirmedChange,
-  onGuidelineChange,
-  onUpdateCard,
-  onNext,
+  unit, moveOutDate, cardConfirmed, checkedGuidelines, paymentMethod,
+  loadingPayment, onDateChange, onCardConfirmedChange, onGuidelineChange,
+  onUpdateCard, onNext,
 }: Step1Props) {
-  const allGuidelinesChecked = GUIDELINES.every((g) => checkedGuidelines[g])
-  const canProceed = moveOutDate !== '' && cardConfirmed && allGuidelinesChecked
+  const allChecked = GUIDELINES.every((g) => checkedGuidelines[g])
+  const canProceed = moveOutDate !== '' && cardConfirmed && allChecked
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+    <div className="space-y-4">
       {/* Unit info */}
-      <Card variant="outlined" sx={{ border: '1px solid #EDE5D8', boxShadow: 'none' }}>
-        <CardContent sx={{ p: 3 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-            <StorageIcon sx={{ color: 'primary.main' }} />
-            <Typography variant="subtitle1" fontWeight={600}>Your Current Unit</Typography>
-          </Box>
-          <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
-            <Box>
-              <Typography variant="caption" color="text.secondary">Unit Number</Typography>
-              <Typography variant="body1" fontWeight={600}>{unit.unitNumber}</Typography>
-            </Box>
-            <Box>
-              <Typography variant="caption" color="text.secondary">Size</Typography>
-              <Typography variant="body1" fontWeight={600}>{unit.size} ft</Typography>
-            </Box>
-            <Box>
-              <Typography variant="caption" color="text.secondary">Monthly Rate</Typography>
-              <Typography variant="body1" fontWeight={600}>{formatMoney(unit.monthlyRate)}</Typography>
-            </Box>
-          </Box>
-        </CardContent>
-      </Card>
+      <section className="rounded border border-gray-200 bg-white p-5">
+        <h3 className="mb-3 font-semibold text-gray-900">Your Current Unit</h3>
+        <div className="flex flex-wrap gap-6 text-sm">
+          <div>
+            <div className="text-xs uppercase text-gray-500">Unit Number</div>
+            <div className="font-semibold text-gray-900">{unit.unitNumber}</div>
+          </div>
+          <div>
+            <div className="text-xs uppercase text-gray-500">Size</div>
+            <div className="font-semibold text-gray-900">{unit.size}</div>
+          </div>
+          <div>
+            <div className="text-xs uppercase text-gray-500">Monthly Rate</div>
+            <div className="font-semibold text-gray-900">{formatMoney(unit.monthlyRate)}</div>
+          </div>
+        </div>
+      </section>
 
       {/* Move-out date */}
-      <Card variant="outlined" sx={{ border: '1px solid #EDE5D8', boxShadow: 'none' }}>
-        <CardContent sx={{ p: 3 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-            <CalendarMonthIcon sx={{ color: 'primary.main' }} />
-            <Typography variant="subtitle1" fontWeight={600}>Requested Move-Out Date</Typography>
-          </Box>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-            Please give at least 30 days&apos; notice. Earliest available:{' '}
-            <strong>{formatDate(minMoveOutDate())}</strong>.
-          </Typography>
-          <input
-            type="date"
-            min={minMoveOutDate()}
-            value={moveOutDate}
-            onChange={(e) => onDateChange(e.target.value)}
-            aria-label="Requested move-out date"
-            style={{
-              padding: '10px 14px',
-              border: '1px solid #EDE5D8',
-              borderRadius: 4,
-              fontFamily: '"DM Sans", Arial, sans-serif',
-              fontSize: '0.9375rem',
-              color: '#1C0F06',
-              background: '#FFFFFF',
-              cursor: 'pointer',
-              outline: 'none',
-            }}
-          />
-        </CardContent>
-      </Card>
+      <section className="rounded border border-gray-200 bg-white p-5">
+        <h3 className="mb-2 font-semibold text-gray-900">Requested Move-Out Date</h3>
+        <p className="mb-3 text-sm text-gray-600">
+          Please give at least 30 days&apos; notice. Earliest available:{' '}
+          <strong>{formatDate(minMoveOutDate())}</strong>.
+        </p>
+        <input
+          type="date"
+          min={minMoveOutDate()}
+          value={moveOutDate}
+          onChange={(e) => onDateChange(e.target.value)}
+          aria-label="Requested move-out date"
+          className="rounded border border-gray-300 px-3 py-2 text-sm focus:border-olive focus:outline-none"
+        />
+      </section>
 
       {/* Payment method */}
-      <Card variant="outlined" sx={{ border: '1px solid #EDE5D8', boxShadow: 'none' }}>
-        <CardContent sx={{ p: 3 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-            <CreditCardIcon sx={{ color: 'primary.main' }} />
-            <Typography variant="subtitle1" fontWeight={600}>Payment Method on File</Typography>
-          </Box>
+      <section className="rounded border border-gray-200 bg-white p-5">
+        <h3 className="mb-3 font-semibold text-gray-900">Payment Method on File</h3>
 
-          {loadingPayment ? (
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-              <CircularProgress size={16} sx={{ color: '#B8914A' }} />
-              <Typography variant="body2" color="text.secondary">Loading…</Typography>
-            </Box>
-          ) : paymentMethod ? (
-            <Box
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: 2,
-                p: 2,
-                bgcolor: '#FAF7F2',
-                borderRadius: 1,
-                border: '1px solid #EDE5D8',
-                mb: 2,
-              }}
+        {loadingPayment ? (
+          <p className="mb-3 text-sm text-gray-600">Loading…</p>
+        ) : paymentMethod ? (
+          <div className="mb-3 flex items-center justify-between rounded border border-gray-200 bg-gray-50 px-3 py-2.5">
+            <div>
+              <div className="text-sm font-semibold text-gray-900">
+                {brandLabel(paymentMethod.brand)} •••• {paymentMethod.last4}
+              </div>
+              <div className="text-xs text-gray-500">
+                Expires {paymentMethod.expMonth}/{paymentMethod.expYear}
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={onUpdateCard}
+              className="text-sm font-semibold text-olive-darker hover:underline"
             >
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                <CreditCardIcon sx={{ color: 'text.secondary', fontSize: '1.25rem' }} />
-                <Box>
-                  <Typography variant="body2" fontWeight={600}>
-                    {brandLabel(paymentMethod.brand)} •••• {paymentMethod.last4}
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    Expires {paymentMethod.expMonth}/{paymentMethod.expYear}
-                  </Typography>
-                </Box>
-              </Box>
-              <Button
-                startIcon={<EditIcon fontSize="small" />}
-                onClick={onUpdateCard}
-                sx={{
-                  textTransform: 'none',
-                  color: '#B8914A',
-                  fontWeight: 500,
-                  minHeight: 44,
-                  '&:hover': { bgcolor: 'rgba(184,145,74,0.08)' },
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                Update
-              </Button>
-            </Box>
-          ) : (
-            <Box
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: 2,
-                p: 2,
-                bgcolor: '#FEF3C7',
-                borderRadius: 1,
-                border: '1px solid #FDE68A',
-                mb: 2,
-              }}
+              Update
+            </button>
+          </div>
+        ) : (
+          <div className="mb-3 flex items-center justify-between rounded border border-yellow-200 bg-yellow-50 px-3 py-2.5">
+            <p className="text-sm text-yellow-900">
+              No payment method on file. Please add a card to continue.
+            </p>
+            <button
+              type="button"
+              onClick={onUpdateCard}
+              className="rounded bg-olive px-3 py-1.5 text-sm font-semibold text-white hover:bg-olive-dark"
             >
-              <Typography variant="body2" sx={{ color: '#92400E' }}>
-                No payment method on file. Please add a card to continue.
-              </Typography>
-              <Button
-                startIcon={<AddIcon fontSize="small" />}
-                onClick={onUpdateCard}
-                sx={{
-                  textTransform: 'none',
-                  bgcolor: '#B8914A',
-                  color: 'white',
-                  fontWeight: 600,
-                  minHeight: 44,
-                  '&:hover': { bgcolor: '#9A7A3E' },
-                  whiteSpace: 'nowrap',
-                }}
-                variant="contained"
-              >
-                Add Card
-              </Button>
-            </Box>
-          )}
+              Add Card
+            </button>
+          </div>
+        )}
 
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={cardConfirmed}
-                onChange={(e) => onCardConfirmedChange(e.target.checked)}
-                disabled={!paymentMethod}
-                color="primary"
-              />
-            }
-            label={<Typography variant="body2">My payment information is up to date</Typography>}
+        <label className="flex items-center gap-2 text-sm text-gray-700">
+          <input
+            type="checkbox"
+            checked={cardConfirmed}
+            onChange={(e) => onCardConfirmedChange(e.target.checked)}
+            disabled={!paymentMethod}
+            className="h-4 w-4 rounded border-gray-300 text-olive focus:ring-olive"
           />
-        </CardContent>
-      </Card>
+          My payment information is up to date
+        </label>
+      </section>
 
-      {/* Guidelines checklist */}
-      <Card variant="outlined" sx={{ border: '1px solid #EDE5D8', boxShadow: 'none' }}>
-        <CardContent sx={{ p: 3 }}>
-          <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 0.5 }}>Move-Out Guidelines</Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Please confirm each item before continuing.
-          </Typography>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-            {GUIDELINES.map((guideline) => (
-              <FormControlLabel
-                key={guideline}
-                control={
-                  <Checkbox
-                    checked={checkedGuidelines[guideline] ?? false}
-                    onChange={(e) => onGuidelineChange(guideline, e.target.checked)}
-                    color="primary"
-                  />
-                }
-                label={<Typography variant="body2">{guideline}</Typography>}
-                sx={{ alignItems: 'flex-start', '& .MuiCheckbox-root': { pt: 0.25 } }}
+      {/* Guidelines */}
+      <section className="rounded border border-gray-200 bg-white p-5">
+        <h3 className="mb-1 font-semibold text-gray-900">Move-Out Guidelines</h3>
+        <p className="mb-3 text-sm text-gray-600">Please confirm each item before continuing.</p>
+        <div className="space-y-2">
+          {GUIDELINES.map((g) => (
+            <label key={g} className="flex items-start gap-2 text-sm text-gray-700">
+              <input
+                type="checkbox"
+                checked={checkedGuidelines[g] ?? false}
+                onChange={(e) => onGuidelineChange(g, e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-gray-300 text-olive focus:ring-olive"
               />
-            ))}
-          </Box>
-        </CardContent>
-      </Card>
+              {g}
+            </label>
+          ))}
+        </div>
+      </section>
 
-      <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-        <Button variant="contained" disabled={!canProceed} onClick={onNext} size="large">
+      <div className="flex justify-end">
+        <button
+          type="button"
+          disabled={!canProceed}
+          onClick={onNext}
+          className="rounded bg-olive px-6 py-2.5 text-sm font-semibold text-white hover:bg-olive-dark disabled:cursor-not-allowed disabled:opacity-60"
+        >
           Continue
-        </Button>
-      </Box>
-    </Box>
+        </button>
+      </div>
+    </div>
   )
 }
 
-// ─── Step 2 ───────────────────────────────────────────────────────────────────
+// ─── Step 2 ──────────────────────────────────────────────────────────────────
 
-interface Step2Props {
+function Step2({
+  files, onFilesChange, onNext, onBack,
+}: {
   files: File[]
   onFilesChange: (files: File[]) => void
   onNext: () => void
   onBack: () => void
-}
-
-function Step2({ files, onFilesChange, onNext, onBack }: Step2Props) {
+}) {
   const [dragOver, setDragOver] = useState(false)
 
   const addFiles = useCallback(
@@ -439,36 +397,28 @@ function Step2({ files, onFilesChange, onNext, onBack }: Step2Props) {
   }
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-      <Alert severity="info" sx={{ borderRadius: 1 }}>
-        Please take at least 2 photos of your empty unit — front, back, and any corners with
-        damage. Photos will be uploaded when you submit the form.
-      </Alert>
+    <div className="space-y-4">
+      <div className="rounded border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+        Please take at least 2 photos of your empty unit — front, back, and any corners with damage.
+        Photos will be uploaded when you submit the form.
+      </div>
 
-      <Box
+      <div
         onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
         onDragLeave={() => setDragOver(false)}
         onDrop={handleDrop}
-        sx={{
-          border: `2px dashed ${dragOver ? '#B8914A' : '#EDE5D8'}`,
-          borderRadius: 2,
-          p: 5,
-          textAlign: 'center',
-          bgcolor: dragOver ? 'rgba(184,145,74,0.06)' : '#FAF7F2',
-          transition: 'border-color 0.15s, background-color 0.15s',
-          cursor: 'pointer',
-        }}
         onClick={() => document.getElementById('photo-upload-input')?.click()}
         role="button"
         aria-label="Upload photos"
+        className={`cursor-pointer rounded-lg border-2 border-dashed p-10 text-center transition-colors ${
+          dragOver ? 'border-olive bg-olive/5' : 'border-gray-300 bg-gray-50 hover:bg-gray-100'
+        }`}
       >
-        <CloudUploadIcon sx={{ fontSize: 48, color: 'primary.main', mb: 1 }} />
-        <Typography variant="body1" fontWeight={500} color="secondary.main">
-          Drag &amp; drop photos here, or click to browse
-        </Typography>
-        <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
-          Accepts JPG, PNG, HEIC — multiple files allowed
-        </Typography>
+        <svg className="mx-auto mb-3 h-12 w-12 text-olive" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 7.5M12 7.5L7.5 12M12 7.5v9" />
+        </svg>
+        <p className="font-medium text-olive-darker">Drag &amp; drop photos here, or click to browse</p>
+        <p className="mt-1 text-xs text-gray-500">Accepts JPG, PNG, HEIC — multiple files allowed</p>
         <input
           id="photo-upload-input"
           type="file"
@@ -477,61 +427,64 @@ function Step2({ files, onFilesChange, onNext, onBack }: Step2Props) {
           hidden
           onChange={(e) => addFiles(e.target.files)}
         />
-      </Box>
+      </div>
 
       {files.length > 0 && (
-        <Box>
-          <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1.5 }}>
-            Selected Photos ({files.length})
-          </Typography>
-          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: 1.5 }}>
+        <div>
+          <h3 className="mb-2 text-sm font-semibold text-gray-900">Selected Photos ({files.length})</h3>
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(110px,1fr))] gap-3">
             {files.map((file, index) => (
-              <Box key={`${file.name}-${index}`} sx={{ position: 'relative', borderRadius: 1, overflow: 'hidden' }}>
-                <Box
-                  component="img"
+              <div key={`${file.name}-${index}`} className="relative">
+                <img
                   src={URL.createObjectURL(file)}
                   alt={file.name}
-                  sx={{ width: '100%', aspectRatio: '1', objectFit: 'cover', display: 'block', border: '1px solid #EDE5D8', borderRadius: 1 }}
+                  className="aspect-square w-full rounded border border-gray-200 object-cover"
                 />
-                <Box
+                <button
+                  type="button"
                   onClick={(e) => { e.stopPropagation(); handleRemove(index) }}
-                  role="button"
                   aria-label={`Remove ${file.name}`}
-                  sx={{
-                    position: 'absolute', top: 4, right: 4,
-                    bgcolor: 'rgba(28,15,6,0.7)', color: 'white',
-                    borderRadius: '50%', width: 22, height: 22,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: '0.75rem', cursor: 'pointer', lineHeight: 1,
-                    '&:hover': { bgcolor: 'rgba(28,15,6,0.9)' },
-                  }}
+                  className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-black/70 text-xs text-white hover:bg-black/90"
                 >
                   ✕
-                </Box>
-                <Typography variant="caption" display="block" sx={{ mt: 0.5, fontSize: '0.7rem', color: 'text.secondary', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {file.name}
-                </Typography>
-              </Box>
+                </button>
+                <p className="mt-1 truncate text-xs text-gray-500">{file.name}</p>
+              </div>
             ))}
-          </Box>
-        </Box>
+          </div>
+        </div>
       )}
 
       {files.length < 1 && (
-        <Typography variant="caption" color="error">At least 1 photo is required to continue.</Typography>
+        <p className="text-xs text-red-600">At least 1 photo is required to continue.</p>
       )}
 
-      <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-        <Button variant="text" onClick={onBack} sx={{ color: 'text.secondary' }}>Back</Button>
-        <Button variant="contained" disabled={files.length < 1} onClick={onNext} size="large">Continue</Button>
-      </Box>
-    </Box>
+      <div className="flex justify-between">
+        <button
+          type="button"
+          onClick={onBack}
+          className="text-sm font-semibold text-gray-600 hover:underline"
+        >
+          Back
+        </button>
+        <button
+          type="button"
+          disabled={files.length < 1}
+          onClick={onNext}
+          className="rounded bg-olive px-6 py-2.5 text-sm font-semibold text-white hover:bg-olive-dark disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          Continue
+        </button>
+      </div>
+    </div>
   )
 }
 
-// ─── Step 3 ───────────────────────────────────────────────────────────────────
+// ─── Step 3 ──────────────────────────────────────────────────────────────────
 
-interface Step3Props {
+function Step3({
+  unit, moveOutDate, cardConfirmed, paymentMethod, photoCount, submitting, onBack, onSubmit,
+}: {
   unit: UnitInfo
   moveOutDate: string
   cardConfirmed: boolean
@@ -540,157 +493,145 @@ interface Step3Props {
   submitting: boolean
   onBack: () => void
   onSubmit: () => void
-}
-
-function Step3({ unit, moveOutDate, cardConfirmed, paymentMethod, photoCount, submitting, onBack, onSubmit }: Step3Props) {
+}) {
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-      <Typography variant="body2" color="text.secondary">
-        Please review your submission details before confirming.
-      </Typography>
+    <div className="space-y-4">
+      <p className="text-sm text-gray-600">Please review your submission details before confirming.</p>
 
-      <Card variant="outlined" sx={{ border: '1px solid #EDE5D8', boxShadow: 'none' }}>
-        <CardContent sx={{ p: 3 }}>
-          <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 2 }}>Submission Summary</Typography>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Typography variant="body2" color="text.secondary">Unit</Typography>
-              <Typography variant="body2" fontWeight={500}>{unit.unitNumber} ({unit.size} ft)</Typography>
-            </Box>
-            <Divider />
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Typography variant="body2" color="text.secondary">Requested Move-Out Date</Typography>
-              <Typography variant="body2" fontWeight={500}>{moveOutDate ? formatDate(moveOutDate) : '—'}</Typography>
-            </Box>
-            <Divider />
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Typography variant="body2" color="text.secondary">Payment Method</Typography>
-              <Typography variant="body2" fontWeight={500}>
-                {paymentMethod
-                  ? `${brandLabel(paymentMethod.brand)} •••• ${paymentMethod.last4}`
-                  : '—'}
-              </Typography>
-            </Box>
-            <Divider />
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Typography variant="body2" color="text.secondary">Payment Info Confirmed</Typography>
-              <Chip
-                label={cardConfirmed ? 'Yes' : 'No'}
-                size="small"
-                sx={{ bgcolor: cardConfirmed ? '#D1FAE5' : '#FEE2E2', color: cardConfirmed ? '#065F46' : '#991B1B', fontWeight: 600 }}
-              />
-            </Box>
-            <Divider />
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Typography variant="body2" color="text.secondary">Photos Attached</Typography>
-              <Typography variant="body2" fontWeight={500}>{photoCount} {photoCount === 1 ? 'photo' : 'photos'}</Typography>
-            </Box>
-          </Box>
-        </CardContent>
-      </Card>
+      <section className="rounded border border-gray-200 bg-white p-5">
+        <h3 className="mb-3 font-semibold text-gray-900">Submission Summary</h3>
+        <dl className="divide-y divide-gray-100 text-sm">
+          <SummaryRow label="Unit" value={`${unit.unitNumber} (${unit.size})`} />
+          <SummaryRow label="Requested Move-Out Date" value={moveOutDate ? formatDate(moveOutDate) : '—'} />
+          <SummaryRow
+            label="Payment Method"
+            value={paymentMethod ? `${brandLabel(paymentMethod.brand)} •••• ${paymentMethod.last4}` : '—'}
+          />
+          <SummaryRow
+            label="Payment Info Confirmed"
+            value={
+              <span
+                className={`inline-block rounded px-2 py-0.5 text-xs font-semibold ${
+                  cardConfirmed ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                }`}
+              >
+                {cardConfirmed ? 'Yes' : 'No'}
+              </span>
+            }
+          />
+          <SummaryRow label="Photos Attached" value={`${photoCount} ${photoCount === 1 ? 'photo' : 'photos'}`} />
+        </dl>
+      </section>
 
-      <Alert severity="warning" sx={{ borderRadius: 1 }}>
+      <div className="rounded border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-900">
         Once submitted, the admin will review your request and respond within 24 hours.
-      </Alert>
+      </div>
 
-      <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-        <Button variant="text" onClick={onBack} disabled={submitting} sx={{ color: 'text.secondary' }}>Back</Button>
-        <Button
-          variant="contained"
-          size="large"
+      <div className="flex justify-between">
+        <button
+          type="button"
+          onClick={onBack}
+          disabled={submitting}
+          className="text-sm font-semibold text-gray-600 hover:underline disabled:opacity-60"
+        >
+          Back
+        </button>
+        <button
+          type="button"
           onClick={onSubmit}
           disabled={submitting}
-          startIcon={submitting ? <CircularProgress size={16} color="inherit" /> : undefined}
+          className="rounded bg-olive px-6 py-2.5 text-sm font-semibold text-white hover:bg-olive-dark disabled:cursor-not-allowed disabled:opacity-60"
         >
           {submitting ? 'Submitting…' : 'Submit Request'}
-        </Button>
-      </Box>
-    </Box>
+        </button>
+      </div>
+    </div>
   )
 }
 
-// ─── Success screen ───────────────────────────────────────────────────────────
+function SummaryRow({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="flex items-center justify-between py-2">
+      <dt className="text-gray-600">{label}</dt>
+      <dd className="font-medium text-gray-900">{value}</dd>
+    </div>
+  )
+}
+
+// ─── Success screen ──────────────────────────────────────────────────────────
 
 function SuccessScreen() {
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', py: 6, px: 3, gap: 2 }}>
-      <CheckCircleIcon sx={{ fontSize: 72, color: '#16A34A' }} />
-      <Typography variant="h5" sx={{ fontFamily: '"Playfair Display", serif', color: 'secondary.main', fontWeight: 700 }}>
-        Request Submitted
-      </Typography>
-      <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 420 }}>
+    <div className="flex flex-col items-center gap-3 py-12 text-center">
+      <svg className="h-16 w-16 text-green-600" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+      <h2 className="text-xl font-semibold text-olive-darker">Request Submitted</h2>
+      <p className="max-w-md text-sm text-gray-600">
         Your move-out request has been submitted. The admin will review it and respond within
         24 hours. You will receive a confirmation email once a decision has been made.
-      </Typography>
-    </Box>
+      </p>
+    </div>
   )
 }
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
+// ─── Page ────────────────────────────────────────────────────────────────────
 
 export default function MoveOutPage() {
+  const router = useRouter()
   const [activeStep, setActiveStep] = useState(0)
   const [done, setDone] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Unit data state
   const [unit, setUnit] = useState<UnitInfo | null>(null)
   const [loadingUnit, setLoadingUnit] = useState(true)
 
-  // Payment method state
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(null)
   const [loadingPayment, setLoadingPayment] = useState(true)
   const [cardDialogOpen, setCardDialogOpen] = useState(false)
 
-  // Step 1 state
   const [moveOutDate, setMoveOutDate] = useState('')
   const [cardConfirmed, setCardConfirmed] = useState(false)
   const [checkedGuidelines, setCheckedGuidelines] = useState<Record<string, boolean>>(
     Object.fromEntries(GUIDELINES.map((g) => [g, false])),
   )
 
-  // Step 2 state
   const [files, setFiles] = useState<File[]>([])
 
-  // Load unit data on mount
+  // Pull active rental from the dashboard endpoint (single source of truth
+  // shared with the dashboard page).
   useEffect(() => {
     fetch('/api/portal/dashboard')
       .then((r) => r.json())
       .then((j) => {
-        if (j.success && j.data?.unit) {
-          const u = j.data.unit
+        if (j.success && j.data?.rentals?.[0]) {
+          const r = j.data.rentals[0]
           setUnit({
-            unitNumber: u.unitNumber,
-            size: u.size,
-            monthlyRate: u.monthlyRate,
+            unitNumber: r.unitNumber,
+            size: r.size,
+            monthlyRate: r.monthlyRate,
           })
         }
       })
-      .catch(() => {/* keep null */})
+      .catch(() => {})
       .finally(() => setLoadingUnit(false))
   }, [])
 
-  // Load real payment method on mount
   useEffect(() => {
     fetch('/api/portal/billing-info')
       .then((r) => r.json())
-      .then((j) => {
-        if (j.success) setPaymentMethod(j.data.paymentMethod ?? null)
-      })
-      .catch(() => {/* keep null */})
+      .then((j) => { if (j.success) setPaymentMethod(j.data.paymentMethod ?? null) })
+      .catch(() => {})
       .finally(() => setLoadingPayment(false))
   }, [])
 
   function handleCardSuccess() {
     setCardDialogOpen(false)
     setLoadingPayment(true)
-    // Reload card details after update
     fetch('/api/portal/billing-info')
       .then((r) => r.json())
-      .then((j) => {
-        if (j.success) setPaymentMethod(j.data.paymentMethod ?? null)
-      })
+      .then((j) => { if (j.success) setPaymentMethod(j.data.paymentMethod ?? null) })
       .catch(() => {})
       .finally(() => setLoadingPayment(false))
   }
@@ -699,12 +640,11 @@ export default function MoveOutPage() {
     setCheckedGuidelines((prev) => ({ ...prev, [label]: value }))
   }
 
-  const handleSubmit = async () => {
+  async function handleSubmit() {
     setSubmitting(true)
     setError(null)
     try {
       const photoUrls = await Promise.all(files.map((file) => uploadPhoto(file)))
-
       const res = await fetch('/api/move-out', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -716,7 +656,6 @@ export default function MoveOutPage() {
           guidelinesAccepted: true,
         }),
       })
-
       const json = await res.json()
       if (!json.success) throw new Error(json.error ?? 'Failed to submit move-out request.')
       setDone(true)
@@ -729,57 +668,55 @@ export default function MoveOutPage() {
 
   if (loadingUnit) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 10 }}>
-        <CircularProgress sx={{ color: '#B8914A' }} />
-      </Box>
+      <div className="flex justify-center py-20">
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-olive border-t-transparent" />
+      </div>
     )
   }
 
   if (!unit) {
     return (
-      <Box>
-        <Typography variant="h5" sx={{ fontFamily: '"Playfair Display", serif', color: 'secondary.main', mb: 3 }}>
-          Move Out
-        </Typography>
-        <Alert severity="error">Unable to load unit information. Please try again later.</Alert>
-      </Box>
+      <div>
+        <h1 className="mb-4 font-display text-2xl font-semibold text-olive-darker">Move Out</h1>
+        <div className="rounded border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+          Unable to load unit information. Please try again later.
+        </div>
+      </div>
     )
   }
 
   if (done) {
     return (
-      <Box>
-        <Typography variant="h5" sx={{ fontFamily: '"Playfair Display", serif', color: 'secondary.main', mb: 3 }}>
-          Move Out
-        </Typography>
-        <Card sx={{ border: '1px solid #EDE5D8', boxShadow: 'none' }}>
-          <CardContent sx={{ p: 0 }}>
-            <SuccessScreen />
-          </CardContent>
-        </Card>
-      </Box>
+      <div>
+        <h1 className="mb-4 font-display text-2xl font-semibold text-olive-darker">Move Out</h1>
+        <div className="rounded border border-gray-200 bg-white">
+          <SuccessScreen />
+          <div className="border-t border-gray-200 p-4 text-center">
+            <button
+              type="button"
+              onClick={() => router.push('/portal')}
+              className="rounded bg-olive px-5 py-2 text-sm font-semibold text-white hover:bg-olive-dark"
+            >
+              Back to Dashboard
+            </button>
+          </div>
+        </div>
+      </div>
     )
   }
 
   return (
-    <Box>
-      <Typography variant="h5" sx={{ fontFamily: '"Playfair Display", serif', color: 'secondary.main', mb: 1 }}>
-        Move Out
-      </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-        Complete the steps below to submit your move-out request.
-      </Typography>
+    <div>
+      <h1 className="mb-1 font-display text-2xl font-semibold text-olive-darker">Move Out</h1>
+      <p className="mb-6 text-sm text-gray-600">Complete the steps below to submit your move-out request.</p>
 
-      <Stepper activeStep={activeStep} sx={{ mb: 4 }} alternativeLabel>
-        {STEPS.map((label) => (
-          <Step key={label}><StepLabel>{label}</StepLabel></Step>
-        ))}
-      </Stepper>
+      <StepIndicator activeStep={activeStep} />
 
       {error && (
-        <Alert severity="error" sx={{ mb: 3, borderRadius: 1 }} onClose={() => setError(null)}>
-          {error}
-        </Alert>
+        <div className="mb-4 flex items-start justify-between rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+          <span>{error}</span>
+          <button type="button" onClick={() => setError(null)} className="ml-3 text-red-600 hover:text-red-800">✕</button>
+        </div>
       )}
 
       {activeStep === 0 && (
@@ -818,26 +755,12 @@ export default function MoveOutPage() {
         />
       )}
 
-      {/* Update / Add card dialog */}
-      <Dialog open={cardDialogOpen} onClose={() => setCardDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ fontFamily: '"Playfair Display", serif', fontWeight: 700, color: '#1C0F06' }}>
-          {paymentMethod ? 'Update Payment Method' : 'Add Payment Method'}
-        </DialogTitle>
-        <DialogContent>
-          {stripePromise ? (
-            <Elements stripe={stripePromise}>
-              <UpdateCardForm
-                onSuccess={handleCardSuccess}
-                onCancel={() => setCardDialogOpen(false)}
-              />
-            </Elements>
-          ) : (
-            <Alert severity="warning">
-              Online card updates are not available in this environment. Please contact the facility.
-            </Alert>
-          )}
-        </DialogContent>
-      </Dialog>
-    </Box>
+      <CardUpdateModal
+        open={cardDialogOpen}
+        hasCard={!!paymentMethod}
+        onSuccess={handleCardSuccess}
+        onCancel={() => setCardDialogOpen(false)}
+      />
+    </div>
   )
 }

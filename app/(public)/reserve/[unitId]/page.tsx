@@ -76,6 +76,10 @@ interface FormData {
   cardholderFirstName: string
   cardholderLastName: string
   saveCard: boolean
+  /** When set, the user picked their card on file; we pass this PM id to
+   *  `confirmCardPayment` instead of using the CardElement. Empty string =
+   *  use the new-card form. */
+  savedPaymentMethodId: string
 }
 
 interface ReserveResult {
@@ -270,11 +274,12 @@ function SectionHeader({ children }: { children: React.ReactNode }) {
 // ─── Step 1: Personal Information ─────────────────────────────────────────────
 
 function Step1PersonalInfo({
-  form, setForm, unit, onDone,
+  form, setForm, unit, isAuthenticated, onDone,
 }: {
   form: FormData
   setForm: (f: FormData) => void
   unit: Unit
+  isAuthenticated: boolean
   onDone: (result: ReserveResult) => void
 }) {
   const [loading, setLoading] = useState(false)
@@ -313,8 +318,6 @@ function Step1PersonalInfo({
     e.preventDefault()
     setError(null)
     if (!form.fullName.trim()) { setError('Please enter your name'); return }
-    if (form.password !== form.confirmPassword) { setError('Passwords do not match'); return }
-    if (form.password.length < 8) { setError('Password must be at least 8 characters'); return }
 
     // Split name on first space
     const nameParts = form.fullName.trim().split(/\s+/)
@@ -323,6 +326,51 @@ function Step1PersonalInfo({
 
     setLoading(true)
     try {
+      // Tenant-aware path: reuse session, skip account creation.
+      if (isAuthenticated) {
+        const res = await fetch('/api/portal/reserve', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            unitId: unit._id,
+            patch: {
+              firstName, lastName,
+              phone: form.cellPhone,
+              address: form.address, city: form.city, state: form.state, zip: form.zip,
+              alternateContactName: form.alternateContactName || undefined,
+              alternatePhone: form.alternatePhone || undefined,
+              alternateEmail: form.alternateEmail || undefined,
+              alternateAddress: form.alternateAddress || undefined,
+              alternateCity: form.alternateCity || undefined,
+              alternateState: form.alternateState || undefined,
+              alternateZip: form.alternateZip || undefined,
+              ssn: form.ssn || undefined,
+              employerName: form.employerName || undefined,
+              employerPhone: form.employerPhone || undefined,
+              emergencyContact: form.emergencyContact || undefined,
+              emergencyPhone: form.emergencyPhone || undefined,
+              securityQuestion: form.securityQuestion || undefined,
+              securityAnswer: form.securityAnswer || undefined,
+              smsConsent: form.smsConsent,
+            },
+          }),
+        })
+        const json = await res.json()
+        if (!res.ok || !json.success) throw new Error(json.error ?? 'Failed to start rental')
+        onDone({
+          leaseId: json.data.leaseId,
+          clientSecret: json.data.clientSecret,
+          paymentIntentId: null,
+          devMode: json.data.devMode,
+          totalAmount: json.data.totalAmount,
+        })
+        return
+      }
+
+      // New-user path: needs account creation (password validation included).
+      if (form.password !== form.confirmPassword) { setError('Passwords do not match'); setLoading(false); return }
+      if (form.password.length < 8) { setError('Password must be at least 8 characters'); setLoading(false); return }
+
       const res = await fetch('/api/public/reserve', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -674,36 +722,45 @@ function Step1PersonalInfo({
         </section>
       )}
 
-      {/* Login Information */}
-      <section>
-        <SectionHeader>Login Information</SectionHeader>
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Field label="Username" value={form.username} onChange={set('username')} hint="Defaults to your email address" />
-            <Field label="Email" value={form.email} onChange={set('email')} type="email" required />
-          </div>
-          <div>
-            <p className="text-xs font-medium text-brown/60 uppercase tracking-wide mb-2">Create Password</p>
+      {/* Login Information — only collected for brand-new users. Logged-in
+          tenants already have an account; we just confirm their email. */}
+      {!isAuthenticated ? (
+        <section>
+          <SectionHeader>Login Information</SectionHeader>
+          <div className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Field
-                label="Password"
-                value={form.password}
-                onChange={set('password')}
-                type="password"
-                required
-                hint="Min. 8 characters"
-              />
-              <Field
-                label="Confirm Password"
-                value={form.confirmPassword}
-                onChange={set('confirmPassword')}
-                type="password"
-                required
-              />
+              <Field label="Username" value={form.username} onChange={set('username')} hint="Defaults to your email address" />
+              <Field label="Email" value={form.email} onChange={set('email')} type="email" required />
+            </div>
+            <div>
+              <p className="text-xs font-medium text-brown/60 uppercase tracking-wide mb-2">Create Password</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Field
+                  label="Password"
+                  value={form.password}
+                  onChange={set('password')}
+                  type="password"
+                  required
+                  hint="Min. 8 characters"
+                />
+                <Field
+                  label="Confirm Password"
+                  value={form.confirmPassword}
+                  onChange={set('confirmPassword')}
+                  type="password"
+                  required
+                />
+              </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+      ) : (
+        <section className="rounded-lg border border-mid/70 bg-cream/40 p-4">
+          <p className="text-xs font-medium uppercase tracking-wide text-brown/60">Signed in as</p>
+          <p className="mt-1 text-sm text-brown">{form.email || '—'}</p>
+          <p className="mt-1 text-xs text-muted">We&apos;ll add this unit to your existing account.</p>
+        </section>
+      )}
 
       {/* Other Information */}
       {show('howDidYouHear') && howField && (
@@ -762,6 +819,7 @@ function Step2PaymentInfo({
   const [error, setError] = useState<string | null>(null)
   const stripe = useStripe()
   const elements = useElements()
+  const [savedCard, setSavedCard] = useState<{ id: string; brand: string; last4: string; expMonth: number; expYear: number } | null>(null)
 
   // Pre-fill cardholder name from contact name on first mount
   useEffect(() => {
@@ -774,9 +832,34 @@ function Step2PaymentInfo({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // Fetch the saved Stripe card if one is on file. Logged-in tenants who've
+  // paid before see a "Use card on file" option here.
+  useEffect(() => {
+    fetch('/api/portal/billing-info')
+      .then((r) => r.json())
+      .then((json) => {
+        if (json?.success && json.data?.paymentMethod?.id) {
+          setSavedCard(json.data.paymentMethod)
+          // Default to the saved card if the user hasn't explicitly picked yet.
+          if (!form.savedPaymentMethodId) {
+            setForm({ ...form, savedPaymentMethodId: json.data.paymentMethod.id })
+          }
+        }
+      })
+      .catch(() => {/* no saved card — fall back to the new-card form */})
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const useSaved = !!form.savedPaymentMethodId
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
+    if (useSaved) {
+      // Saved-card path skips cardholder + CardElement validation.
+      onContinue()
+      return
+    }
     if (!form.cardholderFirstName.trim() || !form.cardholderLastName.trim()) {
       setError('Please enter the cardholder name')
       return
@@ -842,51 +925,92 @@ function Step2PaymentInfo({
       <section>
         <SectionHeader>Payment Method</SectionHeader>
         <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-brown mb-1">Payment Type</label>
-            <select
-              value="credit_card"
-              onChange={() => { /* only credit_card supported for now */ }}
-              className="w-full rounded border border-mid px-3 py-2 text-sm text-brown bg-white focus:border-tan focus:outline-none focus:ring-1 focus:ring-tan/30"
-            >
-              <option value="credit_card">Credit Card</option>
-              <option value="ach" disabled>ACH (coming soon)</option>
-            </select>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Field
-              label="First Name (Cardholder)"
-              value={form.cardholderFirstName}
-              onChange={set('cardholderFirstName')}
-              required
-            />
-            <Field
-              label="Last Name (Cardholder)"
-              value={form.cardholderLastName}
-              onChange={set('cardholderLastName')}
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-brown mb-1">Card Details</label>
-            <div className="rounded border border-mid p-3 bg-white focus-within:border-tan transition-colors">
-              <CardElement options={{
-                style: {
-                  base: { fontSize: '15px', color: '#1C0F06', '::placeholder': { color: '#9CA3AF' } },
-                  invalid: { color: '#EF4444' },
-                },
-              }} />
+          {savedCard && (
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={() => setForm({ ...form, savedPaymentMethodId: savedCard.id })}
+                className={`flex items-start gap-3 rounded border p-3 text-left transition-colors ${
+                  useSaved
+                    ? 'border-tan bg-tan/5 ring-1 ring-tan'
+                    : 'border-mid bg-white hover:border-tan/60'
+                }`}
+              >
+                <span className={`mt-1 h-4 w-4 flex-shrink-0 rounded-full border-2 ${useSaved ? 'border-tan bg-tan' : 'border-mid'}`} />
+                <span className="flex-1">
+                  <span className="block text-sm font-semibold text-brown">Use card on file</span>
+                  <span className="block text-xs text-muted">
+                    {savedCard.brand.toUpperCase()} •••• {savedCard.last4} · expires {savedCard.expMonth}/{savedCard.expYear}
+                  </span>
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setForm({ ...form, savedPaymentMethodId: '' })}
+                className={`flex items-start gap-3 rounded border p-3 text-left transition-colors ${
+                  !useSaved
+                    ? 'border-tan bg-tan/5 ring-1 ring-tan'
+                    : 'border-mid bg-white hover:border-tan/60'
+                }`}
+              >
+                <span className={`mt-1 h-4 w-4 flex-shrink-0 rounded-full border-2 ${!useSaved ? 'border-tan bg-tan' : 'border-mid'}`} />
+                <span className="flex-1">
+                  <span className="block text-sm font-semibold text-brown">Use a different card</span>
+                  <span className="block text-xs text-muted">Enter card details below.</span>
+                </span>
+              </button>
             </div>
-            <p className="mt-1.5 text-xs text-muted">Test card: 4242 4242 4242 4242 · Any future date · Any CVC</p>
-          </div>
+          )}
 
-          <CheckboxField
-            label="Save this card on file for future monthly payments"
-            checked={form.saveCard}
-            onChange={set('saveCard')}
-          />
+          {!useSaved && (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-brown mb-1">Payment Type</label>
+                <select
+                  value="credit_card"
+                  onChange={() => { /* only credit_card supported for now */ }}
+                  className="w-full rounded border border-mid px-3 py-2 text-sm text-brown bg-white focus:border-tan focus:outline-none focus:ring-1 focus:ring-tan/30"
+                >
+                  <option value="credit_card">Credit Card</option>
+                  <option value="ach" disabled>ACH (coming soon)</option>
+                </select>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Field
+                  label="First Name (Cardholder)"
+                  value={form.cardholderFirstName}
+                  onChange={set('cardholderFirstName')}
+                  required
+                />
+                <Field
+                  label="Last Name (Cardholder)"
+                  value={form.cardholderLastName}
+                  onChange={set('cardholderLastName')}
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-brown mb-1">Card Details</label>
+                <div className="rounded border border-mid p-3 bg-white focus-within:border-tan transition-colors">
+                  <CardElement options={{
+                    style: {
+                      base: { fontSize: '15px', color: '#1C0F06', '::placeholder': { color: '#9CA3AF' } },
+                      invalid: { color: '#EF4444' },
+                    },
+                  }} />
+                </div>
+                <p className="mt-1.5 text-xs text-muted">Test card: 4242 4242 4242 4242 · Any future date · Any CVC</p>
+              </div>
+
+              <CheckboxField
+                label="Save this card on file for future monthly payments"
+                checked={form.saveCard}
+                onChange={set('saveCard')}
+              />
+            </>
+          )}
         </div>
       </section>
 
@@ -1157,39 +1281,51 @@ function Step3ReviewSubmit({
       // 2. Confirm payment client-side
       let confirmedIntentId: string | undefined
       if (!devMode && activeClientSecret) {
-        if (!stripe || !elements) throw new Error('Stripe not loaded')
-        const card = elements.getElement(CardElement)
-        if (!card) throw new Error('Card element not found')
+        if (!stripe) throw new Error('Stripe not loaded')
 
-        const billingName =
-          `${form.cardholderFirstName} ${form.cardholderLastName}`.trim() || tenantName
-        const billingDetails = {
-          name: billingName,
-          email: form.email,
-          phone: form.cellPhone,
-          address: form.billingSameAsContact
-            ? {
-                line1: form.address,
-                city: form.city,
-                state: form.state,
-                postal_code: form.zip,
-                country: 'US',
-              }
-            : {
-                line1: form.billingLine1,
-                city: form.billingCity,
-                state: form.billingState,
+        // Saved-card path: pass the PM id directly. No CardElement needed.
+        if (form.savedPaymentMethodId) {
+          const { paymentIntent, error: stripeErr } = await stripe.confirmCardPayment(activeClientSecret, {
+            payment_method: form.savedPaymentMethodId,
+          })
+          if (stripeErr) throw new Error(stripeErr.message ?? 'Payment failed')
+          if (paymentIntent?.status !== 'succeeded') throw new Error('Payment did not complete')
+          confirmedIntentId = paymentIntent.id
+        } else {
+          if (!elements) throw new Error('Stripe not loaded')
+          const card = elements.getElement(CardElement)
+          if (!card) throw new Error('Card element not found')
+
+          const billingName =
+            `${form.cardholderFirstName} ${form.cardholderLastName}`.trim() || tenantName
+          const billingDetails = {
+            name: billingName,
+            email: form.email,
+            phone: form.cellPhone,
+            address: form.billingSameAsContact
+              ? {
+                  line1: form.address,
+                  city: form.city,
+                  state: form.state,
+                  postal_code: form.zip,
+                  country: 'US',
+                }
+              : {
+                  line1: form.billingLine1,
+                  city: form.billingCity,
+                  state: form.billingState,
                 postal_code: form.billingZip,
                 country: form.billingCountry || 'US',
               },
         }
 
-        const { paymentIntent, error: stripeErr } = await stripe.confirmCardPayment(activeClientSecret, {
-          payment_method: { card, billing_details: billingDetails },
-        })
-        if (stripeErr) throw new Error(stripeErr.message ?? 'Payment failed')
-        if (paymentIntent?.status !== 'succeeded') throw new Error('Payment did not complete')
-        confirmedIntentId = paymentIntent.id
+          const { paymentIntent, error: stripeErr } = await stripe.confirmCardPayment(activeClientSecret, {
+            payment_method: { card, billing_details: billingDetails },
+          })
+          if (stripeErr) throw new Error(stripeErr.message ?? 'Payment failed')
+          if (paymentIntent?.status !== 'succeeded') throw new Error('Payment did not complete')
+          confirmedIntentId = paymentIntent.id
+        }
       }
 
       // 3. Finalize on server
@@ -1447,6 +1583,7 @@ export default function ReservePage() {
     cardholderFirstName: '',
     cardholderLastName: '',
     saveCard: true,
+    savedPaymentMethodId: '',
   })
   const [reserveResult, setReserveResult] = useState<ReserveResult | null>(null)
   const [recoveredName, setRecoveredName] = useState('')
@@ -1473,13 +1610,42 @@ export default function ReservePage() {
       .finally(() => setLoadingUnit(false))
   }, [unitId])
 
-  // If user already authenticated and has an unsigned lease, resume
+  const isAuthenticated = sessionStatus === 'authenticated'
+
+  // Pre-fill the form from the logged-in tenant's record so they don't have
+  // to retype name/email/address/etc. Editable in case they want to update.
   useEffect(() => {
-    if (sessionStatus !== 'authenticated' || step !== 1) return
+    if (!isAuthenticated) return
+    fetch('/api/portal/dashboard')
+      .then((r) => r.json())
+      .then((json) => {
+        if (!json.success) return
+        const c = json.data.contact
+        setForm((prev) => ({
+          ...prev,
+          fullName: prev.fullName || c.fullName || '',
+          email: prev.email || c.email || '',
+          cellPhone: prev.cellPhone || c.phone || '',
+          address: prev.address || c.address || '',
+          city: prev.city || c.city || '',
+          state: prev.state || c.state || '',
+          zip: prev.zip || c.zip || '',
+        }))
+        setRecoveredName(c.fullName ?? '')
+      })
+      .catch(() => {/* keep blanks — user can fill manually */})
+  }, [isAuthenticated])
+
+  // Resume an unsigned lease ONLY when it's for this same unit (e.g. the user
+  // refreshed mid-flow). For any other unit, let them go through the form
+  // again — they're renting an additional unit.
+  useEffect(() => {
+    if (!isAuthenticated || step !== 1 || !unitId) return
     fetch('/api/portal/active-lease')
       .then((r) => r.json())
       .then((json) => {
         if (!json.success) return
+        if (json.data.unitId !== unitId) return
         if (json.data.signedAt) {
           router.push('/portal')
         } else {
@@ -1495,7 +1661,7 @@ export default function ReservePage() {
         }
       })
       .catch(() => {})
-  }, [sessionStatus, step, router])
+  }, [isAuthenticated, step, router, unitId])
 
   // When the user lands on Step 3, also when promo/protection change there,
   // refresh the intent amount so confirm uses the latest total.
@@ -1582,6 +1748,7 @@ export default function ReservePage() {
                   form={form}
                   setForm={setForm}
                   unit={unit}
+                  isAuthenticated={isAuthenticated}
                   onDone={(result) => {
                     setReserveResult(result)
                     setStep(2)

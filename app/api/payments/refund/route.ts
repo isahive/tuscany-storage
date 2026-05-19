@@ -146,13 +146,17 @@ export async function POST(req: NextRequest) {
       lastAttemptAt: new Date(),
     })
 
-    // ── Update tenant balance ──
+    // ── Update tenant balance + status ──
     // Refund row itself contributes 0 to balance (see balanceDelta), but
     // any reverted line items add their amount back.
     if (revertedAmountCents > 0) {
-      await Tenant.findByIdAndUpdate(payment.tenantId, {
-        $inc: { balance: revertedAmountCents },
-      })
+      const { syncTenantStatusFromBalance } = await import('@/lib/tenantStatus')
+      const refundedTenant = await Tenant.findById(payment.tenantId)
+      if (refundedTenant) {
+        refundedTenant.balance = (refundedTenant.balance ?? 0) + revertedAmountCents
+        syncTenantStatusFromBalance(refundedTenant)
+        await refundedTenant.save()
+      }
     }
 
     return NextResponse.json({

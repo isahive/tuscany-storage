@@ -31,7 +31,7 @@ export async function GET() {
       )
     }
 
-    let paymentMethod: { brand: string; last4: string; expMonth: number; expYear: number } | null = null
+    let paymentMethod: { id: string; brand: string; last4: string; expMonth: number; expYear: number } | null = null
 
     if (process.env.STRIPE_SECRET_KEY && tenant.stripeCustomerId && tenant.defaultPaymentMethodId) {
       try {
@@ -39,6 +39,7 @@ export async function GET() {
         const pm = await stripe.paymentMethods.retrieve(tenant.defaultPaymentMethodId)
         if (pm.card) {
           paymentMethod = {
+            id: pm.id,
             brand: pm.card.brand,
             last4: pm.card.last4,
             expMonth: pm.card.exp_month,

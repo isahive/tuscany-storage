@@ -75,6 +75,11 @@ export default function RentUnitPage() {
   const params = useParams()
   const router = useRouter()
   const tenantId = params.id as string
+  // When admin clicked "Rented" on a specific unit's status modal, we land
+  // here with `?unitId=XYZ` so we can pre-select that unit in the dropdown.
+  const preselectUnitId = typeof window !== 'undefined'
+    ? new URLSearchParams(window.location.search).get('unitId')
+    : null
 
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -138,7 +143,15 @@ export default function RentUnitPage() {
       const setJson = await setRes.json()
 
       if (tJson.success) setTenantName(`${tJson.data.firstName} ${tJson.data.lastName}`.trim())
-      if (uJson.success) setUnits(uJson.data.items.filter((u: UnitItem) => u.status === 'available'))
+      if (uJson.success) {
+        // Include the preselected unit even if it's currently reserved — the
+        // admin landed here from that unit's Change Status flow and clearly
+        // means to rent it now.
+        const list = uJson.data.items.filter(
+          (u: UnitItem) => u.status === 'available' || u._id === preselectUnitId,
+        )
+        setUnits(list)
+      }
       if (planJson.success) setPlans(planJson.data.filter((p: any) => p.status === 'active' || !p.status))
       if (promoJson.success) setPromotions(promoJson.data.filter((p: PromotionItem) => p.status === 'active'))
       if (prodJson.success) {
@@ -162,6 +175,16 @@ export default function RentUnitPage() {
   useEffect(() => {
     if (!unitType && unitSizes.length > 0) setUnitType(unitSizes[0])
   }, [unitSizes, unitType])
+
+  // Pre-select unit from `?unitId=` query param once units load. Runs once
+  // so a later user pick isn't overwritten.
+  useEffect(() => {
+    if (!preselectUnitId || units.length === 0) return
+    const target = units.find((u) => u._id === preselectUnitId)
+    if (!target) return
+    setUnitType(target.size)
+    setUnitId(target._id)
+  }, [preselectUnitId, units])
 
   const unitsOfType = useMemo(() => units.filter((u) => u.size === unitType), [units, unitType])
   const selectedUnit = useMemo(() => {

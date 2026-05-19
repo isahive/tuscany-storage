@@ -17,9 +17,12 @@ const config: Config = {
         olive:  { DEFAULT: '#8CA87C', dark: '#7E9770', darker: '#708663' },
       },
       fontFamily: {
-        // Match live tuscanystorage.com — Bootstrap default system stack
-        sans:  ['system-ui', '-apple-system', '"Segoe UI"', 'Roboto', '"Helvetica Neue"', '"Noto Sans"', '"Liberation Sans"', 'Arial', 'sans-serif'],
-        serif: ['system-ui', '-apple-system', '"Segoe UI"', 'Roboto', '"Helvetica Neue"', 'sans-serif'],
+        // CSS variables exposed by app/layout.tsx — change ACTIVE_FONTS there
+        // to swap font stacks app-wide. System-ui fallback prevents FOUT.
+        sans:    ['var(--font-inter)',   'var(--font-dm-sans)',     'var(--font-open-sans)',     'var(--font-plus-jakarta)',  'system-ui', '-apple-system', '"Segoe UI"', 'Roboto', 'Arial', 'sans-serif'],
+        display: ['var(--font-outfit)',  'var(--font-poppins)',     'var(--font-plus-jakarta)',  'var(--font-playfair)',      'system-ui', '-apple-system', '"Segoe UI"', 'Roboto', 'Arial', 'sans-serif'],
+        // 'serif' kept for backward compatibility — points at the display font.
+        serif:   ['var(--font-outfit)',  'var(--font-playfair)',    'Georgia',                   '"Times New Roman"',         'serif'],
       },
       backgroundImage: {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
