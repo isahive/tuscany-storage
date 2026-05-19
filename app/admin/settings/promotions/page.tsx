@@ -564,6 +564,11 @@ function PromoCard({ promo, onEdit, onDelete, retired }: { promo: Promotion; onE
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
               <Typography variant="subtitle1" fontWeight={700} sx={{ color: '#1C0F06' }}>{promo.name}</Typography>
               {retired && <Chip label="Retired" size="small" sx={{ bgcolor: '#F3F4F6', color: '#6B7280', fontWeight: 500, fontSize: '0.7rem' }} />}
+              {/* Storable parity: orange "Expired" tag when endDate is past
+                  and noExpiration is false. Shows even when retired. */}
+              {!promo.noExpiration && promo.endDate && new Date(promo.endDate) < new Date() && (
+                <Chip label="Expired" size="small" sx={{ bgcolor: '#FFEDD5', color: '#9A3412', fontWeight: 600, fontSize: '0.7rem' }} />
+              )}
             </Box>
             {promo.description && (
               <Typography variant="body2" color="text.secondary">{promo.description}</Typography>

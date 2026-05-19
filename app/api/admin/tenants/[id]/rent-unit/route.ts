@@ -161,6 +161,35 @@ export async function POST(req: NextRequest, context: RouteContext) {
       currentLeaseId: lease._id,
     })
 
+    // Storable parity — bump promotion counters + audit log when an admin
+    // attaches a promo during the rent-unit flow. The CRUD lock checks
+    // depend on these counters being current.
+    if (promotion) {
+      await Promotion.updateOne(
+        { _id: promotion._id },
+        {
+          $inc: { appliedCount: 1 },
+          ...(!promotion.firstAppliedAt ? { $set: { firstAppliedAt: new Date() } } : {}),
+        },
+      )
+      const TenantAlteration = (await import('@/models/TenantAlteration')).default
+      await TenantAlteration.create({
+        tenantId: tenant._id,
+        leaseId: lease._id,
+        unitId: unit._id,
+        unitNumber: unit.unitNumber,
+        action: 'promotion_added',
+        payload: {
+          promotionId: String(promotion._id),
+          promotionName: promotion.name,
+          method: promotion.method,
+          discountType: promotion.discountType,
+          discountValue: promotion.discountValue,
+        },
+        createdBy: session.user.name ?? session.user.email ?? 'admin',
+      })
+    }
+
     if (!tenant.gateCode) {
       tenant.gateCode = generateGateCode()
       tenant.status = 'active'

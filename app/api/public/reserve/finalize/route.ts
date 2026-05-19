@@ -271,7 +271,32 @@ export async function POST(req: NextRequest) {
 
     // ─── 7. Increment counts ───────────────────────────────────────────────────
     if (appliedPromotion) {
-      await Promotion.findByIdAndUpdate(appliedPromotion._id, { $inc: { appliedCount: 1 } })
+      await Promotion.updateOne(
+        { _id: appliedPromotion._id },
+        {
+          $inc: { appliedCount: 1 },
+          // Stamp firstAppliedAt only once — Storable uses it to start the
+          // "locked fields" window in the admin edit form.
+          $setOnInsert: {},
+          ...(!appliedPromotion.firstAppliedAt ? { $set: { firstAppliedAt: new Date() } } : {}),
+        },
+      )
+      const TenantAlteration = (await import('@/models/TenantAlteration')).default
+      await TenantAlteration.create({
+        tenantId: lease.tenantId,
+        leaseId: lease._id,
+        unitId: lease.unitId,
+        unitNumber: (unit as any).unitNumber,
+        action: 'promotion_added',
+        payload: {
+          promotionId: String(appliedPromotion._id),
+          promotionName: appliedPromotion.name,
+          method: appliedPromotion.method,
+          discountType: appliedPromotion.discountType,
+          discountValue: appliedPromotion.discountValue,
+        },
+        createdBy: 'online_rental',
+      })
     }
     if (appliedProtectionPlan) {
       await ProtectionPlan.findByIdAndUpdate(appliedProtectionPlan._id, { $inc: { appliedCount: 1 } })

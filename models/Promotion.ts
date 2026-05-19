@@ -17,6 +17,13 @@ export interface IPromotionDocument extends Document {
   durationCycles: number     // number of billing cycles the discount lasts
   status: 'active' | 'retired'
   appliedCount: number
+  // Audit + lock fields — Storable spec: method (and most other fields) are
+  // locked once the promotion has been added to any rental. `firstAppliedAt`
+  // is set the first time `appliedCount` transitions from 0 → 1.
+  firstAppliedAt?: Date
+  retiredAt?: Date
+  createdBy?: string
+  updatedBy?: string
   createdAt: Date
   updatedAt: Date
 }
@@ -39,6 +46,10 @@ const PromotionSchema = new Schema<IPromotionDocument>(
     durationCycles:     { type: Number, default: 1 },
     status:             { type: String, enum: ['active', 'retired'], default: 'active' },
     appliedCount:       { type: Number, default: 0 },
+    firstAppliedAt:     { type: Date },
+    retiredAt:          { type: Date },
+    createdBy:          { type: String },
+    updatedBy:          { type: String },
   },
   { timestamps: true },
 )

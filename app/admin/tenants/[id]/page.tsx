@@ -29,6 +29,8 @@ import EditIcon from '@mui/icons-material/Edit'
 import MailOutlineIcon from '@mui/icons-material/MailOutline'
 import AttachFileIcon from '@mui/icons-material/AttachFile'
 import MarkEmailReadIcon from '@mui/icons-material/MarkEmailRead'
+import AddIcon from '@mui/icons-material/Add'
+import CloseIcon from '@mui/icons-material/Close'
 import { formatMoney, formatDate } from '@/lib/utils'
 import { useSetAdminPageTitle } from '@/lib/admin-page-title'
 import type { TenantStatus } from '@/types'
@@ -85,10 +87,21 @@ interface TenantData {
 }
 
 interface LeaseData {
-  _id: string; unitId: { _id: string; unitNumber: string; size?: string } | string
+  _id: string; unitId: { _id: string; unitNumber: string; size?: string; type?: string } | string
   startDate: string; endDate?: string; monthlyRate: number
   deposit: number; billingDay: number; status: string
   signedAt?: string
+  appliedPromotionId?: {
+    _id: string
+    name: string
+    description?: string
+    method: 'manual' | 'promo_code' | 'automatic'
+    discountType: 'percentage' | 'fixed'
+    discountValue: number
+    noExpiration: boolean
+    durationCycles: number
+    status: 'active' | 'retired'
+  } | string | null
 }
 
 interface PaymentData {
@@ -596,6 +609,7 @@ export default function TenantDetailPage() {
                         <TableCell>Rate</TableCell>
                         <TableCell>Billing Day</TableCell>
                         <TableCell>Status</TableCell>
+                        <TableCell>Promotion</TableCell>
                         <TableCell>Signed</TableCell>
                         <TableCell align="right">Agreement</TableCell>
                       </TableRow>
@@ -603,6 +617,8 @@ export default function TenantDetailPage() {
                     <TableBody>
                       {leases.map((l) => {
                         const unitLabel = typeof l.unitId === 'object' ? l.unitId.unitNumber : l.unitId
+                        const unitType = typeof l.unitId === 'object' ? l.unitId.type : undefined
+                        const promo = typeof l.appliedPromotionId === 'object' ? l.appliedPromotionId : null
                         return (
                           <TableRow key={l._id}>
                             <TableCell>
@@ -613,6 +629,67 @@ export default function TenantDetailPage() {
                             <TableCell>{l.billingDay}</TableCell>
                             <TableCell>
                               <Chip label={l.status} size="small" sx={{ fontSize: '0.7rem', fontWeight: 600 }} />
+                            </TableCell>
+                            <TableCell>
+                              {promo ? (
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                  <Tooltip title={promo.description ?? ''}>
+                                    <Chip
+                                      label={promo.name}
+                                      size="small"
+                                      sx={{ fontSize: '0.7rem', fontWeight: 600, bgcolor: '#D1FAE5', color: '#065F46' }}
+                                    />
+                                  </Tooltip>
+                                  <Tooltip title="Remove promotion">
+                                    <IconButton
+                                      size="small"
+                                      onClick={async () => {
+                                        if (!confirm(`Remove "${promo.name}" from unit ${unitLabel}?`)) return
+                                        const res = await fetch(`/api/admin/leases/${l._id}/remove-promotion`, { method: 'POST' })
+                                        const json = await res.json().catch(() => ({}))
+                                        if (!res.ok || !json.success) alert(json.error ?? 'Failed')
+                                        else window.location.reload()
+                                      }}
+                                    >
+                                      <CloseIcon fontSize="small" sx={{ color: '#EF4444' }} />
+                                    </IconButton>
+                                  </Tooltip>
+                                </Box>
+                              ) : l.status === 'active' ? (
+                                <Tooltip title="Add a promotion to this rental">
+                                  <Button
+                                    size="small"
+                                    startIcon={<AddIcon fontSize="small" />}
+                                    onClick={async () => {
+                                      const res = await fetch('/api/promotions')
+                                      const json = await res.json().catch(() => ({}))
+                                      if (!res.ok || !json.success) { alert('Failed to load promotions'); return }
+                                      const candidates = (json.data ?? []).filter((p: any) =>
+                                        p.status === 'active'
+                                        && (p.allUnitTypes || (unitType && p.unitTypes?.includes(unitType)))
+                                        && (!p.endDate || p.noExpiration || new Date(p.endDate) >= new Date()),
+                                      )
+                                      if (candidates.length === 0) { alert('No promotions available for this unit type.'); return }
+                                      const labels = candidates.map((p: any, i: number) => `${i + 1}. ${p.name} (${p.method})`).join('\n')
+                                      const pick = prompt(`Select a promotion:\n${labels}\n\nEnter number:`)
+                                      const idx = parseInt(pick ?? '', 10) - 1
+                                      if (!candidates[idx]) return
+                                      const addRes = await fetch(`/api/admin/leases/${l._id}/add-promotion`, {
+                                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ promotionId: candidates[idx]._id }),
+                                      })
+                                      const addJson = await addRes.json().catch(() => ({}))
+                                      if (!addRes.ok || !addJson.success) alert(addJson.error ?? 'Failed')
+                                      else window.location.reload()
+                                    }}
+                                    sx={{ textTransform: 'none', fontSize: '0.7rem', color: '#B8914A' }}
+                                  >
+                                    Add
+                                  </Button>
+                                </Tooltip>
+                              ) : (
+                                <Typography variant="body2" sx={{ color: 'text.secondary' }}>—</Typography>
+                              )}
                             </TableCell>
                             <TableCell>
                               {l.signedAt ? formatDate(l.signedAt) : <Typography variant="body2" color="warning.main">Unsigned</Typography>}

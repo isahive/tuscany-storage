@@ -305,16 +305,65 @@ export async function GET(req: NextRequest) {
       }
 
       case 'active-promotions': {
-        const promos = await Promotion.find({ active: true }).lean()
-        const rows = promos.map((p: any) => ({
-          name: p.name,
-          code: p.code || '—',
-          type: p.discountType,
-          value: p.discountValue,
-          usageCount: p.usageCount ?? 0,
-          startDate: p.startDate,
-          endDate: p.endDate,
+        // Storable's Active Promotions Report — one row per RENTAL that
+        // currently has a promo attached, not one row per Promotion document.
+        // Includes Date Added, Unit, Customer, Promo, Discount, Begins,
+        // Applied, Duration.
+        const leases = await Lease.find({
+          status: 'active',
+          appliedPromotionId: { $ne: null },
+        })
+          .populate('tenantId', 'firstName lastName')
+          .populate('unitId', 'unitNumber')
+          .populate('appliedPromotionId')
+          .lean()
+
+        const rows = await Promise.all(leases.map(async (l: any) => {
+          const promo = l.appliedPromotionId
+          const cyclesUsed = await Payment.countDocuments({
+            leaseId: l._id,
+            type: 'rent',
+            status: 'succeeded',
+          })
+
+          // "Begins" — positive = cycles remaining until the promo activates;
+          // negative = cycles ago it started. Storable uses this to telegraph
+          // pending-start promos vs. already-active ones.
+          let begins = 0
+          if (!promo?.beginsImmediately && promo?.beginsAfterCycles > 0) {
+            begins = (promo.beginsAfterCycles ?? 0) - cyclesUsed
+          } else {
+            begins = -cyclesUsed
+          }
+
+          // "Duration" — remaining cycles, or `Continuous` for no-expiration.
+          const duration = promo?.noExpiration
+            ? 'Continuous'
+            : Math.max(0, (promo?.durationCycles ?? 0) - Math.max(0, cyclesUsed - (promo?.beginsAfterCycles ?? 0)))
+
+          return {
+            // Date Added — when the lease started or, more accurately, when
+            // the promo was attached. We don't yet persist a per-lease
+            // attach time, so fall back to the lease's start date.
+            dateAdded: l.startDate,
+            unitNumber: l.unitId?.unitNumber ?? '',
+            unitId: l.unitId?._id ? String(l.unitId._id) : '',
+            tenant: l.tenantId ? `${l.tenantId.firstName} ${l.tenantId.lastName}` : 'N/A',
+            tenantId: l.tenantId?._id ? String(l.tenantId._id) : '',
+            promotion: promo?.name ?? '—',
+            promotionId: promo?._id ? String(promo._id) : '',
+            promotionRetired: promo?.status === 'retired',
+            discount: promo
+              ? (promo.discountType === 'percentage'
+                  ? `${promo.discountValue}%`
+                  : `$${(promo.discountValue / 100).toFixed(2)}`)
+              : '—',
+            begins,
+            applied: cyclesUsed,
+            duration,
+          }
         }))
+
         return NextResponse.json({ success: true, data: { rows, summary: { total: rows.length } } })
       }
 

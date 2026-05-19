@@ -42,7 +42,8 @@ export async function GET(req: NextRequest) {
     const skip = (page - 1) * limit
 
     const items = await Lease.find(filter)
-      .populate('unitId', 'unitNumber size')
+      .populate('unitId', 'unitNumber size type')
+      .populate('appliedPromotionId', 'name description method discountType discountValue noExpiration durationCycles status')
       .skip(skip)
       .limit(limit)
       .sort({ createdAt: -1 })
