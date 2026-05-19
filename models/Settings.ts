@@ -89,6 +89,35 @@ export interface ISettingsDocument extends Document {
   // itself. Storable parity — formerly hardcoded to 14 in jobs/delinquency.ts.
   auctionGracePeriodDays: number
 
+  // ── Rate Management ────────────────────────────────────────────────────
+  // Storable's Rate Management suggests price changes; it never auto-applies
+  // them. Two independent rule sets:
+  //   - unitTypePriceRules govern STREET rates by occupancy.
+  //   - rentalPriceRules govern existing tenant rates by months-since-last-change.
+  rateManagementEnabled: boolean
+  // Day-of-month (1–28) the admin receives the monthly reminder email.
+  rateManagementReminderDay: number
+  // Global options applied when computing rental rule suggestions.
+  rentalPriceAdvanceNoticeDays: number
+  rentalPriceAllowExceedingStreetRate: boolean
+  rentalPriceRoundToNearestDollar: boolean
+  // Per-unit-type rules. At most one per unit type — enforced by zod refine.
+  unitTypePriceRules: Array<{
+    id: string
+    unitType: string
+    increaseAmount?: number  // cents (one of increaseAmount/increasePercent)
+    increasePercent?: number
+    minOccupancyPct: number
+    roundingRule: 'none' | 'nearest_dollar'
+  }>
+  rentalPriceRules: Array<{
+    id: string
+    unitType: string
+    increaseAmount?: number  // cents
+    increasePercent?: number
+    minMonthsSinceLastChange: number
+  }>
+
   // ── Late / Lien escalation events ──────────────────────────────────────
   lateLienEvents: Array<{
     id: string
@@ -257,6 +286,34 @@ const SettingsSchema = new Schema<ISettingsDocument>(
     },
 
     auctionGracePeriodDays: { type: Number, default: 14, min: 0 },
+
+    // Rate Management
+    rateManagementEnabled: { type: Boolean, default: false },
+    rateManagementReminderDay: { type: Number, default: 1, min: 1, max: 28 },
+    rentalPriceAdvanceNoticeDays: { type: Number, default: 30, min: 0 },
+    rentalPriceAllowExceedingStreetRate: { type: Boolean, default: false },
+    rentalPriceRoundToNearestDollar: { type: Boolean, default: true },
+    unitTypePriceRules: {
+      type: [{
+        id:                { type: String, required: true },
+        unitType:          { type: String, required: true },
+        increaseAmount:    { type: Number },
+        increasePercent:   { type: Number },
+        minOccupancyPct:   { type: Number, required: true },
+        roundingRule:      { type: String, enum: ['none', 'nearest_dollar'], default: 'nearest_dollar' },
+      }],
+      default: [],
+    },
+    rentalPriceRules: {
+      type: [{
+        id:                       { type: String, required: true },
+        unitType:                 { type: String, required: true },
+        increaseAmount:           { type: Number },
+        increasePercent:          { type: Number },
+        minMonthsSinceLastChange: { type: Number, required: true },
+      }],
+      default: [],
+    },
 
     // Late / Lien escalation events
     lateLienEvents: {

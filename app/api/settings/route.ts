@@ -73,6 +73,70 @@ const updateSettingsSchema = z
       description: z.string(),
       active: z.boolean(),
     })),
+    // Rate Management
+    rateManagementEnabled: z.boolean(),
+    rateManagementReminderDay: z.number().int().min(1).max(28),
+    rentalPriceAdvanceNoticeDays: z.number().int().min(0).max(365),
+    rentalPriceAllowExceedingStreetRate: z.boolean(),
+    rentalPriceRoundToNearestDollar: z.boolean(),
+    unitTypePriceRules: z
+      .array(
+        z
+          .object({
+            id: z.string(),
+            unitType: z.string().min(1),
+            increaseAmount: z.number().int().min(0).optional(),
+            increasePercent: z.number().min(0).max(100).optional(),
+            minOccupancyPct: z.number().min(0).max(100),
+            roundingRule: z.enum(['none', 'nearest_dollar']).default('nearest_dollar'),
+          })
+          .refine(
+            (r) => r.increaseAmount !== undefined || r.increasePercent !== undefined,
+            { message: 'Either increaseAmount or increasePercent is required' },
+          ),
+      )
+      .superRefine((rules, ctx) => {
+        // Storable parity: at most ONE rule per unit type (per rule type).
+        const seen = new Set<string>()
+        for (const r of rules) {
+          if (seen.has(r.unitType)) {
+            ctx.addIssue({
+              code: 'custom',
+              path: ['unitTypePriceRules'],
+              message: `Only one Unit Type Price rule allowed per unit type (duplicate: ${r.unitType})`,
+            })
+          }
+          seen.add(r.unitType)
+        }
+      }),
+    rentalPriceRules: z
+      .array(
+        z
+          .object({
+            id: z.string(),
+            unitType: z.string().min(1),
+            increaseAmount: z.number().int().min(0).optional(),
+            increasePercent: z.number().min(0).max(100).optional(),
+            minMonthsSinceLastChange: z.number().int().min(0).max(120),
+          })
+          .refine(
+            (r) => r.increaseAmount !== undefined || r.increasePercent !== undefined,
+            { message: 'Either increaseAmount or increasePercent is required' },
+          ),
+      )
+      .superRefine((rules, ctx) => {
+        const seen = new Set<string>()
+        for (const r of rules) {
+          if (seen.has(r.unitType)) {
+            ctx.addIssue({
+              code: 'custom',
+              path: ['rentalPriceRules'],
+              message: `Only one Rental Price rule allowed per unit type (duplicate: ${r.unitType})`,
+            })
+          }
+          seen.add(r.unitType)
+        }
+      }),
     // Late / Lien
     lateLienEvents: z
       .array(z.object({

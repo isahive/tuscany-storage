@@ -3,6 +3,7 @@ import { runAutopay } from '@/jobs/autopay'
 import { runDelinquency } from '@/jobs/delinquency'
 import { runReminders } from '@/jobs/reminders'
 import { runRateManagement } from '@/jobs/rate-management'
+import { runRateManagementReminder } from '@/jobs/rate-management-reminder'
 import { runRateExecution } from '@/jobs/rate-execution'
 import { runInvoiceGeneration } from '@/jobs/invoices'
 
@@ -36,6 +37,11 @@ const JOBS = {
     fn: runRateExecution,
     schedule: '0 5 * * *',
     description: 'Apply approved rate changes when effective date arrives',
+  },
+  rateManagementReminder: {
+    fn: runRateManagementReminder,
+    schedule: '0 8 * * *',
+    description: 'Daily check — sends the monthly Rate Management reminder email on the configured day',
   },
 } as const
 

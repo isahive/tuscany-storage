@@ -3,16 +3,17 @@ import Unit from '@/models/Unit'
 import Lease from '@/models/Lease'
 import Tenant from '@/models/Tenant'
 import RateChange from '@/models/RateChange'
+import { getSettings } from '@/lib/getSettings'
 import { formatMoney } from '@/lib/utils'
+import {
+  calcOccupancyByType,
+  suggestRentalPriceChanges,
+  suggestUnitTypePriceChanges,
+  type LeaseFixture,
+  type RentalSuggestion,
+  type UnitTypeSuggestion,
+} from '@/lib/rateManagement'
 import type { IUnitDocument } from '@/models/Unit'
-import type { ILeaseDocument } from '@/models/Lease'
-import type { ITenantDocument } from '@/models/Tenant'
-
-const isDev = process.env.NODE_ENV === 'development'
-const RATE_INCREASE_PERCENT = 0.05 // 5%
-const MIN_TENURE_MONTHS = 12
-const MIN_MONTHS_SINCE_RATE_CHANGE = 12
-const ADVANCE_NOTICE_DAYS = 30
 
 export interface RateChangeProposal {
   tenantId: string
@@ -33,168 +34,152 @@ export interface RateChangeProposal {
 }
 
 /**
- * Round up to nearest dollar (nearest 100 cents).
+ * Compute the median price for each unit type from the live Unit collection.
+ * Used as the representative "street rate" both for street-rate suggestions
+ * and the cap on rental suggestions when allowExceedingStreetRate is false.
  */
-function roundUpToNearestDollar(cents: number): number {
-  return Math.ceil(cents / 100) * 100
+function medianPriceByType(units: IUnitDocument[]): Record<string, number> {
+  const grouped: Record<string, number[]> = {}
+  for (const u of units) {
+    if (!grouped[u.type]) grouped[u.type] = []
+    grouped[u.type].push(u.price)
+  }
+  const out: Record<string, number> = {}
+  for (const [type, prices] of Object.entries(grouped)) {
+    if (prices.length === 0) continue
+    const sorted = [...prices].sort((a, b) => a - b)
+    const mid = Math.floor(sorted.length / 2)
+    out[type] = sorted.length % 2 === 1
+      ? sorted[mid]
+      : Math.round((sorted[mid - 1] + sorted[mid]) / 2)
+  }
+  return out
 }
 
-function monthsBetween(a: Date, b: Date): number {
-  return (b.getFullYear() - a.getFullYear()) * 12 + (b.getMonth() - a.getMonth())
-}
-
-export async function runRateManagement(): Promise<RateChangeProposal[]> {
-  console.log('[RateManagement] Starting rate increase automation...')
+/**
+ * Rate Management cron — rule-driven, never auto-applies.
+ *
+ * For RENTAL rules it persists a `proposed` RateChange row per matching lease
+ * so the Summary page can list them across cron runs without re-querying every
+ * eligible lease.
+ *
+ * For UNIT TYPE rules it returns the suggestion list inline; the Summary page
+ * recomputes those on demand because nothing else depends on persistence.
+ *
+ * Returns `null` when Rate Management is disabled in Settings, mirroring the
+ * Storable behavior where the entire module sits dormant until the admin opts
+ * in.
+ */
+export async function runRateManagement(): Promise<{
+  rentalSuggestions: RentalSuggestion[]
+  unitTypeSuggestions: UnitTypeSuggestion[]
+  proposals: RateChangeProposal[]
+} | null> {
+  console.log('[RateManagement] Starting suggestion job…')
   await connectDB()
 
+  const settings = await getSettings()
+  if (!settings.rateManagementEnabled) {
+    console.log('[RateManagement] Disabled in Settings — skipping run.')
+    return null
+  }
+
+  const unitTypeRules = settings.unitTypePriceRules ?? []
+  const rentalRules = settings.rentalPriceRules ?? []
+  const globals = {
+    advanceNoticeDays: settings.rentalPriceAdvanceNoticeDays ?? 30,
+    allowExceedingStreetRate: !!settings.rentalPriceAllowExceedingStreetRate,
+    roundToNearestDollar: settings.rentalPriceRoundToNearestDollar !== false,
+  }
+
+  const units = (await Unit.find()) as IUnitDocument[]
+  const occupancy = calcOccupancyByType(units.map((u) => ({ type: u.type, status: u.status })))
+  const streetRates = medianPriceByType(units)
+
+  const unitTypeSuggestions = suggestUnitTypePriceChanges({
+    rules: unitTypeRules,
+    occupancy,
+    currentStreetRateByType: streetRates,
+  })
+
+  const activeLeases = await Lease.find({ status: 'active' }).lean()
+
+  const unitTypeByUnitId: Record<string, string> = {}
+  for (const u of units) unitTypeByUnitId[String(u._id)] = u.type
+
+  const leaseFixtures: LeaseFixture[] = activeLeases.map((l: any) => ({
+    _id: String(l._id),
+    unitId: String(l.unitId),
+    tenantId: String(l.tenantId),
+    monthlyRate: l.monthlyRate,
+    startDate: new Date(l.startDate),
+    lastRateChangeDate: l.lastRateChangeDate ? new Date(l.lastRateChangeDate) : undefined,
+    status: l.status,
+    exemptFromRateManagement: !!l.exemptFromRateManagement,
+  }))
+
   const now = new Date()
+  const rentalSuggestions = suggestRentalPriceChanges(leaseFixtures, {
+    rules: rentalRules,
+    globals,
+    unitTypeByUnitId,
+    streetRateByUnitType: streetRates,
+    now,
+  })
+
+  console.log(`[RateManagement] ${unitTypeSuggestions.length} unit-type suggestion(s), ${rentalSuggestions.length} rental suggestion(s)`)
+
+  // Persist rental suggestions as 'proposed' RateChange rows so the Summary
+  // page has a stable list across cron runs. Skip when an open proposal/
+  // approval already exists for the same lease.
   const proposals: RateChangeProposal[] = []
-
-  // Step 1: Calculate occupancy by unit type
-  const allUnits = await Unit.find() as IUnitDocument[]
-  const occupancyByType: Record<string, { total: number; occupied: number; rate: number }> = {}
-
-  for (const unit of allUnits) {
-    if (!occupancyByType[unit.type]) {
-      occupancyByType[unit.type] = { total: 0, occupied: 0, rate: 0 }
-    }
-    occupancyByType[unit.type].total++
-    if (unit.status === 'occupied') {
-      occupancyByType[unit.type].occupied++
-    }
-  }
-
-  // Calculate rates
-  for (const type of Object.keys(occupancyByType)) {
-    const data = occupancyByType[type]
-    data.rate = data.total > 0 ? (data.occupied / data.total) * 100 : 0
-  }
-
-  console.log('[RateManagement] Occupancy by unit type:')
-  for (const [type, data] of Object.entries(occupancyByType)) {
-    console.log(`  ${type}: ${data.occupied}/${data.total} (${data.rate.toFixed(1)}%)`)
-  }
-
-  // Step 2: Find unit types with >= 90% occupancy
-  const highOccupancyTypes = Object.entries(occupancyByType)
-    .filter(([, data]) => data.rate >= 90)
-    .map(([type]) => type)
-
-  if (highOccupancyTypes.length === 0) {
-    console.log('[RateManagement] No unit types at >= 90% occupancy. No rate increases to propose.')
-    return proposals
-  }
-
-  console.log(`[RateManagement] High occupancy types (>= 90%): ${highOccupancyTypes.join(', ')}`)
-
-  // Step 3: Find eligible leases — active, >= 12 months tenure, no rate change in 12 months
-  const activeLeases = await Lease.find({ status: 'active' }) as ILeaseDocument[]
-
-  for (const lease of activeLeases) {
+  for (const s of rentalSuggestions) {
     try {
-      // Check tenure >= 12 months
-      const tenureMonths = monthsBetween(new Date(lease.startDate), now)
-      if (tenureMonths < MIN_TENURE_MONTHS) {
-        continue
-      }
+      const existing = await RateChange.findOne({
+        leaseId: s.leaseId,
+        status: { $in: ['proposed', 'approved'] },
+      })
+      if (existing) continue
 
-      // Check no rate change in last 12 months
-      if (lease.lastRateChangeDate) {
-        const monthsSinceRateChange = monthsBetween(new Date(lease.lastRateChangeDate), now)
-        if (monthsSinceRateChange < MIN_MONTHS_SINCE_RATE_CHANGE) {
-          continue
-        }
-      }
+      const tenant = await Tenant.findById(s.tenantId)
+      const unit = units.find((u) => String(u._id) === s.unitId)
+      if (!tenant || !unit) continue
 
-      // Get unit and check if its type qualifies
-      const unit = await Unit.findById(lease.unitId) as IUnitDocument | null
-      if (!unit || !highOccupancyTypes.includes(unit.type)) {
-        continue
-      }
-
-      // Get tenant
-      const tenant = await Tenant.findById(lease.tenantId) as ITenantDocument | null
-      if (!tenant || tenant.status === 'moved_out') {
-        continue
-      }
-
-      // Calculate proposed rate: 5% increase rounded up to nearest dollar
-      const rawIncrease = lease.monthlyRate * RATE_INCREASE_PERCENT
-      const proposedRate = roundUpToNearestDollar(lease.monthlyRate + rawIncrease)
-      const increaseAmount = proposedRate - lease.monthlyRate
-      const increasePercent = (increaseAmount / lease.monthlyRate) * 100
-
-      // Effective date: 30 days from now
-      const effectiveDate = new Date(now)
-      effectiveDate.setDate(effectiveDate.getDate() + ADVANCE_NOTICE_DAYS)
-
-      const occupancyRate = occupancyByType[unit.type].rate
-
-      console.log(`[RateManagement] Proposing rate increase for ${tenant.email}:`)
-      console.log(`  Unit: ${unit.unitNumber} (${unit.type})`)
-      console.log(`  Current: ${formatMoney(lease.monthlyRate)} -> Proposed: ${formatMoney(proposedRate)} (+${formatMoney(increaseAmount)}, ${increasePercent.toFixed(1)}%)`)
-      console.log(`  Tenure: ${tenureMonths} months, Occupancy: ${occupancyRate.toFixed(1)}%`)
-
-      // Persist as proposal — admin must approve before tenant is notified
-      let notificationCreated = false
-      try {
-        const existing = await RateChange.findOne({
-          leaseId: lease._id,
-          status: { $in: ['proposed', 'approved'] },
-        })
-        if (existing) {
-          console.log(`[RateManagement] Existing open proposal for lease ${lease._id}, skipping`)
-          continue
-        }
-
-        await RateChange.create({
-          tenantId: tenant._id,
-          leaseId: lease._id,
-          unitId: unit._id,
-          currentRate: lease.monthlyRate,
-          proposedRate,
-          effectiveDate,
-          status: 'proposed',
-          occupancyRate,
-          tenureMonths,
-        })
-        notificationCreated = true
-      } catch (err: any) {
-        console.error(`[RateManagement] Error persisting proposal for ${tenant.email}:`, err.message)
-      }
+      const change = await RateChange.create({
+        tenantId: s.tenantId,
+        leaseId: s.leaseId,
+        unitId: s.unitId,
+        currentRate: s.currentRate,
+        proposedRate: s.suggestedRate,
+        effectiveDate: s.changeDate,
+        status: 'proposed',
+        occupancyRate: occupancy[s.unitType]?.rate,
+        tenureMonths: s.monthsSinceLastChange,
+      })
 
       proposals.push({
-        tenantId: tenant._id.toString(),
+        tenantId: String(tenant._id),
         tenantEmail: tenant.email,
         tenantName: `${tenant.firstName} ${tenant.lastName}`,
-        leaseId: lease._id.toString(),
-        unitId: unit._id.toString(),
+        leaseId: s.leaseId,
+        unitId: s.unitId,
         unitNumber: unit.unitNumber,
         unitType: unit.type,
-        currentRate: lease.monthlyRate,
-        proposedRate,
-        increaseAmount,
-        increasePercent,
-        tenureMonths,
-        occupancyRate,
-        effectiveDate,
-        notificationCreated,
+        currentRate: s.currentRate,
+        proposedRate: s.suggestedRate,
+        increaseAmount: s.increaseAmount,
+        increasePercent: (s.increaseAmount / s.currentRate) * 100,
+        tenureMonths: s.monthsSinceLastChange,
+        occupancyRate: occupancy[s.unitType]?.rate ?? 0,
+        effectiveDate: s.changeDate,
+        notificationCreated: true,
       })
+
+      console.log(`[RateManagement] Proposed for ${tenant.email}: ${formatMoney(s.currentRate)} → ${formatMoney(s.suggestedRate)} (rate-change id ${change._id})`)
     } catch (err: any) {
-      console.error(`[RateManagement] Error evaluating lease ${lease._id}:`, err.message)
+      console.error(`[RateManagement] Persist failed for lease ${s.leaseId}:`, err.message)
     }
   }
 
-  console.log(`\n[RateManagement] Complete. ${proposals.length} rate increase(s) proposed for admin approval.`)
-
-  if (isDev && proposals.length > 0) {
-    console.log('\n[RateManagement] Proposed changes summary:')
-    proposals.forEach((p) => {
-      console.log(`  ${p.tenantName} (${p.tenantEmail}) - Unit ${p.unitNumber}`)
-      console.log(`    ${formatMoney(p.currentRate)} -> ${formatMoney(p.proposedRate)} (+${p.increasePercent.toFixed(1)}%)`)
-      console.log(`    Effective: ${p.effectiveDate.toLocaleDateString('en-US')}`)
-    })
-  }
-
-  return proposals
+  return { rentalSuggestions, unitTypeSuggestions, proposals }
 }
