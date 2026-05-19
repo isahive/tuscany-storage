@@ -9,6 +9,13 @@ export interface INotificationDocument extends Document {
   body: string
   status: NotificationStatus
   sentAt?: Date
+  // Delivery telemetry — populated by webhook handlers from Resend (email)
+  // and Twilio (SMS). Stays undefined for channels without webhooks
+  // configured, so absence means "we don't know" rather than "didn't happen".
+  deliveredAt?: Date
+  bouncedAt?: Date
+  bounceReason?: string
+  openedAt?: Date
   failureReason?: string
   twilioMessageSid?: string
   resendMessageId?: string
@@ -44,6 +51,10 @@ const NotificationSchema = new Schema<INotificationDocument>(
       default: 'pending',
     },
     sentAt: { type: Date },
+    deliveredAt: { type: Date },
+    bouncedAt: { type: Date },
+    bounceReason: { type: String },
+    openedAt: { type: Date },
     failureReason: { type: String },
     twilioMessageSid: { type: String },
     resendMessageId: { type: String },
@@ -57,5 +68,7 @@ NotificationSchema.index({ tenantId: 1 })
 NotificationSchema.index({ status: 1 })
 NotificationSchema.index({ type: 1 })
 NotificationSchema.index({ eventKey: 1 }, { sparse: true })
+NotificationSchema.index({ resendMessageId: 1 }, { sparse: true })
+NotificationSchema.index({ twilioMessageSid: 1 }, { sparse: true })
 
 export default mongoose.models.Notification || mongoose.model<INotificationDocument>('Notification', NotificationSchema)

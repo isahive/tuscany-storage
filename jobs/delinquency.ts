@@ -5,8 +5,10 @@ import Payment from '@/models/Payment'
 import { nextBalanceAfter } from '@/lib/paymentBalance'
 import Notification from '@/models/Notification'
 import AccessLog from '@/models/AccessLog'
+import PrintBatch from '@/models/PrintBatch'
 import { getSettings } from '@/lib/getSettings'
 import { sendTemplatedNotification } from '@/lib/sendNotification'
+import { revokeAccess, grantAccess } from '@/lib/gateController'
 import type { ITenantDocument } from '@/models/Tenant'
 import type { ILeaseDocument } from '@/models/Lease'
 import type { NotificationType } from '@/types'
@@ -52,6 +54,12 @@ function eventKeyFor(leaseId: unknown, eventId: string, periodStart: Date): stri
   return `delinquency:${String(leaseId)}:${eventId}:${yyyy}-${mm}`
 }
 
+function feeKeyFor(leaseId: unknown, eventId: string, feeName: string, periodStart: Date): string {
+  const yyyy = periodStart.getFullYear()
+  const mm = String(periodStart.getMonth() + 1).padStart(2, '0')
+  return `latelienfee:${String(leaseId)}:${eventId}:${feeName}:${yyyy}-${mm}`
+}
+
 interface DelinquencyResult {
   tenantEmail: string
   action: string
@@ -90,14 +98,26 @@ export async function runDelinquency(): Promise<DelinquencyResult[]> {
   const lateFeeCents = settings.lateFeeAmount ?? DEFAULT_lateFeeCents
   const events = (settings.lateLienEvents ?? []) as LateLienEvent[]
   const lateDay = settings.lateFeeAfterDays ?? daysForStatus(events, 'late', DEFAULT_LATE_DAY)
-  const lockoutDay = daysForStatus(events, 'locked_out', DEFAULT_LOCKOUT_DAY)
+  const fallbackLockoutDay = daysForStatus(events, 'locked_out', DEFAULT_LOCKOUT_DAY)
   const lienDay = daysForStatus(events, 'lien', DEFAULT_LIEN_DAY)
   // Auction day defaults to lien + 30 if not configured
   const auctionDay = daysForStatus(events, 'auction', lienDay + 30)
   const gateAutoLockout = settings.gateAutoLockout !== false
+  // Storable parity — the auction notice gives the tenant N more days before
+  // the actual auction happens. Was hardcoded to 14; now configurable.
+  const auctionGraceDays = settings.auctionGracePeriodDays ?? 14
 
   const now = new Date()
   const results: DelinquencyResult[] = []
+
+  // Aggregated print-batch items — every event with action `queue_print` adds
+  // one item. Persisted at end of run so admins see one batch per cron tick.
+  const printQueue: Array<{
+    tenantId: ITenantDocument['_id']
+    unitNumber: string
+    documentType: string
+    balance: number
+  }> = []
 
   // Find all tenants that are active, delinquent, or locked out
   const tenants = await Tenant.find({
@@ -137,9 +157,14 @@ export async function runDelinquency(): Promise<DelinquencyResult[]> {
       const periodCovered = lastPayment && lastPayment.periodStart >= new Date(lastBillingDate.getFullYear(), lastBillingDate.getMonth(), 1)
 
       if (periodCovered) {
-        // Payment received — restore to active if currently escalated
+        // Payment received — restore to active if currently escalated. Also
+        // notify the gate controller so the tenant regains access without
+        // waiting for a manual gate-code refresh.
         if (tenant.status !== 'active') {
           await Tenant.findByIdAndUpdate(tenant._id, { status: 'active' })
+          if (tenant.status === 'locked_out') {
+            await grantAccess(tenant, settings, 'payment_received')
+          }
           console.log(`[Delinquency] Tenant ${tenant.email} restored to active (payment received)`)
           results.push({
             tenantEmail: tenant.email,
@@ -157,6 +182,10 @@ export async function runDelinquency(): Promise<DelinquencyResult[]> {
       }
 
       let currentStatus = tenant.status
+      // Per-tenant override: Storable lets you exempt a tenant from late
+      // fees (and the cascading fees configured per event). When set, the
+      // status escalation still happens but no Payment rows are written.
+      const feeExempt = !!tenant.lateFeeExempt
 
       // LATE: mark delinquent, add late fee
       if (daysSinceBilling >= lateDay && currentStatus === 'active') {
@@ -165,44 +194,59 @@ export async function runDelinquency(): Promise<DelinquencyResult[]> {
         await Tenant.findByIdAndUpdate(tenant._id, { status: 'delinquent' })
         currentStatus = 'delinquent'
 
-        // Create late fee payment record
-        const lateFeeBalance = await nextBalanceAfter(Payment, tenant._id, {
-          direction: 'charge',
-          status: 'pending',
-          amount: lateFeeCents,
-        })
-        await Payment.create({
-          tenantId: tenant._id,
-          leaseId: lease._id,
-          unitId: lease.unitId,
-          stripePaymentIntentId: `late_fee_${Date.now()}_${tenant._id}`,
-          amount: lateFeeCents,
-          currency: 'usd',
-          type: 'late_fee',
-          status: 'pending',
-          direction: 'charge',
-          balanceAfter: lateFeeBalance,
-          periodStart,
-          periodEnd,
-          attemptCount: 0,
-        })
+        if (!feeExempt) {
+          // Create late fee payment record
+          const lateFeeBalance = await nextBalanceAfter(Payment, tenant._id, {
+            direction: 'charge',
+            status: 'pending',
+            amount: lateFeeCents,
+          })
+          await Payment.create({
+            tenantId: tenant._id,
+            leaseId: lease._id,
+            unitId: lease.unitId,
+            stripePaymentIntentId: `late_fee_${Date.now()}_${tenant._id}`,
+            amount: lateFeeCents,
+            currency: 'usd',
+            type: 'late_fee',
+            status: 'pending',
+            direction: 'charge',
+            balanceAfter: lateFeeBalance,
+            periodStart,
+            periodEnd,
+            attemptCount: 0,
+          })
+        }
 
         results.push({
           tenantEmail: tenant.email,
-          action: 'marked_delinquent_late_fee_added',
+          action: feeExempt ? 'marked_delinquent_fee_skipped_exempt' : 'marked_delinquent_late_fee_added',
           daysPastDue: daysSinceBilling,
         })
       }
 
-      // LOCKED OUT: revoke gate access
-      if (daysSinceBilling >= lockoutDay && currentStatus !== 'locked_out') {
+      // LOCKED OUT: revoke gate access — unless the tenant is flagged
+      // automaticLockoutEnabled=false (Storable per-tenant override). The
+      // per-tenant `automaticLockoutDays` shifts the trigger day.
+      const lockoutEnabled = tenant.automaticLockoutEnabled !== false
+      const effectiveLockoutDay = tenant.automaticLockoutDays ?? fallbackLockoutDay
+
+      if (
+        lockoutEnabled
+        && daysSinceBilling >= effectiveLockoutDay
+        && currentStatus !== 'locked_out'
+      ) {
         console.log(`[Delinquency] Day ${daysSinceBilling}: Locking out ${tenant.email}`)
 
         await Tenant.findByIdAndUpdate(tenant._id, {
           status: 'locked_out',
+          lockedOutAt: new Date(),
           ...(gateAutoLockout ? { gateCode: null } : {}),
         })
         currentStatus = 'locked_out'
+
+        // Hit the external gate controller (no-op when not configured).
+        await revokeAccess(tenant, settings, `delinquency:${daysSinceBilling}d`)
 
         // Log access revocation
         await AccessLog.create({
@@ -224,7 +268,7 @@ export async function runDelinquency(): Promise<DelinquencyResult[]> {
       let auctionNoticeDate = lease.auctionDate
       if (daysSinceBilling >= auctionDay && !auctionNoticeDate) {
         auctionNoticeDate = new Date()
-        auctionNoticeDate.setDate(auctionNoticeDate.getDate() + 14)
+        auctionNoticeDate.setDate(auctionNoticeDate.getDate() + auctionGraceDays)
 
         await Lease.findByIdAndUpdate(lease._id, {
           auctionDate: auctionNoticeDate,
@@ -240,37 +284,113 @@ export async function runDelinquency(): Promise<DelinquencyResult[]> {
         })
       }
 
-      // Late/Lien notifications: process every configured non-manual event at
-      // its own threshold. This supports multiple rules for the same template
-      // name, e.g. Past Due Notice at Late day 5 and Locked out day 9.
+      // Late/Lien notifications + per-event fees + queued print. Process every
+      // configured non-manual event at its own threshold so multi-rule timelines
+      // (e.g. Past Due at day 5 AND day 10) all fire.
       const dueEvents = events
-        .filter((event) => event.notificationTemplate.trim())
-        .filter((event) => event.notifyEmail || event.notifyText || event.notifyLetter)
         .filter((event) => daysSinceBilling >= event.daysPastDue)
         .sort((a, b) => a.daysPastDue - b.daysPastDue)
 
       for (const event of dueEvents) {
+        const willNotify =
+          event.notificationTemplate.trim() !== ''
+          && (event.notifyEmail || event.notifyText || event.notifyLetter)
+
         const eventKey = eventKeyFor(lease._id, event.id, periodStart)
-        const alreadySent = await Notification.exists({ tenantId: tenant._id, eventKey })
-        if (alreadySent) continue
+        const alreadyNotified = willNotify
+          ? await Notification.exists({ tenantId: tenant._id, eventKey })
+          : false
 
-        const templateName = event.notificationTemplate.trim()
-        await sendTemplatedNotification({
-          templateName,
-          notificationType: notificationTypeForStatus(event.status),
-          tenant,
-          unitNumber: undefined,
-          monthlyRate: lease.monthlyRate,
-          balance: (tenant.balance ?? 0) + (event.status === 'late' ? lateFeeCents : 0),
-          dueDate: event.status === 'auction' ? auctionNoticeDate : lastBillingDate,
-          eventKey,
-        })
+        // ── Notifications ──
+        if (willNotify && !alreadyNotified) {
+          const templateName = event.notificationTemplate.trim()
+          await sendTemplatedNotification({
+            templateName,
+            notificationType: notificationTypeForStatus(event.status),
+            tenant,
+            unitNumber: undefined,
+            monthlyRate: lease.monthlyRate,
+            balance: (tenant.balance ?? 0) + (event.status === 'late' ? lateFeeCents : 0),
+            dueDate: event.status === 'auction' ? auctionNoticeDate : lastBillingDate,
+            eventKey,
+          })
 
-        results.push({
-          tenantEmail: tenant.email,
-          action: `${event.status}_template_sent:${templateName}`,
-          daysPastDue: daysSinceBilling,
-        })
+          results.push({
+            tenantEmail: tenant.email,
+            action: `${event.status}_template_sent:${templateName}`,
+            daysPastDue: daysSinceBilling,
+          })
+        }
+
+        // ── Per-event fees (admin-configured under each Late/Lien row) ──
+        // Skip entirely for exempt tenants; otherwise dedupe by feeKey so the
+        // cron is idempotent per billing period.
+        if (!feeExempt && event.fees && event.fees.length > 0) {
+          for (const fee of event.fees) {
+            const feeKey = feeKeyFor(lease._id, event.id, fee.name, periodStart)
+            const exists = await Payment.exists({
+              tenantId: tenant._id,
+              stripePaymentIntentId: feeKey,
+            })
+            if (exists) continue
+
+            const feeBalance = await nextBalanceAfter(Payment, tenant._id, {
+              direction: 'charge',
+              status: 'pending',
+              amount: fee.amount,
+            })
+            await Payment.create({
+              tenantId: tenant._id,
+              leaseId: lease._id,
+              unitId: lease.unitId,
+              // Reuse stripePaymentIntentId as the idempotency token so the
+              // unique-ish constraint catches duplicate cron runs the same day.
+              stripePaymentIntentId: feeKey,
+              amount: fee.amount,
+              currency: 'usd',
+              type: 'other',
+              status: 'pending',
+              direction: 'charge',
+              balanceAfter: feeBalance,
+              periodStart,
+              periodEnd,
+              attemptCount: 0,
+              description: fee.name,
+            })
+            results.push({
+              tenantEmail: tenant.email,
+              action: `${event.status}_fee_added:${fee.name}`,
+              daysPastDue: daysSinceBilling,
+            })
+          }
+        }
+
+        // ── Queue print batch ──
+        if (event.actions?.includes('queue_print')) {
+          const printKey = `${eventKey}:print`
+          // Avoid re-queueing the same event in the same period.
+          const alreadyPrinted = await PrintBatch.exists({
+            'items.tenantId': tenant._id,
+            'items.documentType': printKey,
+          })
+          if (!alreadyPrinted) {
+            // Pull a representative unit number for the doc header. Single-unit
+            // tenants are the common case; multi-unit tenants get the first.
+            const unit = await import('@/models/Unit')
+              .then((m) => m.default.findById(lease.unitId).select('unitNumber').lean<{ unitNumber?: string }>())
+            printQueue.push({
+              tenantId: tenant._id,
+              unitNumber: unit?.unitNumber ?? '—',
+              documentType: printKey,
+              balance: tenant.balance ?? 0,
+            })
+            results.push({
+              tenantEmail: tenant.email,
+              action: `${event.status}_queued_for_print`,
+              daysPastDue: daysSinceBilling,
+            })
+          }
+        }
       }
 
     } catch (err: any) {
@@ -281,6 +401,17 @@ export async function runDelinquency(): Promise<DelinquencyResult[]> {
         daysPastDue: -1,
       })
     }
+  }
+
+  // ── Persist the day's print batch (single doc) ──
+  if (printQueue.length > 0) {
+    await PrintBatch.create({
+      items: printQueue,
+      format: settings.printFormat ?? 'letter',
+      status: 'created',
+      createdBy: 'cron:delinquency',
+    })
+    console.log(`[Delinquency] Created print batch with ${printQueue.length} item(s)`)
   }
 
   console.log(`[Delinquency] Complete. Actions taken: ${results.length}`)

@@ -6,6 +6,8 @@ import { connectDB } from '@/lib/db'
 import Settings from '@/models/Settings'
 import { DEFAULT_SETTINGS } from '@/lib/defaultSettings'
 
+type LateLienStatus = 'late' | 'locked_out' | 'pre_lien' | 'lien' | 'auction'
+
 // ── Validation schema (all fields optional — partial update) ──────────────────
 
 const updateSettingsSchema = z
@@ -41,6 +43,7 @@ const updateSettingsSchema = z
     lateFeeAmount: z.number().int().min(0),
     nsfFeeAmount: z.number().int().min(0),
     auctionFeeAmount: z.number().int().min(0),
+    auctionGracePeriodDays: z.number().int().min(0),
     // Rental options
     enablePrepay: z.boolean(),
     disablePartialPaymentsForLockedOut: z.boolean(),
@@ -71,17 +74,42 @@ const updateSettingsSchema = z
       active: z.boolean(),
     })),
     // Late / Lien
-    lateLienEvents: z.array(z.object({
-      id: z.string(),
-      status: z.enum(['late', 'locked_out', 'pre_lien', 'lien', 'auction']),
-      daysPastDue: z.number().int().min(0),
-      notifyEmail: z.boolean(),
-      notifyText: z.boolean(),
-      notifyLetter: z.boolean(),
-      notificationTemplate: z.string(),
-      fees: z.array(z.object({ name: z.string(), amount: z.number().int().min(0) })),
-      actions: z.array(z.string()),
-    })),
+    lateLienEvents: z
+      .array(z.object({
+        id: z.string(),
+        status: z.enum(['late', 'locked_out', 'pre_lien', 'lien', 'auction']),
+        daysPastDue: z.number().int().min(0),
+        notifyEmail: z.boolean(),
+        notifyText: z.boolean(),
+        notifyLetter: z.boolean(),
+        notificationTemplate: z.string(),
+        fees: z.array(z.object({ name: z.string(), amount: z.number().int().min(0) })),
+        actions: z.array(z.string()),
+      }))
+      // Storable parity — Locked Out >= Late + 1, Pre-Lien >= Locked Out + 1,
+      // Lien >= Pre-Lien + 1, Auction >= Lien + 1. Enforced on max(prev) <
+      // min(next) so multiple events of the same status are allowed.
+      .superRefine((evts, ctx) => {
+        const order: LateLienStatus[] = ['late', 'locked_out', 'pre_lien', 'lien', 'auction']
+        const ranges: Partial<Record<LateLienStatus, { min: number; max: number }>> = {}
+        for (const e of evts) {
+          const r = ranges[e.status]
+          ranges[e.status] = r
+            ? { min: Math.min(r.min, e.daysPastDue), max: Math.max(r.max, e.daysPastDue) }
+            : { min: e.daysPastDue, max: e.daysPastDue }
+        }
+        for (let i = 0; i < order.length - 1; i++) {
+          const cur = ranges[order[i]]
+          const next = ranges[order[i + 1]]
+          if (cur && next && next.min <= cur.max) {
+            ctx.addIssue({
+              code: 'custom',
+              path: ['lateLienEvents'],
+              message: `${order[i + 1]} (day ${next.min}) must be at least 1 day after the latest ${order[i]} rule (day ${cur.max})`,
+            })
+          }
+        }
+      }),
     // Gate
     gateAutoAssign: z.boolean(),
     gateAutoAssignMethod: z.enum(['phone_last4', 'random']),

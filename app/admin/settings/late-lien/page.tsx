@@ -105,6 +105,8 @@ const DEFAULT_EVENTS: LateLienEvent[] = [
 export default function LateLienSettingsPage() {
   const [events, setEvents] = useState<LateLienEvent[]>([])
   const [savedJson, setSavedJson] = useState('')
+  const [auctionGraceDays, setAuctionGraceDays] = useState(14)
+  const [savedAuctionGraceDays, setSavedAuctionGraceDays] = useState(14)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [savedOpen, setSavedOpen] = useState(false)
@@ -122,7 +124,9 @@ export default function LateLienSettingsPage() {
   // Delete
   const [deleteId, setDeleteId] = useState<string | null>(null)
 
-  const isDirty = JSON.stringify(events) !== savedJson
+  const isDirty =
+    JSON.stringify(events) !== savedJson
+    || auctionGraceDays !== savedAuctionGraceDays
 
   // ── Load ─────────────────────────────────────────────────────────────────
 
@@ -139,6 +143,12 @@ export default function LateLienSettingsPage() {
             : DEFAULT_EVENTS
           setEvents(loaded)
           setSavedJson(JSON.stringify(loaded))
+
+          // Auction grace period (days between auction event firing and the
+          // sale itself — Storable parity).
+          const grace = typeof d.auctionGracePeriodDays === 'number' ? d.auctionGracePeriodDays : 14
+          setAuctionGraceDays(grace)
+          setSavedAuctionGraceDays(grace)
 
           // Build fee catalog from built-in + custom fees
           const catalog: EventFee[] = []
@@ -166,17 +176,21 @@ export default function LateLienSettingsPage() {
       const res = await fetch('/api/settings', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lateLienEvents: sorted }),
+        body: JSON.stringify({
+          lateLienEvents: sorted,
+          auctionGracePeriodDays: auctionGraceDays,
+        }),
       })
       const json = await res.json()
       if (!res.ok || !json.success) throw new Error(json.error ?? 'Save failed')
       setEvents(sorted)
       setSavedJson(JSON.stringify(sorted))
+      setSavedAuctionGraceDays(auctionGraceDays)
       setSavedOpen(true)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save')
     } finally { setSaving(false) }
-  }, [events])
+  }, [events, auctionGraceDays])
 
   // ── Dialog helpers ───────────────────────────────────────────────────────
 
@@ -270,6 +284,34 @@ export default function LateLienSettingsPage() {
       </Alert>
 
       {error && <Alert severity="error" onClose={() => setError(null)} sx={{ mb: 2.5, borderRadius: 2 }}>{error}</Alert>}
+
+      {/* Auction grace period — Storable parity. Number of days between the
+          auction event firing and the actual sale of belongings. */}
+      <Card sx={{ border: '1px solid #EDE5D8', boxShadow: 'none', borderRadius: 2, mb: 3 }}>
+        <CardContent sx={{ p: 3, display: 'flex', alignItems: 'flex-start', gap: 3, flexWrap: 'wrap' }}>
+          <Box sx={{ flex: '1 1 300px' }}>
+            <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 0.5 }}>
+              Auction Grace Period
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Days between the auction event firing and the actual sale. The tenant has
+              this window to settle the balance before belongings are auctioned.
+            </Typography>
+          </Box>
+          <TextField
+            type="number"
+            size="small"
+            label="Days"
+            value={auctionGraceDays}
+            onChange={(e) => {
+              const n = parseInt(e.target.value, 10)
+              setAuctionGraceDays(Number.isFinite(n) && n >= 0 ? n : 0)
+            }}
+            inputProps={{ min: 0, max: 365 }}
+            sx={{ width: 120, ...inputSx }}
+          />
+        </CardContent>
+      </Card>
 
       {/* Timeline Table */}
       <Card sx={{ border: '1px solid #EDE5D8', boxShadow: 'none', borderRadius: 2 }}>

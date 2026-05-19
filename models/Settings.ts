@@ -85,6 +85,10 @@ export interface ISettingsDocument extends Document {
     active: boolean
   }>
 
+  // Number of calendar days between the auction event firing and the auction
+  // itself. Storable parity — formerly hardcoded to 14 in jobs/delinquency.ts.
+  auctionGracePeriodDays: number
+
   // ── Late / Lien escalation events ──────────────────────────────────────
   lateLienEvents: Array<{
     id: string
@@ -251,6 +255,8 @@ const SettingsSchema = new Schema<ISettingsDocument>(
       }],
       default: [],
     },
+
+    auctionGracePeriodDays: { type: Number, default: 14, min: 0 },
 
     // Late / Lien escalation events
     lateLienEvents: {

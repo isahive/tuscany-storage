@@ -13,23 +13,30 @@ function getClient() {
   return client
 }
 
-export async function sendSMS(to: string, body: string): Promise<void> {
+export async function sendSMS(to: string, body: string): Promise<string | null> {
   if (process.env.NODE_ENV === 'development') {
     console.log(`[SMS DEV] To: ${to}, Body: ${body}`)
-    return
+    return null
   }
 
   const twilioClient = getClient()
   if (!twilioClient || !fromNumber) {
     console.error('[SMS] Twilio not configured')
-    return
+    return null
   }
 
-  await twilioClient.messages.create({
+  const message = await twilioClient.messages.create({
     body,
     from: fromNumber,
     to,
+    // Twilio reports delivery state asynchronously to this webhook. Falls
+    // back to message-create's initial status when not configured.
+    ...(process.env.TWILIO_STATUS_CALLBACK_URL
+      ? { statusCallback: process.env.TWILIO_STATUS_CALLBACK_URL }
+      : {}),
   })
+
+  return message.sid ?? null
 }
 
 export default getClient

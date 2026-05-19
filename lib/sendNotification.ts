@@ -155,15 +155,18 @@ export async function sendTemplatedNotification(args: SendTemplatedArgs): Promis
     const sentEmail = template.emailEnabled && tenant.email
     const sentSms = template.textEnabled && tenant.phone
 
+    let resendMessageId: string | null = null
+    let twilioMessageSid: string | null = null
+
     if (sentEmail) {
       // Wrap with facility logo banner + signature footer so the email looks
       // identical to the live admin's branded layout.
       const settings = await getSettings()
       const wrapped = wrapTenantEmail(emailBody, settings)
-      await sendEmail(tenant.email, subject, wrapped)
+      resendMessageId = await sendEmail(tenant.email, subject, wrapped)
     }
     if (sentSms) {
-      await sendSMS(tenant.phone, smsBody)
+      twilioMessageSid = await sendSMS(tenant.phone, smsBody)
     }
 
     if (sentEmail || sentSms) {
@@ -179,6 +182,10 @@ export async function sendTemplatedNotification(args: SendTemplatedArgs): Promis
         sentAt: new Date(),
         templateName,
         eventKey,
+        // Persist provider message IDs so the webhook handlers can correlate
+        // delivery/bounce/open events back to this row.
+        ...(resendMessageId ? { resendMessageId } : {}),
+        ...(twilioMessageSid ? { twilioMessageSid } : {}),
       })
     }
   } catch (err) {

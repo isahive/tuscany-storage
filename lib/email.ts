@@ -13,16 +13,16 @@ export async function sendEmail(
   subject: string,
   html: string,
   options?: { replyTo?: string },
-): Promise<void> {
+): Promise<string | null> {
   if (process.env.NODE_ENV === "development" && !resend) {
     const recipients = Array.isArray(to) ? to.join(", ") : to;
     console.log(`[EMAIL DEV] To: ${recipients}, Subject: ${subject}`);
-    return;
+    return null;
   }
 
   if (!resend) {
     console.warn("[EMAIL] Resend not configured — set RESEND_API_KEY");
-    return;
+    return null;
   }
 
   const recipients = Array.isArray(to) ? to.join(", ") : to;
@@ -42,6 +42,7 @@ export async function sendEmail(
   }
 
   console.log(`[EMAIL] Sent successfully, id: ${data?.id}`);
+  return data?.id ?? null;
 }
 
 export async function sendAdminNotification(

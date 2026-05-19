@@ -34,6 +34,7 @@ export const DEFAULT_SETTINGS = {
   lateFeeAmount: 2000,
   nsfFeeAmount: 3500,
   auctionFeeAmount: 5000,
+  auctionGracePeriodDays: 14,
   setupFeeAmount: 0,
   setupFeeName: 'Setup Fee',
   setupFeeDescription: '',
