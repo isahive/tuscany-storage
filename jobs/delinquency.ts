@@ -9,6 +9,7 @@ import PrintBatch from '@/models/PrintBatch'
 import { getSettings } from '@/lib/getSettings'
 import { sendTemplatedNotification } from '@/lib/sendNotification'
 import { revokeAccess, grantAccess } from '@/lib/gateController'
+import { computeAuctionDate } from '@/lib/auctionDate'
 import type { ITenantDocument } from '@/models/Tenant'
 import type { ILeaseDocument } from '@/models/Lease'
 import type { NotificationType } from '@/types'
@@ -238,12 +239,27 @@ export async function runDelinquency(): Promise<DelinquencyResult[]> {
       ) {
         console.log(`[Delinquency] Day ${daysSinceBilling}: Locking out ${tenant.email}`)
 
+        const lockedOutAt = new Date()
         await Tenant.findByIdAndUpdate(tenant._id, {
           status: 'locked_out',
-          lockedOutAt: new Date(),
+          lockedOutAt,
           ...(gateAutoLockout ? { gateCode: null } : {}),
         })
         currentStatus = 'locked_out'
+
+        // Storable "Automatic Auction Dates" — when the Locked Out rule has
+        // an offset (or a pinned fixed date), stamp the lease's auction date
+        // now so it surfaces on the customer's Gate Access page immediately
+        // rather than waiting for the auction event to fire.
+        const computedAuctionDate = computeAuctionDate(lockedOutAt, settings)
+        if (computedAuctionDate && !lease.auctionDate) {
+          await Lease.findByIdAndUpdate(lease._id, {
+            auctionDate: computedAuctionDate,
+            auctionScheduledAt: lockedOutAt,
+          })
+          lease.auctionDate = computedAuctionDate
+          lease.auctionScheduledAt = lockedOutAt
+        }
 
         // Hit the external gate controller (no-op when not configured).
         await revokeAccess(tenant, settings, `delinquency:${daysSinceBilling}d`)

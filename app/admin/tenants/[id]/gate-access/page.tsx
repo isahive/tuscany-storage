@@ -35,6 +35,7 @@ type GateAccessState = {
   additionalCards: string[]
   gateGroups: string[]
   lockoutAuctionDate: string | null
+  auctionDateSource: 'manual' | 'system' | null
   lockoutNote: string
   automaticLockoutEnabled: boolean
   automaticLockoutDays: number
@@ -209,7 +210,16 @@ export default function GateAccessPage() {
               </Typography>
             </Box>
             <CardContent>
-              <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>Auction Date</Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                <Typography variant="body2" sx={{ fontWeight: 600 }}>Auction Date</Typography>
+                {state?.auctionDateSource === 'system' && (
+                  <Chip
+                    label="Auto-scheduled"
+                    size="small"
+                    sx={{ bgcolor: '#FEF3C7', color: '#92400E', fontWeight: 600, fontSize: '0.65rem', height: 20 }}
+                  />
+                )}
+              </Box>
               <TextField
                 type="date"
                 size="small"

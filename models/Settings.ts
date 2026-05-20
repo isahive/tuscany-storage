@@ -89,6 +89,14 @@ export interface ISettingsDocument extends Document {
   // itself. Storable parity — formerly hardcoded to 14 in jobs/delinquency.ts.
   auctionGracePeriodDays: number
 
+  // Storable's "Automatic Auction Dates" config — sits on the Locked Out
+  // rule. When a tenant is locked out, the system stamps the auction date
+  // either as `lockedOutAt + auctionDaysAfterLockout` OR as
+  // `auctionFixedDate` when the admin pinned a specific calendar date.
+  // Set days=0 to disable automatic scheduling entirely.
+  auctionDaysAfterLockout: number
+  auctionFixedDate?: Date | null
+
   // ── Reservation fees (per unit type) ───────────────────────────────────
   // Storable Easy charges a one-time reservation fee at the moment a unit is
   // reserved (online or in office). The fee is credited back against the
@@ -296,6 +304,8 @@ const SettingsSchema = new Schema<ISettingsDocument>(
     },
 
     auctionGracePeriodDays: { type: Number, default: 14, min: 0 },
+    auctionDaysAfterLockout: { type: Number, default: 30, min: 0 },
+    auctionFixedDate:        { type: Date, default: null },
 
     // Reservation fees (per unit type)
     unitTypeReservationFees: {

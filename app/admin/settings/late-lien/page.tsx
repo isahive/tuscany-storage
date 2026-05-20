@@ -107,6 +107,10 @@ export default function LateLienSettingsPage() {
   const [savedJson, setSavedJson] = useState('')
   const [auctionGraceDays, setAuctionGraceDays] = useState(14)
   const [savedAuctionGraceDays, setSavedAuctionGraceDays] = useState(14)
+  const [auctionDaysAfterLockout, setAuctionDaysAfterLockout] = useState(30)
+  const [savedAuctionDaysAfterLockout, setSavedAuctionDaysAfterLockout] = useState(30)
+  const [auctionFixedDate, setAuctionFixedDate] = useState('')
+  const [savedAuctionFixedDate, setSavedAuctionFixedDate] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [savedOpen, setSavedOpen] = useState(false)
@@ -127,6 +131,8 @@ export default function LateLienSettingsPage() {
   const isDirty =
     JSON.stringify(events) !== savedJson
     || auctionGraceDays !== savedAuctionGraceDays
+    || auctionDaysAfterLockout !== savedAuctionDaysAfterLockout
+    || auctionFixedDate !== savedAuctionFixedDate
 
   // ── Load ─────────────────────────────────────────────────────────────────
 
@@ -149,6 +155,12 @@ export default function LateLienSettingsPage() {
           const grace = typeof d.auctionGracePeriodDays === 'number' ? d.auctionGracePeriodDays : 14
           setAuctionGraceDays(grace)
           setSavedAuctionGraceDays(grace)
+          const offset = typeof d.auctionDaysAfterLockout === 'number' ? d.auctionDaysAfterLockout : 30
+          setAuctionDaysAfterLockout(offset)
+          setSavedAuctionDaysAfterLockout(offset)
+          const fixed = d.auctionFixedDate ? new Date(d.auctionFixedDate).toISOString().slice(0, 10) : ''
+          setAuctionFixedDate(fixed)
+          setSavedAuctionFixedDate(fixed)
 
           // Build fee catalog from built-in + custom fees
           const catalog: EventFee[] = []
@@ -179,6 +191,8 @@ export default function LateLienSettingsPage() {
         body: JSON.stringify({
           lateLienEvents: sorted,
           auctionGracePeriodDays: auctionGraceDays,
+          auctionDaysAfterLockout: auctionDaysAfterLockout,
+          auctionFixedDate: auctionFixedDate || null,
         }),
       })
       const json = await res.json()
@@ -186,11 +200,13 @@ export default function LateLienSettingsPage() {
       setEvents(sorted)
       setSavedJson(JSON.stringify(sorted))
       setSavedAuctionGraceDays(auctionGraceDays)
+      setSavedAuctionDaysAfterLockout(auctionDaysAfterLockout)
+      setSavedAuctionFixedDate(auctionFixedDate)
       setSavedOpen(true)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save')
     } finally { setSaving(false) }
-  }, [events, auctionGraceDays])
+  }, [events, auctionGraceDays, auctionDaysAfterLockout, auctionFixedDate])
 
   // ── Dialog helpers ───────────────────────────────────────────────────────
 
@@ -310,6 +326,58 @@ export default function LateLienSettingsPage() {
             inputProps={{ min: 0, max: 365 }}
             sx={{ width: 120, ...inputSx }}
           />
+        </CardContent>
+      </Card>
+
+      {/* Automatic Auction Dates — Storable parity. Sits on the Locked Out
+          rule. Stamps lease.auctionDate at lockout time using either an
+          offset or a pinned calendar date. */}
+      <Card sx={{ border: '1px solid #EDE5D8', boxShadow: 'none', borderRadius: 2, mb: 3 }}>
+        <CardContent sx={{ p: 3 }}>
+          <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 0.5 }}>
+            Auction Date (when lockout fires)
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            When a tenant is locked out, the system can set their auction date automatically.
+            Use the offset for a per-tenant schedule, or pin a calendar date to batch all
+            pending lockouts to a single auction day. Pinned date wins when set.
+          </Typography>
+          <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
+            <TextField
+              type="number"
+              size="small"
+              label="Days after lockout"
+              value={auctionDaysAfterLockout}
+              onChange={(e) => {
+                const n = parseInt(e.target.value, 10)
+                setAuctionDaysAfterLockout(Number.isFinite(n) && n >= 0 ? n : 0)
+              }}
+              helperText="0 disables automatic scheduling"
+              inputProps={{ min: 0, max: 365 }}
+              sx={{ width: 180, ...inputSx }}
+            />
+            <TextField
+              type="date"
+              size="small"
+              label="Or pin a specific date"
+              InputLabelProps={{ shrink: true }}
+              value={auctionFixedDate}
+              onChange={(e) => setAuctionFixedDate(e.target.value)}
+              helperText="Leave blank to use the offset"
+              sx={{ width: 220, ...inputSx }}
+            />
+            {auctionFixedDate && (
+              <Box sx={{ alignSelf: 'center' }}>
+                <Button
+                  size="small"
+                  onClick={() => setAuctionFixedDate('')}
+                  sx={{ textTransform: 'none', color: '#9A3412' }}
+                >
+                  Clear pinned date
+                </Button>
+              </Box>
+            )}
+          </Box>
         </CardContent>
       </Card>
 

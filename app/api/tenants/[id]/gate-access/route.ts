@@ -7,7 +7,9 @@ import Tenant from '@/models/Tenant'
 import Lease from '@/models/Lease'
 import AccessLog from '@/models/AccessLog'
 import Notification from '@/models/Notification'
+import Settings from '@/models/Settings'
 import { revokeGateAccess } from '@/lib/gateAccess'
+import { computeAuctionDate } from '@/lib/auctionDate'
 
 interface RouteContext {
   params: Promise<{ id: string }>
@@ -55,7 +57,12 @@ export async function GET(_req: NextRequest, context: RouteContext) {
   const activeLease = await Lease.findOne({
     tenantId: id,
     status: { $in: ['active', 'pending_moveout'] },
-  }).lean()
+  }).lean<{ auctionDate?: Date | null; auctionScheduledAt?: Date | null } | null>()
+
+  // Prefer the manually-set lockoutAuctionDate if the admin pinned one on
+  // the tenant; fall back to the system-computed lease.auctionDate stamped
+  // by the delinquency cron at lockout time.
+  const effectiveAuctionDate = tenant.lockoutAuctionDate ?? activeLease?.auctionDate ?? null
 
   return NextResponse.json({
     success: true,
@@ -67,7 +74,11 @@ export async function GET(_req: NextRequest, context: RouteContext) {
       gateCode: tenant.gateCode ?? '',
       additionalCards: tenant.additionalCards ?? [],
       gateGroups: tenant.gateGroups ?? [],
-      lockoutAuctionDate: tenant.lockoutAuctionDate ?? null,
+      lockoutAuctionDate: effectiveAuctionDate,
+      // Distinguish for the UI which source the date came from.
+      auctionDateSource: tenant.lockoutAuctionDate
+        ? 'manual'
+        : (activeLease?.auctionDate ? 'system' : null),
       lockoutNote: tenant.lockoutNote ?? '',
       automaticLockoutEnabled: tenant.automaticLockoutEnabled ?? true,
       automaticLockoutDays: tenant.automaticLockoutDays ?? 9,
@@ -100,8 +111,20 @@ export async function POST(req: NextRequest, context: RouteContext) {
     switch (parsed.data.action) {
       case 'lock_out': {
         tenant.status = 'locked_out'
-        tenant.lockedOutAt = new Date()
-        if (parsed.data.auctionDate) tenant.lockoutAuctionDate = new Date(parsed.data.auctionDate)
+        const lockedOutAt = new Date()
+        tenant.lockedOutAt = lockedOutAt
+        if (parsed.data.auctionDate) {
+          tenant.lockoutAuctionDate = new Date(parsed.data.auctionDate)
+        } else {
+          // Storable "Automatic Auction Dates" — when the admin doesn't pin
+          // a date manually, derive one from the Locked Out rule.
+          const settings = await Settings.findOne({}).lean<{
+            auctionDaysAfterLockout?: number
+            auctionFixedDate?: Date | null
+          }>()
+          const computed = settings ? computeAuctionDate(lockedOutAt, settings) : null
+          if (computed) tenant.lockoutAuctionDate = computed
+        }
         if (parsed.data.note !== undefined) tenant.lockoutNote = parsed.data.note
         await tenant.save()
         // Wipe gate access — Storable parity: manual lock-out yanks code/cards/groups.

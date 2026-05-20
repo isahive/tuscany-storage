@@ -44,6 +44,8 @@ const updateSettingsSchema = z
     nsfFeeAmount: z.number().int().min(0),
     auctionFeeAmount: z.number().int().min(0),
     auctionGracePeriodDays: z.number().int().min(0),
+    auctionDaysAfterLockout: z.number().int().min(0).max(365),
+    auctionFixedDate: z.string().nullable(),
     // Rental options
     enablePrepay: z.boolean(),
     disablePartialPaymentsForLockedOut: z.boolean(),
