@@ -15,6 +15,7 @@ import {
 import AddIcon from '@mui/icons-material/Add'
 import MapIcon from '@mui/icons-material/Map'
 import GridViewIcon from '@mui/icons-material/GridView'
+import ViewListIcon from '@mui/icons-material/ViewList'
 import RefreshIcon from '@mui/icons-material/Refresh'
 import { formatMoney } from '@/lib/utils'
 import {
@@ -164,6 +165,15 @@ export default function UnitsPage() {
         >
           Units
         </Typography>
+        <Button
+          variant="outlined"
+          size="small"
+          startIcon={<ViewListIcon />}
+          onClick={() => router.push('/admin/units/list')}
+          sx={{ borderColor: '#EDE5D8' }}
+        >
+          List View
+        </Button>
         <Button
           variant="outlined"
           size="small"
