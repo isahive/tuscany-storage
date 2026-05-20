@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import RentNowModal from './RentNowModal'
+import ReserveHoldModal from './ReserveHoldModal'
 
 type GroupUnit = { _id: string; unitNumber: string; price: number; status: string; type: string }
 
@@ -17,6 +18,8 @@ type Props = {
   hasPriceRange: boolean
   hasPromo: boolean
   promoText?: string
+  /** Per-unit-type reservation fee in cents; 0 = no reserve CTA shown. */
+  reservationFeeCents?: number
 }
 
 function formatMoney(cents: number): string {
@@ -36,12 +39,20 @@ export default function SizeCard({
   hasPriceRange,
   hasPromo,
   promoText,
+  reservationFeeCents = 0,
 }: Props) {
   const [open, setOpen] = useState(false)
+  const [reserveOpen, setReserveOpen] = useState(false)
   const availableUnits = units
     .filter((u) => u.status === 'available')
     .map((u) => ({ _id: u._id, unitNumber: u.unitNumber }))
   const isAvailable = availableUnits.length > 0
+  // Storable: Reserve Now CTA only appears when a non-zero per-type fee is
+  // configured AND a unit is available to hold.
+  const showReserveCta = reservationFeeCents > 0 && isAvailable
+  // Pick the first available unit as the one to hold. Multi-unit reservations
+  // aren't a Storable concept — they pick one too.
+  const reserveTarget = availableUnits[0]
 
   return (
     <article className="rounded border border-gray-200 bg-white p-6 shadow-sm">
@@ -84,15 +95,26 @@ export default function SizeCard({
       )}
 
       {/* CTA */}
-      <div className="mt-4 flex justify-end">
+      <div className="mt-4 flex flex-wrap justify-end gap-2">
         {isAvailable ? (
-          <button
-            type="button"
-            onClick={() => setOpen(true)}
-            className="rounded bg-olive px-6 py-2 text-base font-semibold text-white shadow-sm hover:bg-olive-dark transition-colors duration-200"
-          >
-            Rent Now
-          </button>
+          <>
+            <button
+              type="button"
+              onClick={() => setOpen(true)}
+              className="rounded bg-olive px-6 py-2 text-base font-semibold text-white shadow-sm hover:bg-olive-dark transition-colors duration-200"
+            >
+              Rent Now
+            </button>
+            {showReserveCta && reserveTarget && (
+              <button
+                type="button"
+                onClick={() => setReserveOpen(true)}
+                className="rounded border border-olive bg-white px-6 py-2 text-base font-semibold text-olive shadow-sm hover:bg-olive/5 transition-colors duration-200"
+              >
+                Reserve Now for {formatMoney(reservationFeeCents)}
+              </button>
+            )}
+          </>
         ) : (
           <Link
             href={`/waiting-list?size=${encodeURIComponent(sizeKey)}`}
@@ -114,6 +136,15 @@ export default function SizeCard({
           currentPriceCents={currentPriceCents}
           promoText={promoText}
           availableUnits={availableUnits}
+        />
+      )}
+      {showReserveCta && reserveTarget && (
+        <ReserveHoldModal
+          open={reserveOpen}
+          onClose={() => setReserveOpen(false)}
+          unitId={reserveTarget._id}
+          unitLabel={`${label} · Unit ${reserveTarget.unitNumber}`}
+          reservationFeeCents={reservationFeeCents}
         />
       )}
     </article>

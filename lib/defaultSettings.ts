@@ -35,6 +35,8 @@ export const DEFAULT_SETTINGS = {
   nsfFeeAmount: 3500,
   auctionFeeAmount: 5000,
   auctionGracePeriodDays: 14,
+  // Reservation fees — empty by default; admin opts in per unit type.
+  unitTypeReservationFees: [] as Array<{ unitType: string; amount: number }>,
   // Rate Management — disabled by default; admin opts in.
   rateManagementEnabled: false,
   rateManagementReminderDay: 1,

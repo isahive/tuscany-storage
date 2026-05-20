@@ -89,6 +89,16 @@ export interface ISettingsDocument extends Document {
   // itself. Storable parity — formerly hardcoded to 14 in jobs/delinquency.ts.
   auctionGracePeriodDays: number
 
+  // ── Reservation fees (per unit type) ───────────────────────────────────
+  // Storable Easy charges a one-time reservation fee at the moment a unit is
+  // reserved (online or in office). The fee is credited back against the
+  // first rental invoice when the reservation converts. Fee is configured
+  // per unit type — leave a unit type out (or amount = 0) to disable.
+  unitTypeReservationFees: Array<{
+    unitType: string
+    amount: number   // cents
+  }>
+
   // ── Rate Management ────────────────────────────────────────────────────
   // Storable's Rate Management suggests price changes; it never auto-applies
   // them. Two independent rule sets:
@@ -286,6 +296,15 @@ const SettingsSchema = new Schema<ISettingsDocument>(
     },
 
     auctionGracePeriodDays: { type: Number, default: 14, min: 0 },
+
+    // Reservation fees (per unit type)
+    unitTypeReservationFees: {
+      type: [{
+        unitType: { type: String, required: true },
+        amount:   { type: Number, required: true, min: 0, default: 0 },
+      }],
+      default: [],
+    },
 
     // Rate Management
     rateManagementEnabled: { type: Boolean, default: false },

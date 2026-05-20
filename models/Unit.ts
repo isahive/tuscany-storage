@@ -36,6 +36,14 @@ export interface IUnitDocument extends Document {
   reservedAt?: Date
   reservedMoveInDate?: Date
   reservedPrice?: number   // cents
+  /** Stripe PaymentIntent that captured the reservation fee. Needed for
+   *  refund-on-cancel and for the deposit-credit on first-invoice conversion. */
+  reservationPaymentIntentId?: string
+  /** Cents actually charged for the reservation fee — recorded separately
+   *  from `reservedPrice` so admins can adjust the displayed price without
+   *  losing the audit trail of what the customer actually paid. */
+  reservationFeePaid?: number
+  reservationFeePaidAt?: Date
   createdAt: Date
   updatedAt: Date
 }
@@ -85,6 +93,9 @@ const UnitSchema = new Schema<IUnitDocument>(
     reservedAt:         { type: Date },
     reservedMoveInDate: { type: Date },
     reservedPrice:      { type: Number },
+    reservationPaymentIntentId: { type: String },
+    reservationFeePaid:         { type: Number },
+    reservationFeePaidAt:       { type: Date },
   },
   { timestamps: true }
 )

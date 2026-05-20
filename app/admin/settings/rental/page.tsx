@@ -50,6 +50,7 @@ interface FormState {
   // Reservations
   enableReservations: boolean
   reservationLimitDays: number
+  unitTypeReservationFees: Array<{ unitType: string; amount: number }>
   // Customer permissions
   customersCanEditProfile: boolean
   customersCanEditBilling: boolean
@@ -77,6 +78,7 @@ const DEFAULTS: FormState = {
   defaultProratingForManagerRentals: false,
   enableReservations: false,
   reservationLimitDays: 0,
+  unitTypeReservationFees: [],
   customersCanEditProfile: true,
   customersCanEditBilling: true,
   customersCanScheduleMoveOuts: true,
@@ -231,6 +233,7 @@ export default function RentalSettingsPage() {
             defaultProratingForManagerRentals: d.defaultProratingForManagerRentals ?? false,
             enableReservations: d.enableReservations ?? false,
             reservationLimitDays: d.reservationLimitDays ?? 0,
+            unitTypeReservationFees: Array.isArray(d.unitTypeReservationFees) ? d.unitTypeReservationFees : [],
             customersCanEditProfile: d.customersCanEditProfile ?? true,
             customersCanEditBilling: d.customersCanEditBilling ?? true,
             customersCanScheduleMoveOuts: d.customersCanScheduleMoveOuts ?? true,
@@ -421,12 +424,52 @@ export default function RentalSettingsPage() {
         <SectionHeading>Reservations</SectionHeading>
         <SettingSwitch label="Enable reservations" checked={form.enableReservations} onChange={(v) => setBool('enableReservations', v)} />
         {form.enableReservations && (
-          <NumberField
-            label="Days in the future a customer reservation is allowed"
-            hint="Set to 0 for no limit."
-            value={form.reservationLimitDays}
-            onChange={(v) => setNum('reservationLimitDays', v)}
-          />
+          <>
+            <NumberField
+              label="Days in the future a customer reservation is allowed"
+              hint="Set to 0 for no limit."
+              value={form.reservationLimitDays}
+              onChange={(v) => setNum('reservationLimitDays', v)}
+            />
+            <Box sx={{ mb: 2.5 }}>
+              <Typography variant="body2" sx={{ fontWeight: 600, color: '#1C0F06', mb: 0.5 }}>
+                Reservation fee per Unit Type
+              </Typography>
+              <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 1 }}>
+                Charged when a customer reserves a unit. Credited back on the first rental invoice.
+                Leave a row at $0 to disable the reservation CTA for that unit type.
+              </Typography>
+              {(['standard', 'climate_controlled', 'drive_up', 'vehicle_outdoor'] as const).map((t) => {
+                const existing = form.unitTypeReservationFees.find((f) => f.unitType === t)
+                const label = ({
+                  standard: 'Standard',
+                  climate_controlled: 'Climate Controlled',
+                  drive_up: 'Drive-Up',
+                  vehicle_outdoor: 'Vehicle / Outdoor',
+                } as const)[t]
+                return (
+                  <Box key={t} sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
+                    <Typography variant="body2" sx={{ width: 180 }}>{label}</Typography>
+                    <TextField
+                      type="number"
+                      size="small"
+                      value={existing ? (existing.amount / 100).toFixed(2) : '0.00'}
+                      onChange={(e) => {
+                        const cents = Math.max(0, Math.round((parseFloat(e.target.value) || 0) * 100))
+                        setForm((prev) => {
+                          const next = prev.unitTypeReservationFees.filter((f) => f.unitType !== t)
+                          if (cents > 0) next.push({ unitType: t, amount: cents })
+                          return { ...prev, unitTypeReservationFees: next }
+                        })
+                      }}
+                      InputProps={{ startAdornment: '$' }}
+                      sx={{ width: 120 }}
+                    />
+                  </Box>
+                )
+              })}
+            </Box>
+          </>
         )}
 
         <Divider sx={{ my: 3, borderColor: '#EDE5D8' }} />

@@ -73,6 +73,23 @@ const updateSettingsSchema = z
       description: z.string(),
       active: z.boolean(),
     })),
+    // Reservation fees
+    unitTypeReservationFees: z.array(z.object({
+      unitType: z.string().min(1),
+      amount: z.number().int().min(0),
+    })).superRefine((rows, ctx) => {
+      const seen = new Set<string>()
+      for (const r of rows) {
+        if (seen.has(r.unitType)) {
+          ctx.addIssue({
+            code: 'custom',
+            path: ['unitTypeReservationFees'],
+            message: `Duplicate reservation fee for unit type ${r.unitType}`,
+          })
+        }
+        seen.add(r.unitType)
+      }
+    }),
     // Rate Management
     rateManagementEnabled: z.boolean(),
     rateManagementReminderDay: z.number().int().min(1).max(28),

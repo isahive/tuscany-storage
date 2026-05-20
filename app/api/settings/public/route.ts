@@ -30,6 +30,9 @@ export async function GET() {
         disablePartialPaymentsForLockedOut: s?.disablePartialPaymentsForLockedOut ?? false,
         gateTextToOpen: s?.gateTextToOpen ?? false,
         gateTextToOpenNumber: s?.gateTextToOpenNumber ?? '',
+        // Reservation fees — exposed publicly so the unit listing can render
+        // "Reserve Now for $X" CTAs.
+        unitTypeReservationFees: s?.unitTypeReservationFees ?? [],
         customerFormFields: formFields,
       },
     })

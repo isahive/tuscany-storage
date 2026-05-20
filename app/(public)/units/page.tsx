@@ -2,8 +2,10 @@ import type { Metadata } from 'next'
 import { connectDB } from '@/lib/db'
 import Unit from '@/models/Unit'
 import Promotion from '@/models/Promotion'
+import Settings from '@/models/Settings'
 import UnitsCanvas from '@/components/public/UnitsCanvas'
 import SizeCard from '@/components/public/SizeCard'
+import { feeForUnitType } from '@/lib/reservationFee'
 
 export const metadata: Metadata = {
   title: 'Rent Storage | Tuscany Village Self Storage',
@@ -59,11 +61,13 @@ async function getData(): Promise<{
     gridX: number; gridY: number; gridFloor?: number; gridRotation: 0 | 90
   }>
   promos: ActivePromo[]
+  reservationFees: Array<{ unitType: string; amount: number }>
+  reservationsEnabled: boolean
 }> {
   try {
     await connectDB()
     const now = new Date()
-    const [units, promoDocs] = await Promise.all([
+    const [units, promoDocs, settings] = await Promise.all([
       Unit.find({}).lean(),
       Promotion.find({
         status: 'active',
@@ -71,7 +75,13 @@ async function getData(): Promise<{
         startDate: { $lte: now },
         $or: [{ noExpiration: true }, { endDate: null }, { endDate: { $gte: now } }],
       }).lean(),
+      Settings.findOne({}).lean<{
+        enableReservations?: boolean
+        unitTypeReservationFees?: Array<{ unitType: string; amount: number }>
+      }>(),
     ])
+    const reservationFees = settings?.unitTypeReservationFees ?? []
+    const reservationsEnabled = settings?.enableReservations !== false
 
     const promos: ActivePromo[] = promoDocs.map((p: any) => ({
       name: p.name,
@@ -119,9 +129,9 @@ async function getData(): Promise<{
       .map((k) => groups.get(k))
       .filter((g): g is SizeGroup => Boolean(g))
 
-    return { groups: orderedGroups, canvasUnits, promos }
+    return { groups: orderedGroups, canvasUnits, promos, reservationFees, reservationsEnabled }
   } catch {
-    return { groups: [], canvasUnits: [], promos: [] }
+    return { groups: [], canvasUnits: [], promos: [], reservationFees: [], reservationsEnabled: true }
   }
 }
 
@@ -143,7 +153,7 @@ function applyPromo(basePriceCents: number, promo: ActivePromo): number {
 }
 
 export default async function RentStoragePage() {
-  const { groups, canvasUnits, promos } = await getData()
+  const { groups, canvasUnits, promos, reservationFees, reservationsEnabled } = await getData()
 
   return (
     <div className="bg-gray-100">
@@ -173,6 +183,9 @@ export default async function RentStoragePage() {
               const promo = promoFor(sampleType, promos)
               const currentPriceCents = promo ? applyPromo(minPrice, promo) : minPrice
               const hasPromo = !!promo && currentPriceCents !== minPrice
+              const reservationFeeCents = reservationsEnabled
+                ? feeForUnitType(sampleType, reservationFees)
+                : 0
               return (
                 <SizeCard
                   key={g.sizeKey}
@@ -185,6 +198,7 @@ export default async function RentStoragePage() {
                   hasPriceRange={minPrice !== maxPrice}
                   hasPromo={hasPromo}
                   promoText={promo ? `${promo.name}: ${promo.description}` : undefined}
+                  reservationFeeCents={reservationFeeCents}
                 />
               )
             })}

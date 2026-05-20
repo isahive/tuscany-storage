@@ -515,6 +515,25 @@ export async function POST(req: NextRequest, context: RouteContext) {
       })
     }
 
+    // Storable parity — if the unit was reserved and the customer prepaid a
+    // reservation fee, the deposit is credited on the first rental invoice.
+    // We record it as a negative line so the running balance reflects the
+    // refund-as-credit and the customer sees the offset on their statement.
+    if ((unit.reservationFeePaid ?? 0) > 0) {
+      lines.push({
+        type: 'other',
+        amount: -(unit.reservationFeePaid as number),
+        description: 'Reservation Deposit credit',
+        dueDate: today,
+        status: 'succeeded',
+      })
+      // Clear the unit-side flags so a subsequent cancel doesn't try to
+      // refund again — the fee has now been "consumed" as a credit.
+      unit.reservationFeePaid = undefined
+      unit.reservationFeePaidAt = undefined
+      // Keep reservationPaymentIntentId for the audit trail.
+    }
+
     // ── Persist payment rows ──
     await Payment.insertMany(
       lines.map((l) => ({
