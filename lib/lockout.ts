@@ -4,14 +4,46 @@
  * every branch.
  */
 
+export type LateLienStatus = 'late' | 'locked_out' | 'pre_lien' | 'lien' | 'auction'
+
 /**
- * One-time-per-lockout-episode fee key for Late/Lien events with
- * status='locked_out'. Embeds the `lockedOutAt` timestamp so the same
- * physical lockout doesn't double-charge, but a future re-lockout (after a
- * payment-driven restore) produces a fresh key and the fee applies again.
+ * Storable parity: "The late/lien event repeats every month, resending the
+ * notifications and processing a late fee. The lock-out rules and later
+ * events only occur once." We encode that here by choosing the dedupe key
+ * shape based on the event's status.
  *
- * Non-locked-out events recur monthly and use a separate yyyy-mm key path
- * (see jobs/delinquency.ts).
+ *   - Late: per-billing-period key (yyyy-mm) so it re-fires every month.
+ *   - Locked Out / Pre-Lien / Lien / Auction: per-lockout-episode key
+ *     embedding the tenant's `lockedOutAt`. Same lockout never re-fires; a
+ *     future re-lockout (new lockedOutAt) produces a fresh key.
+ *
+ * Both the notification eventKey and the per-event fee key use the same
+ * decision rule so the audit trail stays internally consistent.
+ *
+ * `lockedOutAt` may be omitted only for Late status. For non-Late statuses
+ * we fall back to epoch-zero so callers that haven't yet stamped lockedOutAt
+ * still get a deterministic — but stable — key.
+ */
+export function lateLienEventKey(args: {
+  leaseId: string
+  eventId: string
+  status: LateLienStatus
+  periodStart: Date
+  lockedOutAt?: Date | null
+}): string {
+  if (args.status === 'late') {
+    const yyyy = args.periodStart.getFullYear()
+    const mm = String(args.periodStart.getMonth() + 1).padStart(2, '0')
+    return `delinquency:${args.leaseId}:${args.eventId}:${yyyy}-${mm}`
+  }
+  const stamp = (args.lockedOutAt ?? new Date(0)).toISOString()
+  return `delinquency:${args.leaseId}:${args.eventId}:episode:${stamp}`
+}
+
+/**
+ * One-time-per-lockout-episode fee key. Embeds the `lockedOutAt` timestamp
+ * so the same physical lockout doesn't double-charge, but a future re-
+ * lockout produces a fresh key and the fee applies again.
  */
 export function lockoutFeeKey(args: {
   leaseId: string
@@ -19,7 +51,32 @@ export function lockoutFeeKey(args: {
   feeName: string
   lockedOutAt: Date
 }): string {
-  return `latelienfee:${args.leaseId}:${args.eventId}:${args.feeName}:lockout:${args.lockedOutAt.toISOString()}`
+  return `latelienfee:${args.leaseId}:${args.eventId}:${args.feeName}:episode:${args.lockedOutAt.toISOString()}`
+}
+
+/**
+ * Same status-aware split for per-event fees: Late events use the monthly
+ * key, everything else uses the per-lockout-episode key.
+ */
+export function lateLienFeeKey(args: {
+  leaseId: string
+  eventId: string
+  feeName: string
+  status: LateLienStatus
+  periodStart: Date
+  lockedOutAt?: Date | null
+}): string {
+  if (args.status === 'late') {
+    const yyyy = args.periodStart.getFullYear()
+    const mm = String(args.periodStart.getMonth() + 1).padStart(2, '0')
+    return `latelienfee:${args.leaseId}:${args.eventId}:${args.feeName}:${yyyy}-${mm}`
+  }
+  return lockoutFeeKey({
+    leaseId: args.leaseId,
+    eventId: args.eventId,
+    feeName: args.feeName,
+    lockedOutAt: args.lockedOutAt ?? new Date(0),
+  })
 }
 
 /**

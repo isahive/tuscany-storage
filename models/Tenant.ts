@@ -80,6 +80,10 @@ export interface ITenantDocument extends Document {
   // Notes / accounting flags
   taxExempt?: boolean
   lateFeeExempt?: boolean
+  /** Skip ALL Late/Lien notifications (email/text/print) for this tenant.
+   *  Storable recommends pairing this with lateFeeExempt when an admin
+   *  exempts a tenant entirely from the delinquency workflow. */
+  lateLienNotificationsDisabled?: boolean
   invoiceNote?: string
   notes?: string
   // Lifecycle flags (mutually exclusive with active rentals)
@@ -158,6 +162,7 @@ const TenantSchema = new Schema<ITenantDocument>(
     },
     taxExempt:      { type: Boolean, default: false },
     lateFeeExempt:  { type: Boolean, default: false },
+    lateLienNotificationsDisabled: { type: Boolean, default: false },
     invoiceNote:    { type: String, default: '' },
     notes:          { type: String, default: '' },
     archived:       { type: Boolean, default: false },

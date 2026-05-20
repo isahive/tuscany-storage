@@ -79,6 +79,7 @@ interface TenantForm {
   // Notes
   taxExempt: boolean
   lateFeeExempt: boolean
+  lateLienNotificationsDisabled: boolean
   invoiceNote: string
   notes: string
 }
@@ -112,7 +113,7 @@ export default function EditProfilePage() {
     howDidYouHear: '',
     alternateContactName: '', alternatePhone: '', alternateEmail: '',
     howDidYouHearOther: '',
-    taxExempt: false, lateFeeExempt: false,
+    taxExempt: false, lateFeeExempt: false, lateLienNotificationsDisabled: false,
     invoiceNote: '', notes: '',
   })
 
@@ -166,6 +167,7 @@ export default function EditProfilePage() {
         howDidYouHearOther: t.howDidYouHearOther ?? '',
         taxExempt: !!t.taxExempt,
         lateFeeExempt: !!t.lateFeeExempt,
+        lateLienNotificationsDisabled: !!t.lateLienNotificationsDisabled,
         invoiceNote: t.invoiceNote ?? '',
         notes: t.notes ?? '',
       })
@@ -209,6 +211,7 @@ export default function EditProfilePage() {
         howDidYouHearOther: form.howDidYouHearOther,
         taxExempt: form.taxExempt,
         lateFeeExempt: form.lateFeeExempt,
+        lateLienNotificationsDisabled: form.lateLienNotificationsDisabled,
         invoiceNote: form.invoiceNote,
         notes: form.notes,
         customFields: customFieldValues,
@@ -556,6 +559,20 @@ export default function EditProfilePage() {
         />
         <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', ml: 4, mt: -0.5, mb: 2 }}>
           Select if you want to exempt the late fee for this customer.
+        </Typography>
+
+        <FormControlLabel
+          control={
+            <Checkbox
+              checked={form.lateLienNotificationsDisabled}
+              onChange={(e) => update('lateLienNotificationsDisabled', e.target.checked)}
+            />
+          }
+          label="Disable Late/Lien notifications?"
+          sx={{ '& .MuiTypography-root': { fontSize: '0.875rem', fontWeight: 600 } }}
+        />
+        <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', ml: 4, mt: -0.5, mb: 2 }}>
+          Suppress every Late/Lien email, text, and print letter for this tenant. Storable recommends pairing this with Late Fee Exempt when granting a full delinquency exemption.
         </Typography>
 
         <Typography variant="caption" sx={{ fontWeight: 600, display: 'block', mt: 1 }}>Invoice note</Typography>

@@ -11,7 +11,11 @@ import { sendTemplatedNotification } from '@/lib/sendNotification'
 import { revokeAccess, grantAccess } from '@/lib/gateController'
 import { computeAuctionDate } from '@/lib/auctionDate'
 import LockoutEvent from '@/models/LockoutEvent'
-import { lockoutFeeKey, shouldAutoApprove } from '@/lib/lockout'
+import {
+  lateLienEventKey,
+  lateLienFeeKey,
+  shouldAutoApprove,
+} from '@/lib/lockout'
 import type { ITenantDocument } from '@/models/Tenant'
 import type { ILeaseDocument } from '@/models/Lease'
 import type { NotificationType } from '@/types'
@@ -340,12 +344,26 @@ export async function runDelinquency(): Promise<DelinquencyResult[]> {
         .filter((event) => daysSinceBilling >= event.daysPastDue)
         .sort((a, b) => a.daysPastDue - b.daysPastDue)
 
+      // Storable parity — tenants flagged `lateLienNotificationsDisabled`
+      // skip the notification side of every event (fees still apply unless
+      // they're also flagged `lateFeeExempt`).
+      const notificationsDisabled = !!tenant.lateLienNotificationsDisabled
+
       for (const event of dueEvents) {
         const willNotify =
-          event.notificationTemplate.trim() !== ''
+          !notificationsDisabled
+          && event.notificationTemplate.trim() !== ''
           && (event.notifyEmail || event.notifyText || event.notifyLetter)
 
-        const eventKey = eventKeyFor(lease._id, event.id, periodStart)
+        // Per-status dedupe key: Late re-fires monthly; everything else is
+        // one-shot per lockout episode.
+        const eventKey = lateLienEventKey({
+          leaseId: String(lease._id),
+          eventId: event.id,
+          status: event.status,
+          periodStart,
+          lockedOutAt: tenant.lockedOutAt ?? null,
+        })
         const alreadyNotified = willNotify
           ? await Notification.exists({ tenantId: tenant._id, eventKey })
           : false
@@ -378,16 +396,15 @@ export async function runDelinquency(): Promise<DelinquencyResult[]> {
         // updated, until the account has been paid in full"); other events
         // recur monthly so they use the per-billing-period key.
         if (!feeExempt && event.fees && event.fees.length > 0) {
-          const lockedOutAtForFee = tenant.lockedOutAt ?? new Date(0)
           for (const fee of event.fees) {
-            const feeKey = event.status === 'locked_out'
-              ? lockoutFeeKey({
-                  leaseId: String(lease._id),
-                  eventId: event.id,
-                  feeName: fee.name,
-                  lockedOutAt: lockedOutAtForFee,
-                })
-              : feeKeyFor(lease._id, event.id, fee.name, periodStart)
+            const feeKey = lateLienFeeKey({
+              leaseId: String(lease._id),
+              eventId: event.id,
+              feeName: fee.name,
+              status: event.status,
+              periodStart,
+              lockedOutAt: tenant.lockedOutAt ?? null,
+            })
             const exists = await Payment.exists({
               tenantId: tenant._id,
               stripePaymentIntentId: feeKey,

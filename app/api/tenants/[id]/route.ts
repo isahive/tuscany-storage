@@ -87,6 +87,7 @@ const updateTenantSchema = z.object({
   // Notes section
   taxExempt: z.boolean().optional(),
   lateFeeExempt: z.boolean().optional(),
+  lateLienNotificationsDisabled: z.boolean().optional(),
   invoiceNote: z.string().optional(),
   notes: z.string().optional(),
   // Lifecycle flags
