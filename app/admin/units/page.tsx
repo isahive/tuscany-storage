@@ -13,7 +13,6 @@ import {
   Typography,
 } from '@mui/material'
 import AddIcon from '@mui/icons-material/Add'
-import MapIcon from '@mui/icons-material/Map'
 import GridViewIcon from '@mui/icons-material/GridView'
 import ViewListIcon from '@mui/icons-material/ViewList'
 import RefreshIcon from '@mui/icons-material/Refresh'
@@ -173,15 +172,6 @@ export default function UnitsPage() {
           sx={{ borderColor: '#EDE5D8' }}
         >
           List View
-        </Button>
-        <Button
-          variant="outlined"
-          size="small"
-          startIcon={<MapIcon />}
-          onClick={() => router.push('/admin/units/sitemap')}
-          sx={{ borderColor: '#EDE5D8' }}
-        >
-          Sitemap
         </Button>
         <Button
           variant="outlined"
