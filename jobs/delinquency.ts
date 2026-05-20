@@ -10,6 +10,8 @@ import { getSettings } from '@/lib/getSettings'
 import { sendTemplatedNotification } from '@/lib/sendNotification'
 import { revokeAccess, grantAccess } from '@/lib/gateController'
 import { computeAuctionDate } from '@/lib/auctionDate'
+import LockoutEvent from '@/models/LockoutEvent'
+import { lockoutFeeKey, shouldAutoApprove } from '@/lib/lockout'
 import type { ITenantDocument } from '@/models/Tenant'
 import type { ILeaseDocument } from '@/models/Lease'
 import type { NotificationType } from '@/types'
@@ -162,9 +164,26 @@ export async function runDelinquency(): Promise<DelinquencyResult[]> {
         // notify the gate controller so the tenant regains access without
         // waiting for a manual gate-code refresh.
         if (tenant.status !== 'active') {
+          const wasLockedOut = tenant.status === 'locked_out'
           await Tenant.findByIdAndUpdate(tenant._id, { status: 'active' })
-          if (tenant.status === 'locked_out') {
+          if (wasLockedOut) {
             await grantAccess(tenant, settings, 'payment_received')
+            // Storable Lock Out Report: record the auto-unlock and gate it
+            // behind the lockoutRequireApprovalAuto setting.
+            const approveNow = shouldAutoApprove({
+              type: 'unlocked', trigger: 'auto', settings,
+            })
+            await LockoutEvent.create({
+              tenantId: tenant._id,
+              leaseId: lease._id,
+              unitId: lease.unitId,
+              type: 'unlocked',
+              trigger: 'auto',
+              reason: 'Payment received — balance brought current',
+              createdBy: 'cron',
+              approvedAt: approveNow ? new Date() : null,
+              approvedBy: approveNow ? 'system' : null,
+            })
           }
           console.log(`[Delinquency] Tenant ${tenant.email} restored to active (payment received)`)
           results.push({
@@ -261,6 +280,20 @@ export async function runDelinquency(): Promise<DelinquencyResult[]> {
           lease.auctionScheduledAt = lockedOutAt
         }
 
+        // Lock Out Report — record the locked_out event. Always auto-approved
+        // (Storable only gates UNLOCK side of the approval workflow).
+        await LockoutEvent.create({
+          tenantId: tenant._id,
+          leaseId: lease._id,
+          unitId: lease.unitId,
+          type: 'locked_out',
+          trigger: 'auto',
+          reason: `Delinquency cron (${daysSinceBilling} days past due)`,
+          createdBy: 'cron',
+          approvedAt: new Date(),
+          approvedBy: 'system',
+        })
+
         // Hit the external gate controller (no-op when not configured).
         await revokeAccess(tenant, settings, `delinquency:${daysSinceBilling}d`)
 
@@ -340,10 +373,21 @@ export async function runDelinquency(): Promise<DelinquencyResult[]> {
 
         // ── Per-event fees (admin-configured under each Late/Lien row) ──
         // Skip entirely for exempt tenants; otherwise dedupe by feeKey so the
-        // cron is idempotent per billing period.
+        // cron is idempotent. Locked-out fees use a per-lockout-episode key
+        // (Storable: "fee will only apply once, when the lockout status is
+        // updated, until the account has been paid in full"); other events
+        // recur monthly so they use the per-billing-period key.
         if (!feeExempt && event.fees && event.fees.length > 0) {
+          const lockedOutAtForFee = tenant.lockedOutAt ?? new Date(0)
           for (const fee of event.fees) {
-            const feeKey = feeKeyFor(lease._id, event.id, fee.name, periodStart)
+            const feeKey = event.status === 'locked_out'
+              ? lockoutFeeKey({
+                  leaseId: String(lease._id),
+                  eventId: event.id,
+                  feeName: fee.name,
+                  lockedOutAt: lockedOutAtForFee,
+                })
+              : feeKeyFor(lease._id, event.id, fee.name, periodStart)
             const exists = await Payment.exists({
               tenantId: tenant._id,
               stripePaymentIntentId: feeKey,

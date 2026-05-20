@@ -8,8 +8,10 @@ import Lease from '@/models/Lease'
 import AccessLog from '@/models/AccessLog'
 import Notification from '@/models/Notification'
 import Settings from '@/models/Settings'
+import LockoutEvent from '@/models/LockoutEvent'
 import { revokeGateAccess } from '@/lib/gateAccess'
 import { computeAuctionDate } from '@/lib/auctionDate'
+import { shouldAutoApprove } from '@/lib/lockout'
 
 interface RouteContext {
   params: Promise<{ id: string }>
@@ -113,15 +115,17 @@ export async function POST(req: NextRequest, context: RouteContext) {
         tenant.status = 'locked_out'
         const lockedOutAt = new Date()
         tenant.lockedOutAt = lockedOutAt
+        const settings = await Settings.findOne({}).lean<{
+          auctionDaysAfterLockout?: number
+          auctionFixedDate?: Date | null
+          lockoutRequireApprovalAuto?: boolean
+          lockoutRequireApprovalManual?: boolean
+        }>()
         if (parsed.data.auctionDate) {
           tenant.lockoutAuctionDate = new Date(parsed.data.auctionDate)
         } else {
           // Storable "Automatic Auction Dates" — when the admin doesn't pin
           // a date manually, derive one from the Locked Out rule.
-          const settings = await Settings.findOne({}).lean<{
-            auctionDaysAfterLockout?: number
-            auctionFixedDate?: Date | null
-          }>()
           const computed = settings ? computeAuctionDate(lockedOutAt, settings) : null
           if (computed) tenant.lockoutAuctionDate = computed
         }
@@ -135,6 +139,16 @@ export async function POST(req: NextRequest, context: RouteContext) {
           channel: 'email',
           body: `Your gate access has been locked out.${parsed.data.note ? ` Reason: ${parsed.data.note}` : ''}`,
           status: 'pending',
+        })
+        // Lock Out Report — record + auto-approve (lockouts are never gated).
+        await LockoutEvent.create({
+          tenantId: tenant._id,
+          type: 'locked_out',
+          trigger: 'manual',
+          reason: parsed.data.note ?? 'Manual lockout by admin',
+          createdBy: session.user.name ?? session.user.email ?? 'admin',
+          approvedAt: new Date(),
+          approvedBy: session.user.name ?? session.user.email ?? 'admin',
         })
         break
       }
@@ -151,6 +165,27 @@ export async function POST(req: NextRequest, context: RouteContext) {
           gateId: 'entrance',
           source: 'admin',
           notes: 'Lock-out cleared by admin.',
+        })
+        // Lock Out Report — gate the approval based on
+        // lockoutRequireApprovalManual.
+        const settings = await Settings.findOne({}).lean<{
+          lockoutRequireApprovalAuto?: boolean
+          lockoutRequireApprovalManual?: boolean
+        }>()
+        const approveNow = shouldAutoApprove({
+          type: 'unlocked',
+          trigger: 'manual',
+          settings: settings ?? {},
+        })
+        const adminLabel = session.user.name ?? session.user.email ?? 'admin'
+        await LockoutEvent.create({
+          tenantId: tenant._id,
+          type: 'unlocked',
+          trigger: 'manual',
+          reason: 'Lock-out cleared by admin',
+          createdBy: adminLabel,
+          approvedAt: approveNow ? new Date() : null,
+          approvedBy: approveNow ? adminLabel : null,
         })
         break
       }

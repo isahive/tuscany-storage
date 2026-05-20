@@ -6,6 +6,7 @@ import { runRateManagement } from '@/jobs/rate-management'
 import { runRateManagementReminder } from '@/jobs/rate-management-reminder'
 import { runRateExecution } from '@/jobs/rate-execution'
 import { runInvoiceGeneration } from '@/jobs/invoices'
+import { runLockoutReportEmail } from '@/jobs/lockout-report-email'
 
 const JOBS = {
   generateInvoices: {
@@ -42,6 +43,11 @@ const JOBS = {
     fn: runRateManagementReminder,
     schedule: '0 8 * * *',
     description: 'Daily check — sends the monthly Rate Management reminder email on the configured day',
+  },
+  lockoutReportEmail: {
+    fn: runLockoutReportEmail,
+    schedule: '0 7 * * *',
+    description: 'Daily Lock Out Report digest emailed to the notifications email',
   },
 } as const
 
