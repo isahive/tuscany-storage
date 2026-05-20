@@ -64,6 +64,13 @@ export interface ITenantDocument extends Document {
   lockedOutAt?: Date
   stripeCustomerId?: string
   defaultPaymentMethodId?: string
+  /** Stripe `fingerprint` of the default payment method. Cached so the
+   *  duplicate-tenant scanner can match cards locally without hitting Stripe. */
+  cardFingerprint?: string
+  /** Tenants the operator confirmed are the same human (bidirectional). */
+  linkedTenantIds?: mongoose.Types.ObjectId[]
+  /** Pair-ids the operator marked as "not a duplicate" so the scanner skips them. */
+  dismissedMatchIds?: mongoose.Types.ObjectId[]
   autopayEnabled: boolean
   /** Days after due date before recurring billing auto-charges. 0 = same day. */
   billingDateOffset?: number
@@ -140,6 +147,9 @@ const TenantSchema = new Schema<ITenantDocument>(
     lockedOutAt: { type: Date },
     stripeCustomerId: { type: String },
     defaultPaymentMethodId: { type: String },
+    cardFingerprint: { type: String },
+    linkedTenantIds: { type: [{ type: Schema.Types.ObjectId, ref: 'Tenant' }], default: [] },
+    dismissedMatchIds: { type: [{ type: Schema.Types.ObjectId, ref: 'Tenant' }], default: [] },
     autopayEnabled: { type: Boolean, default: false },
     billingDateOffset: { type: Number, default: 0 },
     balance: { type: Number, default: 0 },
@@ -174,5 +184,13 @@ const TenantSchema = new Schema<ITenantDocument>(
 
 TenantSchema.index({ status: 1 })
 TenantSchema.index({ stripeCustomerId: 1 })
+TenantSchema.index({ cardFingerprint: 1 })
+TenantSchema.index({ linkedTenantIds: 1 })
+
+TenantSchema.pre('save', async function () {
+  if (!this.isModified('defaultPaymentMethodId')) return
+  const { syncCardFingerprint } = await import('@/lib/cardFingerprint')
+  await syncCardFingerprint(this)
+})
 
 export default mongoose.models.Tenant || mongoose.model<ITenantDocument>('Tenant', TenantSchema)

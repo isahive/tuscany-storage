@@ -33,6 +33,7 @@ import AddIcon from '@mui/icons-material/Add'
 import CloseIcon from '@mui/icons-material/Close'
 import { formatMoney, formatDate } from '@/lib/utils'
 import { useSetAdminPageTitle } from '@/lib/admin-page-title'
+import LinkedAccountsBanner from '@/components/admin/LinkedAccountsBanner'
 import type { TenantStatus } from '@/types'
 
 // ── Status helpers ──────────────────────────────────────────────────────────
@@ -276,6 +277,7 @@ export default function TenantDetailPage() {
   const statusC = STATUS_COLORS[tenant.status]
   return (
     <Box>
+      <LinkedAccountsBanner tenantId={tenantId} />
       {/* Header */}
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
         <IconButton aria-label="Back to customers list" onClick={() => router.push('/admin/tenants')}>

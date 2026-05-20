@@ -21,6 +21,7 @@ import SearchIcon from '@mui/icons-material/Search'
 import AddIcon from '@mui/icons-material/Add'
 import DownloadIcon from '@mui/icons-material/Download'
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf'
+import GroupIcon from '@mui/icons-material/Group'
 import { useRouter } from 'next/navigation'
 import { formatMoney } from '@/lib/utils'
 import type { TenantStatus } from '@/types'
@@ -337,6 +338,13 @@ export default function TenantsPage() {
             onClick={handleExportPDF}
           >
             PDF
+          </Button>
+          <Button
+            variant="outlined"
+            startIcon={<GroupIcon />}
+            onClick={() => router.push('/admin/tenants/duplicates')}
+          >
+            Duplicates
           </Button>
           <Button
             variant="contained"
