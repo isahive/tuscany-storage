@@ -91,6 +91,7 @@ interface LeaseData {
   startDate: string; endDate?: string; monthlyRate: number
   deposit: number; billingDay: number; status: string
   signedAt?: string
+  exemptFromRateManagement?: boolean
   appliedPromotionId?: {
     _id: string
     name: string
@@ -610,6 +611,7 @@ export default function TenantDetailPage() {
                         <TableCell>Billing Day</TableCell>
                         <TableCell>Status</TableCell>
                         <TableCell>Promotion</TableCell>
+                        <TableCell>Rate Mgmt</TableCell>
                         <TableCell>Signed</TableCell>
                         <TableCell align="right">Agreement</TableCell>
                       </TableRow>
@@ -690,6 +692,42 @@ export default function TenantDetailPage() {
                               ) : (
                                 <Typography variant="body2" sx={{ color: 'text.secondary' }}>—</Typography>
                               )}
+                            </TableCell>
+                            <TableCell>
+                              {/* Storable: exempt toggle is reached via
+                                  Customer Profile → Rentals → Edit Billing.
+                                  We surface it inline so an admin can flip
+                                  it without leaving the page. */}
+                              <Tooltip title={l.exemptFromRateManagement
+                                ? 'Exempt from Rate Management — click to unexempt'
+                                : 'Subject to Rate Management — click to exempt'}>
+                                <Button
+                                  size="small"
+                                  variant={l.exemptFromRateManagement ? 'outlined' : 'text'}
+                                  onClick={async () => {
+                                    const next = !l.exemptFromRateManagement
+                                    const msg = next
+                                      ? `Exempt unit ${unitLabel} from Rate Management?`
+                                      : `Stop exempting unit ${unitLabel} from Rate Management?`
+                                    if (!confirm(msg)) return
+                                    const res = await fetch(`/api/admin/leases/${l._id}`, {
+                                      method: 'PATCH',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({ exemptFromRateManagement: next }),
+                                    })
+                                    const json = await res.json().catch(() => ({}))
+                                    if (!res.ok || !json.success) alert(json.error ?? 'Failed')
+                                    else window.location.reload()
+                                  }}
+                                  sx={{
+                                    textTransform: 'none', fontSize: '0.7rem',
+                                    color: l.exemptFromRateManagement ? '#9A3412' : '#65A30D',
+                                    borderColor: l.exemptFromRateManagement ? '#FED7AA' : undefined,
+                                  }}
+                                >
+                                  {l.exemptFromRateManagement ? 'Exempt' : 'Subject'}
+                                </Button>
+                              </Tooltip>
                             </TableCell>
                             <TableCell>
                               {l.signedAt ? formatDate(l.signedAt) : <Typography variant="body2" color="warning.main">Unsigned</Typography>}

@@ -179,6 +179,11 @@ export default function RateManagementSummaryPage() {
         <Typography variant="h5" sx={{ fontFamily: '"Playfair Display", serif', fontWeight: 700, color: '#1C0F06', flex: 1 }}>
           Rate Management
         </Typography>
+        <Button component={Link} href="/admin/rate-management/mass-edit"
+          size="small"
+          sx={{ textTransform: 'none', color: '#5C5347' }}>
+          Mass Edit
+        </Button>
         <Button component={Link} href="/admin/rate-management/batches"
           size="small" startIcon={<HistoryIcon />}
           sx={{ textTransform: 'none', color: '#5C5347' }}>

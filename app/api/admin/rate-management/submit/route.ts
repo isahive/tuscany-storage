@@ -15,6 +15,7 @@ import { sendTemplatedNotification } from '@/lib/sendNotification'
 
 const schema = z.object({
   notifChannels: z.array(z.enum(['email', 'text', 'print'])),
+  source: z.enum(['rate_management', 'mass_edit']).default('rate_management'),
   unitTypeChanges: z.array(z.object({
     unitType: z.string().min(1),
     newPrice: z.number().int().min(0),
@@ -52,7 +53,7 @@ export async function POST(req: NextRequest) {
     if (!parsed.success) {
       return NextResponse.json({ success: false, error: parsed.error.message }, { status: 400 })
     }
-    const { notifChannels, unitTypeChanges, rentalChanges } = parsed.data
+    const { notifChannels, source, unitTypeChanges, rentalChanges } = parsed.data
 
     if (unitTypeChanges.length === 0 && rentalChanges.length === 0) {
       return NextResponse.json({ success: false, error: 'No changes selected' }, { status: 400 })
@@ -173,6 +174,7 @@ export async function POST(req: NextRequest) {
     // ── Record the batch ──
     const batch = await RateManagementBatch.create({
       createdBy: session.user.name ?? session.user.email ?? 'admin',
+      source,
       status: 'submitted',
       notifChannels,
       unitTypeChanges: unitTypeChangeRows,

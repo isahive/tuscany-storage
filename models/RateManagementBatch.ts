@@ -12,11 +12,16 @@ import mongoose, { Schema, Document, Types } from 'mongoose'
  */
 export type BatchNotifChannel = 'email' | 'text' | 'print'
 export type BatchStatus = 'submitted' | 'partially_cancelled' | 'cancelled'
+/** Storable lists both rule-driven Rate Management batches AND ad-hoc
+ *  "Mass Edit Rental Prices" batches on the same Batches page. The source
+ *  field keeps them distinguishable for filtering. */
+export type BatchSource = 'rate_management' | 'mass_edit'
 
 export interface IRateManagementBatchDocument extends Document {
   createdBy: string                 // admin display name or email
   createdAt: Date
   updatedAt: Date
+  source: BatchSource
   status: BatchStatus
   notifChannels: BatchNotifChannel[]
   // Unit-type changes are applied immediately (Unit.price update) — we keep
@@ -50,6 +55,7 @@ export interface IRateManagementBatchDocument extends Document {
 const RateManagementBatchSchema = new Schema<IRateManagementBatchDocument>(
   {
     createdBy: { type: String, required: true },
+    source: { type: String, enum: ['rate_management', 'mass_edit'], default: 'rate_management', index: true },
     status: { type: String, enum: ['submitted', 'partially_cancelled', 'cancelled'], default: 'submitted' },
     notifChannels: [{ type: String, enum: ['email', 'text', 'print'] }],
     unitTypeChanges: [{

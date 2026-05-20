@@ -78,6 +78,20 @@ export default function BatchDetailPage() {
 
   useEffect(() => { load() }, [load])
 
+  async function reprintItem(rateChangeId: string) {
+    try {
+      const res = await fetch(`/api/admin/rate-management/batches/${id}/reprint-item`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rateChangeId }),
+      })
+      const json = await res.json()
+      if (!json.success) throw new Error(json.error)
+      setSnackbar('Reprint queued')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Reprint failed')
+    }
+  }
+
   async function cancelItem(rateChangeId: string) {
     try {
       const res = await fetch(`/api/admin/rate-management/batches/${id}/cancel-item`, {
@@ -222,10 +236,18 @@ export default function BatchDetailPage() {
                       </TableCell>
                       <TableCell align="right">
                         {!r.cancelledAt && (
-                          <Button size="small" onClick={() => cancelItem(r.rateChangeId)}
-                            sx={{ textTransform: 'none', color: '#991B1B' }}>
-                            Cancel
-                          </Button>
+                          <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'flex-end' }}>
+                            {batch.notifChannels.includes('print') && (
+                              <Button size="small" onClick={() => reprintItem(r.rateChangeId)}
+                                sx={{ textTransform: 'none', color: '#5C5347' }}>
+                                Reprint
+                              </Button>
+                            )}
+                            <Button size="small" onClick={() => cancelItem(r.rateChangeId)}
+                              sx={{ textTransform: 'none', color: '#991B1B' }}>
+                              Cancel
+                            </Button>
+                          </Box>
                         )}
                       </TableCell>
                     </TableRow>
