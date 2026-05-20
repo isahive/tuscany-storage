@@ -1,9 +1,10 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
+import MoveInCompleteDialog from '@/components/portal/MoveInCompleteDialog'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -145,6 +146,13 @@ export default function PortalDashboard() {
 
   return (
     <div className="space-y-4">
+      {/* Storable parity — post-move-in welcome pop-up driven by ?welcome=1
+          on the redirect from the reserve flow. Wrapped in Suspense because
+          useSearchParams suspends during the initial client render. */}
+      <Suspense fallback={null}>
+        <MoveInCompleteDialog />
+      </Suspense>
+
       {/* ── Banners ── */}
       {unsignedRentals.length > 0 && !dismissedAgreement && (
         <div className="flex items-center justify-between rounded border border-yellow-200 bg-yellow-50 px-4 py-3">
