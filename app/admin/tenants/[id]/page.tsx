@@ -34,6 +34,7 @@ import CloseIcon from '@mui/icons-material/Close'
 import { formatMoney, formatDate } from '@/lib/utils'
 import { useSetAdminPageTitle } from '@/lib/admin-page-title'
 import LinkedAccountsBanner from '@/components/admin/LinkedAccountsBanner'
+import SendResetLinkDialog from '@/components/admin/SendResetLinkDialog'
 import type { TenantStatus } from '@/types'
 
 // ── Status helpers ──────────────────────────────────────────────────────────
@@ -207,6 +208,7 @@ export default function TenantDetailPage() {
   const [noteText, setNoteText] = useState('')
   const [noteSaving, setNoteSaving] = useState(false)
   const [showExtended, setShowExtended] = useState(false)
+  const [resetDialogOpen, setResetDialogOpen] = useState(false)
 
   // Publish title for breadcrumb (shows the customer name instead of the raw ID)
   useSetAdminPageTitle(tenant ? `${tenant.firstName} ${tenant.lastName}` : null)
@@ -302,6 +304,7 @@ export default function TenantDetailPage() {
           { label: 'Fees/Products',       onClick: () => router.push(`/admin/tenants/${tenantId}/fees-products`) },
           { label: 'Make a Payment',      onClick: () => router.push(`/admin/tenants/${tenantId}/make-payment`) },
           { label: 'Edit Profile',        onClick: () => router.push(`/admin/tenants/${tenantId}/edit`) },
+          { label: 'Send Reset Link',     onClick: () => setResetDialogOpen(true) },
           { label: 'Rent Unit',           onClick: () => router.push(`/admin/tenants/${tenantId}/rent-unit`) },
           { label: 'Reserve Unit',        onClick: () => router.push(`/admin/tenants/${tenantId}/reserve-unit`) },
           { label: 'Letters',             onClick: () => router.push(`/admin/tenants/${tenantId}/letters`) },
@@ -923,6 +926,12 @@ export default function TenantDetailPage() {
         </Grid>
       </Grid>
 
+      <SendResetLinkDialog
+        open={resetDialogOpen}
+        onClose={() => setResetDialogOpen(false)}
+        tenantId={tenantId}
+        tenantEmail={tenant.email}
+      />
     </Box>
   )
 }

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, Suspense } from 'react'
+import Link from 'next/link'
 import { signIn, getSession } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import {
@@ -225,8 +226,15 @@ export default function LoginPage() {
                 autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                sx={{ mb: 3 }}
+                sx={{ mb: 1 }}
               />
+              <Box sx={{ textAlign: 'right', mb: 2 }}>
+                <Link href="/forgot-password" style={{ textDecoration: 'none' }}>
+                  <Typography variant="caption" color="primary">
+                    Forgot your password?
+                  </Typography>
+                </Link>
+              </Box>
               <Button
                 type="submit"
                 variant="contained"
