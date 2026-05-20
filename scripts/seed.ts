@@ -39,8 +39,8 @@ async function seed() {
   console.log('Admin created:', adminResult.insertedId)
 
   // Create units — exact catalog from live tuscanystorage.com (163 units).
-  // Seeded WITHOUT grid positions so all units appear in the canvas sidebar
-  // as "Unplaced" and admin can lay them out via /admin/units/canvas.
+  // Seeded WITHOUT grid positions so all units appear in the site-map sidebar
+  // as "Unplaced" and admin can lay them out via /admin/units/site-map.
   // Prices stored at BASE (pre-promo); /units page applies the 1/2-off display.
   type SeedUnit = {
     unitNumber: string

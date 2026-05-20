@@ -152,7 +152,7 @@ npm run seed:promo
 #    /admin/settings/facility    → facility name, address, phone, email
 #    /admin/settings/fees        → adjust late/NSF/auction amounts
 #    /admin/settings/protection-plans → tweak protection tiers
-#    /admin/units/canvas         → lay out their physical units
+#    /admin/units/site-map       → lay out their physical units
 #    /admin/retail               → adjust product catalog & inventory
 
 # 4. (Optional) import their existing customer roster

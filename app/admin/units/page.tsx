@@ -13,7 +13,8 @@ import {
   Typography,
 } from '@mui/material'
 import AddIcon from '@mui/icons-material/Add'
-import GridViewIcon from '@mui/icons-material/GridView'
+import MapIcon from '@mui/icons-material/Map'
+import VisibilityIcon from '@mui/icons-material/Visibility'
 import ViewListIcon from '@mui/icons-material/ViewList'
 import RefreshIcon from '@mui/icons-material/Refresh'
 import { formatMoney } from '@/lib/utils'
@@ -176,20 +177,20 @@ export default function UnitsPage() {
         <Button
           variant="outlined"
           size="small"
-          startIcon={<GridViewIcon />}
-          onClick={() => router.push('/admin/units/floor-plan')}
+          startIcon={<VisibilityIcon />}
+          onClick={() => router.push('/admin/units/site-view')}
           sx={{ borderColor: '#EDE5D8' }}
         >
-          Floor Plan
+          Site View
         </Button>
         <Button
           variant="contained"
           size="small"
-          startIcon={<GridViewIcon />}
-          onClick={() => router.push('/admin/units/canvas')}
+          startIcon={<MapIcon />}
+          onClick={() => router.push('/admin/units/site-map')}
           sx={{ bgcolor: '#8CA87C', '&:hover': { bgcolor: '#7E9770' } }}
         >
-          Canvas
+          Site Map
         </Button>
         <Button
           variant="contained"
