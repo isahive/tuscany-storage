@@ -30,6 +30,7 @@ import AddIcon from '@mui/icons-material/Add'
 import EditIcon from '@mui/icons-material/Edit'
 import DeleteIcon from '@mui/icons-material/Delete'
 import InventoryIcon from '@mui/icons-material/Inventory'
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
 
 const fmt = (cents: number) =>
   new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(cents / 100)
@@ -163,44 +164,90 @@ function ProductDialog({ open, onClose, product, onSaved }: {
 function InventoryDialog({ open, onClose, product, onSaved }: {
   open: boolean; onClose: () => void; product: Product | null; onSaved: () => void
 }) {
-  const [value, setValue] = useState('')
+  // Storable parity — admin picks an action type, types a quantity (signed
+  // when "Adjustment"), and writes a reason. Both surface on the audit log.
+  const [action, setAction] = useState<'received' | 'adjustment'>('received')
+  const [quantity, setQuantity] = useState('')
+  const [reason, setReason] = useState('')
   const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (product) setValue(product.inventory.toString())
-  }, [product, open])
+    if (open) {
+      setAction('received')
+      setQuantity('')
+      setReason('')
+      setError(null)
+    }
+  }, [open])
 
   async function handleSave() {
-    setSaving(true)
+    setSaving(true); setError(null)
     try {
-      const res = await fetch('/api/products', {
-        method: 'PUT',
+      const qty = parseInt(quantity, 10)
+      if (Number.isNaN(qty)) throw new Error('Please enter a quantity.')
+      const res = await fetch(`/api/admin/products/${product?._id}/adjust-inventory`, {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: product?._id, inventory: parseInt(value, 10) }),
+        body: JSON.stringify({ action, quantity: qty, reason }),
       })
       const json = await res.json()
-      if (!res.ok || !json.success) throw new Error(json.error)
+      if (!res.ok || !json.success) throw new Error(json.error ?? 'Could not save')
       onSaved()
       onClose()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not save')
     } finally { setSaving(false) }
   }
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
-      <DialogTitle sx={{ fontWeight: 600 }}>Update Inventory — {product?.name}</DialogTitle>
+      <DialogTitle sx={{ fontWeight: 600 }}>Change Inventory — {product?.name}</DialogTitle>
       <DialogContent>
+        <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 1 }}>
+          Current stock: <strong>{product?.inventory === -1 ? 'Unlimited' : product?.inventory}</strong>
+        </Typography>
+        <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
+          <Button
+            size="small"
+            variant={action === 'received' ? 'contained' : 'outlined'}
+            onClick={() => setAction('received')}
+            disableElevation
+            sx={{ textTransform: 'none' }}
+          >
+            Received (+)
+          </Button>
+          <Button
+            size="small"
+            variant={action === 'adjustment' ? 'contained' : 'outlined'}
+            onClick={() => setAction('adjustment')}
+            disableElevation
+            sx={{ textTransform: 'none' }}
+          >
+            Adjustment (±)
+          </Button>
+        </Box>
         <TextField
-          label="Inventory Count"
+          label={action === 'received' ? 'Quantity received' : 'Adjustment (e.g. -3)'}
           fullWidth size="small" type="number"
-          value={value} onChange={(e) => setValue(e.target.value)}
-          helperText="-1 = unlimited"
-          sx={{ mt: 1 }}
+          value={quantity} onChange={(e) => setQuantity(e.target.value)}
+          helperText={action === 'received'
+            ? 'Positive whole number only.'
+            : 'Use a negative number to remove stock, positive to add.'}
+          sx={{ mb: 2 }}
         />
+        <TextField
+          label="Reason / note"
+          fullWidth size="small" multiline minRows={2}
+          value={reason} onChange={(e) => setReason(e.target.value)}
+          placeholder="Optional — e.g. count correction, damaged unit, supplier shipment"
+        />
+        {error && <Typography variant="caption" sx={{ color: 'error.main', display: 'block', mt: 1 }}>{error}</Typography>}
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 2 }}>
         <Button onClick={onClose} sx={{ color: 'text.secondary' }}>Cancel</Button>
         <Button variant="contained" onClick={handleSave} disabled={saving} disableElevation>
-          {saving ? 'Saving...' : 'Update'}
+          {saving ? 'Saving...' : 'Save Change'}
         </Button>
       </DialogActions>
     </Dialog>
@@ -254,6 +301,7 @@ export default function RetailSalesPage() {
   const [addOpen, setAddOpen] = useState(false)
   const [inventoryProduct, setInventoryProduct] = useState<Product | null>(null)
   const [deleteProduct, setDeleteProduct] = useState<Product | null>(null)
+  const [walkInOpen, setWalkInOpen] = useState(false)
 
   const loadProducts = useCallback(async () => {
     try {
@@ -279,7 +327,11 @@ export default function RetailSalesPage() {
 
       <Card>
         <CardContent sx={{ p: 0 }}>
-          <Box sx={{ display: 'flex', justifyContent: 'flex-end', p: 2, pb: 0 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', p: 2, pb: 0, gap: 1 }}>
+            <Button variant="outlined" disableElevation size="small"
+              onClick={() => setWalkInOpen(true)}>
+              Walk-In Sale
+            </Button>
             <Button variant="contained" startIcon={<AddIcon />} disableElevation size="small"
               onClick={() => { setEditProduct(null); setAddOpen(true) }}>
               Add Product
@@ -409,6 +461,155 @@ export default function RetailSalesPage() {
         product={deleteProduct}
         onDeleted={loadProducts}
       />
+
+      {/* Walk-In Sale Dialog */}
+      <WalkInSaleDialog
+        open={walkInOpen}
+        onClose={() => setWalkInOpen(false)}
+        products={products}
+        onSold={loadProducts}
+      />
     </Box>
+  )
+}
+
+// ── Walk-In Sale Dialog ─────────────────────────────────────────────────────
+
+function WalkInSaleDialog({ open, onClose, products, onSold }: {
+  open: boolean
+  onClose: () => void
+  products: Product[]
+  onSold: () => void
+}) {
+  const [items, setItems] = useState<Array<{ productId: string; quantity: number }>>([])
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'check' | 'other'>('cash')
+  const [note, setNote] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (open) {
+      setItems([])
+      setPaymentMethod('cash')
+      setNote('')
+      setError(null)
+    }
+  }, [open])
+
+  const active = products.filter((p) => p.active)
+  const total = items.reduce((sum, it) => {
+    const p = products.find((x) => x._id === it.productId)
+    if (!p) return sum
+    const sub = p.price * it.quantity
+    const tax = Math.round(sub * (p.taxRate / 100))
+    return sum + sub + tax
+  }, 0)
+
+  function addItem() {
+    if (active.length === 0) return
+    setItems((rs) => [...rs, { productId: active[0]._id, quantity: 1 }])
+  }
+
+  async function handleSell() {
+    setSaving(true); setError(null)
+    try {
+      if (items.length === 0) throw new Error('Add at least one item.')
+      const res = await fetch('/api/admin/retail/walk-in-sale', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items, paymentMethod, note: note || undefined }),
+      })
+      const json = await res.json()
+      if (!res.ok || !json.success) throw new Error(json.error ?? 'Sale failed')
+      onSold()
+      onClose()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Sale failed')
+    } finally { setSaving(false) }
+  }
+
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+      <DialogTitle sx={{ fontWeight: 600 }}>Walk-In Sale</DialogTitle>
+      <DialogContent>
+        <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 2 }}>
+          Records the sale against the synthetic Retail Sale customer — used for non-tenant purchases.
+        </Typography>
+        {items.length === 0 ? (
+          <Typography variant="body2" sx={{ color: 'text.secondary', mb: 1.5 }}>
+            No items yet.
+          </Typography>
+        ) : (
+          <Box sx={{ mb: 2 }}>
+            {items.map((it, idx) => {
+              const p = products.find((x) => x._id === it.productId)
+              return (
+                <Box key={idx} sx={{ display: 'flex', gap: 1, mb: 1, alignItems: 'center' }}>
+                  <TextField
+                    select size="small" SelectProps={{ native: true }}
+                    value={it.productId}
+                    onChange={(e) =>
+                      setItems((rs) => rs.map((r, i) => i === idx ? { ...r, productId: e.target.value } : r))
+                    }
+                    sx={{ flex: 1 }}
+                  >
+                    {active.map((p) => (
+                      <option key={p._id} value={p._id}>
+                        {p.name} — ${(p.price / 100).toFixed(2)}
+                        {p.inventory !== -1 ? ` (${p.inventory} in stock)` : ''}
+                      </option>
+                    ))}
+                  </TextField>
+                  <TextField
+                    size="small" type="number"
+                    value={it.quantity}
+                    onChange={(e) =>
+                      setItems((rs) => rs.map((r, i) => i === idx ? { ...r, quantity: Math.max(1, parseInt(e.target.value, 10) || 1) } : r))
+                    }
+                    sx={{ width: 80 }}
+                    inputProps={{ min: 1 }}
+                  />
+                  <IconButton size="small" onClick={() => setItems((rs) => rs.filter((_, i) => i !== idx))}>
+                    <DeleteOutlineIcon fontSize="small" />
+                  </IconButton>
+                </Box>
+              )
+            })}
+          </Box>
+        )}
+        <Button size="small" startIcon={<AddIcon />} onClick={addItem} sx={{ textTransform: 'none', mb: 2 }}>
+          Add item
+        </Button>
+
+        <TextField
+          select size="small" label="Payment method" fullWidth
+          SelectProps={{ native: true }}
+          value={paymentMethod}
+          onChange={(e) => setPaymentMethod(e.target.value as any)}
+          sx={{ mb: 1.5 }}
+        >
+          <option value="cash">Cash</option>
+          <option value="card">Card</option>
+          <option value="check">Check</option>
+          <option value="other">Other</option>
+        </TextField>
+        <TextField
+          size="small" label="Note (optional)" fullWidth multiline minRows={2}
+          value={note} onChange={(e) => setNote(e.target.value)}
+        />
+
+        {error && <Typography variant="caption" sx={{ color: 'error.main', display: 'block', mt: 1 }}>{error}</Typography>}
+
+        <Box sx={{ mt: 2, py: 1.5, px: 2, bgcolor: '#FAF7F0', borderRadius: 1, display: 'flex', justifyContent: 'space-between' }}>
+          <Typography variant="body2" sx={{ fontWeight: 600 }}>Total (incl. tax)</Typography>
+          <Typography variant="body2" sx={{ fontWeight: 700 }}>${(total / 100).toFixed(2)}</Typography>
+        </Box>
+      </DialogContent>
+      <DialogActions sx={{ px: 3, pb: 2 }}>
+        <Button onClick={onClose} sx={{ color: 'text.secondary' }}>Cancel</Button>
+        <Button variant="contained" onClick={handleSell} disabled={saving || items.length === 0} disableElevation>
+          {saving ? 'Recording...' : 'Record Sale'}
+        </Button>
+      </DialogActions>
+    </Dialog>
   )
 }

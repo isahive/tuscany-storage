@@ -569,17 +569,67 @@ export async function GET(req: NextRequest) {
       }
 
       case 'retail-inventory': {
+        // Storable's Retail Inventory Summary — current stock per product PLUS
+        // movement totals over the optional date range. Range comes from
+        // `from` / `to` query params (ISO strings).
+        const InventoryAdjustment = (await import('@/models/InventoryAdjustment')).default
         const products = await Product.find({}).sort({ name: 1 }).lean()
-        const rows = products.map((p: any) => ({
-          name: p.name,
-          price: p.price,
-          cost: p.cost,
-          taxRate: p.taxRate,
-          inventory: p.inventory,
-          active: p.active,
-          margin: p.price > 0 ? Math.round(((p.price - p.cost) / p.price) * 100) : 0,
-        }))
-        return NextResponse.json({ success: true, data: { rows, summary: { total: rows.length } } })
+
+        const fromParam = req.nextUrl.searchParams.get('from')
+        const toParam = req.nextUrl.searchParams.get('to')
+        const range: Record<string, Date> = {}
+        if (fromParam) range.$gte = new Date(fromParam)
+        if (toParam) range.$lte = new Date(toParam)
+        const filter: Record<string, unknown> = {}
+        if (Object.keys(range).length) filter.createdAt = range
+
+        // Aggregate received / adjustment / sold totals per product in window.
+        const movements = await InventoryAdjustment.aggregate([
+          { $match: filter },
+          {
+            $group: {
+              _id: { productId: '$productId', action: '$action' },
+              quantitySum: { $sum: '$quantity' },
+              eventCount: { $sum: 1 },
+            },
+          },
+        ])
+        const byProduct = new Map<string, { received: number; adjustment: number; sold: number; events: number }>()
+        for (const m of movements) {
+          const key = String(m._id.productId)
+          const entry = byProduct.get(key) ?? { received: 0, adjustment: 0, sold: 0, events: 0 }
+          if (m._id.action === 'received') entry.received += m.quantitySum
+          else if (m._id.action === 'adjustment') entry.adjustment += m.quantitySum
+          else if (m._id.action === 'sale') entry.sold += Math.abs(m.quantitySum)
+          entry.events += m.eventCount
+          byProduct.set(key, entry)
+        }
+
+        const rows = products.map((p: any) => {
+          const mvt = byProduct.get(String(p._id)) ?? { received: 0, adjustment: 0, sold: 0, events: 0 }
+          return {
+            productId: String(p._id),
+            name: p.name,
+            price: p.price,
+            cost: p.cost,
+            taxRate: p.taxRate,
+            inventory: p.inventory,
+            active: p.active,
+            margin: p.price > 0 ? Math.round(((p.price - p.cost) / p.price) * 100) : 0,
+            received: mvt.received,
+            adjustment: mvt.adjustment,
+            sold: mvt.sold,
+            ledgerEvents: mvt.events,
+          }
+        })
+
+        const summary = {
+          total: rows.length,
+          totalSold: rows.reduce((s, r) => s + r.sold, 0),
+          totalReceived: rows.reduce((s, r) => s + r.received, 0),
+          revenueInWindow: rows.reduce((s, r) => s + r.sold * r.price, 0),
+        }
+        return NextResponse.json({ success: true, data: { rows, summary } })
       }
 
       case 'unit-status': {

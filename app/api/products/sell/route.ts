@@ -7,6 +7,8 @@ import Product from '@/models/Product'
 import Tenant from '@/models/Tenant'
 import Lease from '@/models/Lease'
 import Payment from '@/models/Payment'
+import InventoryAdjustment from '@/models/InventoryAdjustment'
+import { canFulfillSale, saleDelta, UNLIMITED_INVENTORY } from '@/lib/inventory'
 
 const sellSchema = z.object({
   productId: z.string().min(1),
@@ -42,7 +44,7 @@ export async function POST(req: NextRequest) {
     if (!product.active) return NextResponse.json({ success: false, error: 'Product is inactive' }, { status: 400 })
 
     // Check inventory
-    if (product.inventory !== -1 && product.inventory < quantity) {
+    if (!canFulfillSale(product.inventory, quantity)) {
       return NextResponse.json({ success: false, error: `Insufficient inventory (${product.inventory} remaining)` }, { status: 400 })
     }
 
@@ -73,11 +75,25 @@ export async function POST(req: NextRequest) {
       lastAttemptAt: now,
     })
 
-    // Decrement inventory
-    if (product.inventory !== -1) {
+    // Decrement inventory + record sale in the ledger so the Retail Inventory
+    // Summary can reconstruct stock over a date range.
+    let inventoryAfter = product.inventory
+    if (product.inventory !== UNLIMITED_INVENTORY) {
       product.inventory -= quantity
+      inventoryAfter = product.inventory
       await product.save()
     }
+
+    await InventoryAdjustment.create({
+      productId: product._id,
+      action: 'sale',
+      quantity: saleDelta(quantity),
+      reason: `Sold to ${tenant.firstName} ${tenant.lastName}`.trim(),
+      inventoryAfter,
+      tenantId: tenant._id,
+      paymentId: payment._id,
+      createdBy: session.user.name ?? session.user.email ?? 'admin',
+    })
 
     return NextResponse.json({
       success: true,

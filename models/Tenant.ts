@@ -85,6 +85,9 @@ export interface ITenantDocument extends Document {
   // Lifecycle flags (mutually exclusive with active rentals)
   archived?: boolean
   onWaitingList?: boolean
+  /** Synthetic tenant used to record retail walk-in sales — never has a real
+   *  rental or payment method. There's exactly one of these per facility. */
+  isRetailWalkIn?: boolean
   createdAt: Date
   updatedAt: Date
 }
@@ -159,6 +162,7 @@ const TenantSchema = new Schema<ITenantDocument>(
     notes:          { type: String, default: '' },
     archived:       { type: Boolean, default: false },
     onWaitingList:  { type: Boolean, default: false },
+    isRetailWalkIn: { type: Boolean, default: false, index: true },
   },
   { timestamps: true }
 )
