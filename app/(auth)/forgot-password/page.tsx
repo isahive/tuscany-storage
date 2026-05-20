@@ -83,7 +83,7 @@ export default function ForgotPasswordPage() {
               Forgot your password?
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-              Enter your email and we'll send you a link to set a new one.
+              Enter your email and we&apos;ll send you a link to set a new one.
             </Typography>
 
             {error && (

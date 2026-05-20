@@ -242,7 +242,7 @@ export default function RateManagementSettingsPage() {
             </Button>
           </Box>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Triggered when a unit type's occupancy meets/exceeds the threshold. One rule per unit type.
+            Triggered when a unit type&apos;s occupancy meets/exceeds the threshold. One rule per unit type.
           </Typography>
 
           {unitTypeRules.length === 0 ? (
@@ -340,7 +340,7 @@ export default function RateManagementSettingsPage() {
             </Button>
           </Box>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Triggered by months since the rental's last rate change.
+            Triggered by months since the rental&apos;s last rate change.
           </Typography>
 
           {/* Global rental options */}
