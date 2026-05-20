@@ -24,6 +24,7 @@ import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf'
 import { useRouter } from 'next/navigation'
 import { formatMoney } from '@/lib/utils'
 import type { TenantStatus } from '@/types'
+import { TENANT_GROUPS, type TenantGroupId } from '@/lib/tenantGroups'
 
 // ── Row type ─────────────────────────────────────────────────────────────────
 
@@ -38,8 +39,6 @@ interface TenantRow {
   balance: number
   rentals: string[]      // unit numbers
 }
-
-type StatusFilter = TenantStatus | 'all'
 
 // ── CSV helpers ──────────────────────────────────────────────────────────────
 
@@ -138,14 +137,14 @@ function escapeHTML(s: string): string {
 export default function TenantsPage() {
   const router = useRouter()
   const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
+  const [groupFilter, setGroupFilter] = useState<TenantGroupId>('all')
   const [rows, setRows] = useState<TenantRow[]>([])
   const [loading, setLoading] = useState(true)
 
   const fetchTenants = useCallback(async () => {
     try {
       const params = new URLSearchParams({ limit: 'all' })
-      if (statusFilter !== 'all') params.set('status', statusFilter)
+      if (groupFilter !== 'all') params.set('group', groupFilter)
       if (search) params.set('search', search)
 
       const [tenantRes, unitRes] = await Promise.all([
@@ -185,7 +184,7 @@ export default function TenantsPage() {
     } finally {
       setLoading(false)
     }
-  }, [statusFilter, search])
+  }, [groupFilter, search])
 
   useEffect(() => {
     setLoading(true)
@@ -370,18 +369,16 @@ export default function TenantsPage() {
                 ),
               }}
             />
-            <FormControl size="small" sx={{ minWidth: 160 }}>
-              <InputLabel>Status</InputLabel>
+            <FormControl size="small" sx={{ minWidth: 240 }}>
+              <InputLabel>Group</InputLabel>
               <Select
-                label="Status"
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
+                label="Group"
+                value={groupFilter}
+                onChange={(e) => setGroupFilter(e.target.value as TenantGroupId)}
               >
-                <MenuItem value="all">All statuses</MenuItem>
-                <MenuItem value="active">Active</MenuItem>
-                <MenuItem value="delinquent">Delinquent</MenuItem>
-                <MenuItem value="locked_out">Locked Out</MenuItem>
-                <MenuItem value="moved_out">Moved Out</MenuItem>
+                {TENANT_GROUPS.map((g) => (
+                  <MenuItem key={g.id} value={g.id}>{g.label}</MenuItem>
+                ))}
               </Select>
             </FormControl>
           </Box>

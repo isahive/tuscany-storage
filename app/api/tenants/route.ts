@@ -5,6 +5,7 @@ import bcrypt from 'bcryptjs'
 import { authOptions } from '@/lib/auth'
 import { connectDB } from '@/lib/db'
 import Tenant from '@/models/Tenant'
+import { buildTenantGroupFilter } from '@/lib/tenantGroupResolver'
 
 export async function GET(req: NextRequest) {
   try {
@@ -21,12 +22,20 @@ export async function GET(req: NextRequest) {
     const rawLimit = searchParams.get('limit') || '20'
     const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10))
     const status = searchParams.get('status')
+    const group = searchParams.get('group')
     const search = searchParams.get('search')
 
     const filter: Record<string, unknown> = {}
 
     if (status) {
       filter.status = status
+    }
+
+    // Storable customer-group segmentation. Resolved server-side so the
+    // dropdown UI doesn't have to know about Lease/Payment joins.
+    if (group) {
+      const groupFilter = await buildTenantGroupFilter(group)
+      if (groupFilter) Object.assign(filter, groupFilter)
     }
 
     if (search) {
