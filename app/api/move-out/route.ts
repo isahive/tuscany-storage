@@ -6,6 +6,7 @@ import { connectDB } from '@/lib/db'
 import MoveOutRequest from '@/models/MoveOutRequest'
 import Lease from '@/models/Lease'
 import Unit from '@/models/Unit'
+import Tenant from '@/models/Tenant'
 import { sendAdminNotification } from '@/lib/email'
 
 // ─── GET: Admin — list all move-out requests ──────────────────────────────────
@@ -149,23 +150,35 @@ export async function POST(req: NextRequest) {
     await Unit.findByIdAndUpdate(lease.unitId, { status: 'reserved' })
 
     // Notify admin
-    const unit = await Unit.findById(lease.unitId).select('unitNumber').lean() as
-      | { unitNumber?: string }
-      | null
-    const firstName = session.user.name?.split(' ')[0] ?? 'Tenant'
-    const lastName = session.user.name?.split(' ').slice(1).join(' ') ?? ''
+    const [unit, tenant] = await Promise.all([
+      Unit.findById(lease.unitId).select('unitNumber').lean() as Promise<{ unitNumber?: string } | null>,
+      Tenant.findById(effectiveTenantId).select('firstName lastName').lean() as Promise<{ firstName?: string; lastName?: string } | null>,
+    ])
+    const fullName = `${tenant?.firstName ?? ''} ${tenant?.lastName ?? ''}`.trim() || 'A tenant'
+    const unitNumber = unit?.unitNumber ?? 'N/A'
+    const formattedDate = requestedDate.toLocaleDateString('en-US')
+    const adminUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/admin/tenants/${effectiveTenantId}`
 
     // Only notify the admin when the tenant initiates the request — admin-
-    // initiated schedules are self-evident.
+    // initiated schedules are self-evident. Body mirrors Storable Easy's
+    // verbatim copy so manager workflow expectations carry over.
     if (!isAdmin || effectiveTenantId === session.user.id) {
       await sendAdminNotification(
-        `Move-Out Request: ${firstName} ${lastName}`.trim(),
+        'Move Out Request',
         `
-          <h2>New Move-Out Request</h2>
-          <p><strong>Tenant:</strong> ${firstName} ${lastName}</p>
-          <p><strong>Unit:</strong> ${unit?.unitNumber ?? 'N/A'}</p>
-          <p><strong>Requested Date:</strong> ${requestedDate.toLocaleDateString('en-US')}</p>
-          <p><a href="${process.env.NEXT_PUBLIC_APP_URL ?? ''}/admin/tenants/${effectiveTenantId}">Review in Admin Panel</a></p>
+          <h2 style="font-family: Arial, Helvetica, sans-serif; color: #1c0f06; margin: 0 0 16px 0;">Move Out Request</h2>
+          <p style="font-family: Arial, Helvetica, sans-serif; color: #1c0f06; line-height: 1.6; margin: 0 0 14px 0;">
+            ${fullName} has requested a move-out of Unit ${unitNumber} on ${formattedDate} through their online account.
+          </p>
+          <p style="font-family: Arial, Helvetica, sans-serif; color: #1c0f06; line-height: 1.6; margin: 0 0 14px 0;">
+            This request requires you to facilitate and coordinate the move-out with the tenant to ensure that their move-out process is smooth.
+          </p>
+          <p style="font-family: Arial, Helvetica, sans-serif; color: #1c0f06; line-height: 1.6; margin: 0 0 14px 0;">
+            If, per your lease agreement, you require 30 days notice before a move-out can take place, please make sure you adjust the scheduled move-out date accordingly. This can be done on the tenant's account page or the Scheduled Move Out Report in your software.
+          </p>
+          <p style="font-family: Arial, Helvetica, sans-serif; color: #1c0f06; line-height: 1.6; margin: 0 0 14px 0;">
+            <a href="${adminUrl}" style="color: #B8914A; font-weight: 600;">Please log in to view the details.</a>
+          </p>
         `,
       ).catch(() => {})
     }
