@@ -302,17 +302,45 @@ Legend: `[x]` implemented · `[ ]` not yet implemented · `[~]` partial
 
 ## CI
 
-`.github/workflows/test.yml` runs on every push and PR:
+`.github/workflows/test.yml` runs two jobs on every push and PR:
+
+### Job 1 — `Lint + Vitest` (hard gate)
 
 1. `npm ci`
 2. `npm run lint`
-3. `npm test` (vitest)
-4. `npm run test:coverage`
-5. `npx playwright install --with-deps chromium`
-6. `npm run seed` + `npm run seed:customers` (best-effort)
-7. `npm run e2e`
+3. `npm test` (vitest — must pass)
+4. `npm run test:coverage` (continue-on-error, just for the artifact)
+5. Upload `coverage/` as artifact
 
-Coverage + Playwright HTML reports are uploaded as artifacts. PRs cannot merge until lint + vitest pass; e2e failures upload the report for triage.
+**A PR cannot merge if this job fails.** Vitest covers 638 cases deterministically against an in-memory MongoDB with every external provider mocked — no network, no flakiness, no hidden state.
+
+### Job 2 — `Playwright E2E` (best-effort)
+
+Runs after Job 1 succeeds. Spawns a MongoDB service container, installs Chromium, seeds the test DB, boots Next.js, runs the 27 specs.
+
+**Marked `continue-on-error: true` so the workflow status reflects the Vitest gate, not E2E flakes.** Why:
+
+- E2E needs the full stack alive: real MongoDB, working NextAuth credentials login, seeded admin/tenant accounts, deterministic unit inventory, and stub-able Stripe / Resend / Twilio test keys. Any one of those drifting silently turns a real-defect signal into noise.
+- The seed scripts (`npm run seed`, `npm run seed:customers`) are themselves `continue-on-error` because some seed steps assume an empty DB; on a CI runner with a stale Mongo container they no-op without raising.
+- The Vitest suite already covers every API contract and component the E2E specs touch — it's the redundancy layer that makes "E2E green" a polish concern, not a correctness one.
+
+The HTML Playwright report is uploaded as an artifact regardless of pass/fail. Click into a failed run to see screenshots, traces, and videos for every failing spec.
+
+### When E2E goes red — what to actually do
+
+1. Open the workflow run on GitHub → download the `playwright-report` artifact.
+2. `npx playwright show-report ./playwright-report` to open it locally.
+3. The most common cause is the seed not populating — re-running the workflow usually fixes it. The next most common is a real selector drift after a UI change; fix the spec in the same PR that moved the UI.
+4. If a spec consistently flakes for environmental reasons (third-party rate limit, slow cold start), prefer a `test.skip(condition, reason)` guard over silencing the spec entirely — the skip surfaces in the report so we don't forget about it.
+
+### Promoting E2E to a hard gate (future)
+
+When the team is ready to gate PRs on E2E too, the path is:
+
+1. Replace `continue-on-error: true` on the `e2e` job with `continue-on-error: false`.
+2. Add a dedicated `seed:e2e` script that's idempotent and asserts the expected starting inventory (e.g., at least 5 occupied + 5 available units, 1 admin, 3 tenants).
+3. Pin Stripe / Resend / Twilio to recorded fixtures (or VCR-style replay) so external rate limits can't fail a PR.
+4. Wire `axios.retry`-style transient retry into spec setup hooks for the 1-in-100 cold-start race.
 
 ---
 
