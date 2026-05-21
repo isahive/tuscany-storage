@@ -25,8 +25,10 @@ export function parsePaginationParams(
   opts: { maxLimit?: number } = {},
 ): { page: number; limit: number; skip: number } {
   const maxLimit = opts.maxLimit ?? 100
-  const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10))
-  const limit = Math.min(maxLimit, Math.max(1, parseInt(searchParams.get('limit') || '20', 10)))
+  // `|| 1` / `|| 20` defaults guard against `parseInt('abc') → NaN`, which
+  // would otherwise propagate through Math.max and yield NaN bounds.
+  const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1)
+  const limit = Math.min(maxLimit, Math.max(1, parseInt(searchParams.get('limit') || '20', 10) || 20))
   const skip = (page - 1) * limit
   return { page, limit, skip }
 }
