@@ -122,7 +122,7 @@ Current floor: **30%** across statements/branches/functions/lines (see `vitest.c
 
 ## Test case matrix
 
-Snapshot of what's implemented. Last full run: **458 vitest tests + 26 playwright specs, all passing.**
+Snapshot of what's implemented. Last full run: **517 vitest tests across 65 files + 26 playwright specs, all passing.**
 
 Legend: `[x]` implemented · `[ ]` not yet implemented · `[~]` partial
 
@@ -251,10 +251,16 @@ Legend: `[x]` implemented · `[ ]` not yet implemented · `[~]` partial
 - [ ] `POST /api/webhooks/twilio/status`
 
 #### Cron / jobs
-- [ ] `jobs/billing.ts` — recurring rent invoicing
-- [ ] `jobs/delinquency.ts` — late fee + lockout transitions
-- [ ] `jobs/autopay.ts` — autopay capture
-- [ ] `jobs/notifications.ts` — late/lien fan-out
+- [x] `jobs/reminders.ts` — D-3 reminder, idempotency, moved-out skip — `tests/unit/remindersJob.test.ts`
+- [x] `jobs/invoices.ts` — invoice creation, autopay skip, double-invoice guard, lead-time gate — `tests/unit/invoicesJob.test.ts`
+- [x] `jobs/autopay.ts` — billing-window gate, status filter, duplicate-payment guard, promo hook — `tests/unit/autopayJob.test.ts`
+- [x] `jobs/delinquency.ts` — grace, late-fee, exempt path, restore-to-active, locked → unlocked cascade — `tests/unit/delinquencyJob.test.ts`
+- [x] `jobs/rate-management.ts` — disabled, proposals, exempt skip, unit-type suggestions, no-double-propose — `tests/unit/rateManagementJob.test.ts`
+- [x] `jobs/rate-execution.ts` — apply approved, future-date skip, lease-inactive skip, status filter — `tests/unit/rateExecutionJob.test.ts`
+- [x] `jobs/rate-management-reminder.ts` — disabled, wrong day, missing email, facilityEmail fallback, send — `tests/unit/rateManagementReminderJob.test.ts`
+- [x] `jobs/lockout-report-email.ts` — empty/no-events, 24h window, populate fallback, digest sections — `tests/unit/lockoutReportEmailJob.test.ts`
+- [x] `GET /api/cron` + `POST /api/cron` — dispatcher + bearer auth + per-job error pass-through — `tests/unit/cronRoute.test.ts`
+- [x] `POST /api/cron/recurring-billing` — dev mode, bearer, query secret, tenant filter — `tests/unit/recurringBillingRoute.test.ts`
 
 ### Component — React (happy-dom)
 
