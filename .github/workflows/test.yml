@@ -1,0 +1,89 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint-and-unit:
+    name: Lint + Vitest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test -- --reporter=default
+      - run: npm run test:coverage -- --reporter=default
+        continue-on-error: true
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage
+          path: coverage/
+          retention-days: 7
+
+  e2e:
+    name: Playwright E2E
+    runs-on: ubuntu-latest
+    needs: lint-and-unit
+    env:
+      # Tests stub external providers; use throwaway values so import-time
+      # checks (lib/db, NextAuth) don't throw.
+      MONGODB_URI: mongodb://127.0.0.1:27017/tuscany-storage-test
+      NEXTAUTH_URL: http://localhost:3000
+      NEXTAUTH_SECRET: ci-secret-not-for-prod
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+      STRIPE_SECRET_KEY: sk_test_dummy
+      STRIPE_PUBLISHABLE_KEY: pk_test_dummy
+      NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: pk_test_dummy
+      E2E_ADMIN_EMAIL: admin@tuscanystorage.com
+      E2E_ADMIN_PASSWORD: admin123
+      E2E_TENANT_EMAIL: john@example.com
+      E2E_TENANT_PASSWORD: tenant123
+
+    services:
+      mongodb:
+        image: mongo:7
+        ports: ['27017:27017']
+        options: >-
+          --health-cmd "mongosh --eval 'db.adminCommand({ ping: 1 })'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+
+      # Seed deterministic admin + tenant accounts so auth.setup.ts can log in.
+      - name: Seed test DB
+        run: |
+          npm run seed
+          npm run seed:customers
+        continue-on-error: true
+
+      - name: Run Playwright
+        run: npm run e2e
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
