@@ -124,6 +124,47 @@ interface SendTemplatedArgs extends BuildPlaceholderArgs {
   templateName: string
   notificationType: NotificationType
   eventKey?: string
+  /** Restrict dispatch to a single channel. Defaults to honoring the
+   *  template's emailEnabled/textEnabled flags. */
+  channels?: 'email' | 'sms'
+}
+
+export interface RenderedTemplate {
+  subject: string
+  emailHtml: string
+  emailHtmlWrapped: string
+  smsBody: string
+  emailEnabled: boolean
+  textEnabled: boolean
+}
+
+/**
+ * Render a NotificationTemplate without sending — used by preview screens
+ * (e.g. the admin Move Out Receipt page) so what the admin sees matches
+ * what `sendTemplatedNotification` would actually dispatch.
+ */
+export async function renderTemplate(
+  args: BuildPlaceholderArgs & { templateName: string },
+): Promise<RenderedTemplate | null> {
+  const dbTemplate = await NotificationTemplate.findOne({ name: args.templateName, active: true }).lean()
+  const fallback = [...DEFAULT_TEMPLATES, ...DEFAULT_CUSTOM_TEMPLATES].find((t) => t.name === args.templateName)
+  const template = dbTemplate ?? fallback
+  if (!template) return null
+
+  const placeholders = await buildPlaceholders(args)
+  const settings = await getSettings()
+  const subject = replacePlaceholders(template.emailSubject ?? '', placeholders)
+  const emailHtml = replacePlaceholders(template.emailContent ?? '', placeholders)
+  const smsBody = replacePlaceholders(template.textContent ?? '', placeholders)
+
+  return {
+    subject,
+    emailHtml,
+    emailHtmlWrapped: wrapTenantEmail(emailHtml, settings),
+    smsBody,
+    emailEnabled: !!template.emailEnabled,
+    textEnabled: !!template.textEnabled,
+  }
 }
 
 /**
@@ -133,7 +174,7 @@ interface SendTemplatedArgs extends BuildPlaceholderArgs {
  * Silent no-op if template missing or both channels disabled — never throws.
  */
 export async function sendTemplatedNotification(args: SendTemplatedArgs): Promise<void> {
-  const { templateName, notificationType, tenant, eventKey } = args
+  const { templateName, notificationType, tenant, eventKey, channels } = args
   try {
     // 1) Prefer the live DB template (admin may have customised it).
     // 2) Fall back to DEFAULT_TEMPLATES so cron jobs aren't gated on someone
@@ -152,8 +193,13 @@ export async function sendTemplatedNotification(args: SendTemplatedArgs): Promis
     const emailBody = replacePlaceholders(template.emailContent ?? '', placeholders)
     const smsBody = replacePlaceholders(template.textContent ?? '', placeholders)
 
-    const sentEmail = template.emailEnabled && tenant.email
-    const sentSms = template.textEnabled && tenant.phone
+    // Apply per-call channel filter on top of the template's own flags so
+    // single-channel actions (admin "Send as Email" / "Send as Text") only
+    // dispatch the requested channel even when both are enabled.
+    const wantEmail = channels === undefined || channels === 'email'
+    const wantSms = channels === undefined || channels === 'sms'
+    const sentEmail = wantEmail && template.emailEnabled && tenant.email
+    const sentSms = wantSms && template.textEnabled && tenant.phone
 
     let resendMessageId: string | null = null
     let twilioMessageSid: string | null = null

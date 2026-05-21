@@ -64,6 +64,18 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
     moveOutRequest.reviewedAt = new Date()
     await moveOutRequest.save()
 
+    // If denied and lease was already flipped to pending_moveout (Storable-
+    // parity auto-approve at submit), revert it back to active.
+    if (status === 'denied') {
+      const lease = await Lease.findById(moveOutRequest.leaseId)
+      if (lease && lease.status === 'pending_moveout') {
+        lease.status = 'active'
+        lease.moveOutDate = undefined
+        await lease.save()
+        await Unit.findByIdAndUpdate(moveOutRequest.unitId, { status: 'occupied' })
+      }
+    }
+
     // If approved, cascade updates to the related Lease and Unit
     if (status === 'approved') {
       await Lease.findByIdAndUpdate(moveOutRequest.leaseId, {

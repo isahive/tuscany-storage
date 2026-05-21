@@ -4,8 +4,9 @@ import { z } from 'zod'
 import { authOptions } from '@/lib/auth'
 import { connectDB } from '@/lib/db'
 import MoveOutRequest from '@/models/MoveOutRequest'
-import { sendAdminNotification } from '@/lib/email'
 import Lease from '@/models/Lease'
+import Unit from '@/models/Unit'
+import { sendAdminNotification } from '@/lib/email'
 
 // ─── GET: Admin — list all move-out requests ──────────────────────────────────
 
@@ -20,10 +21,14 @@ export async function GET(req: NextRequest) {
 
     const { searchParams } = req.nextUrl
     const statusParam = searchParams.get('status')
+    const tenantIdParam = searchParams.get('tenantId')
 
     const filter: Record<string, unknown> = {}
     if (statusParam && ['pending', 'approved', 'denied'].includes(statusParam)) {
       filter.status = statusParam
+    }
+    if (tenantIdParam) {
+      filter.tenantId = tenantIdParam
     }
 
     const requests = await MoveOutRequest.find(filter)
@@ -39,22 +44,23 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// ─── POST: Authenticated tenant — submit move-out request ─────────────────────
+// ─── POST: Tenant — submit move-out request ───────────────────────────────────
+// Storable-parity flow: the tenant picks a date and the request is auto-
+// approved. The admin finalizes from the customer detail page when ready.
+// The legacy photo/guidelines/card-confirm fields are still accepted for the
+// archived flow under app/portal/_move-out-photos/.
 
 const submitMoveOutSchema = z.object({
+  // Admin can schedule on behalf of a tenant; ignored when the caller is a tenant.
+  tenantId: z.string().optional(),
+  leaseId: z.string().optional(),
   requestedMoveOutDate: z.string().datetime({ message: 'Must be a valid ISO date string' }),
-  stripePaymentMethodConfirmed: z.boolean(),
+  // legacy fields — all optional now
+  stripePaymentMethodConfirmed: z.boolean().optional(),
   lastFourDigits: z.string().length(4).optional(),
   photoUrls: z.array(z.string().url()).optional(),
-  guidelinesAccepted: z.boolean(),
+  guidelinesAccepted: z.boolean().optional(),
 })
-
-const GUIDELINES_TEXT = [
-  'I will remove all belongings by the move-out date',
-  'I will clean the unit and return it in original condition',
-  'I understand final month may be prorated',
-  'I confirm there are no outstanding balances',
-].join('\n')
 
 export async function POST(req: NextRequest) {
   try {
@@ -72,38 +78,46 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const { requestedMoveOutDate, stripePaymentMethodConfirmed, lastFourDigits, photoUrls, guidelinesAccepted } =
-      parsed.data
+    const {
+      tenantId: bodyTenantId,
+      leaseId,
+      requestedMoveOutDate,
+      stripePaymentMethodConfirmed,
+      lastFourDigits,
+      photoUrls,
+    } = parsed.data
 
-    if (!guidelinesAccepted) {
-      return NextResponse.json(
-        { success: false, error: 'You must accept all move-out guidelines to proceed.' },
-        { status: 422 },
-      )
-    }
+    // Admins may schedule on behalf of any tenant; tenants can only act on
+    // their own account.
+    const isAdmin = session.user.role === 'admin'
+    const effectiveTenantId = isAdmin && bodyTenantId ? bodyTenantId : session.user.id
 
     await connectDB()
 
-    // Find the tenant's active lease
-    const activeLease = await Lease.findOne({
-      tenantId: session.user.id,
-      status: 'active',
-    })
+    // Resolve the lease — explicit leaseId for multi-rental tenants, else the
+    // first active lease on the account.
+    const lease = leaseId
+      ? await Lease.findOne({ _id: leaseId, tenantId: effectiveTenantId })
+      : await Lease.findOne({ tenantId: effectiveTenantId, status: 'active' })
 
-    if (!activeLease) {
+    if (!lease) {
       return NextResponse.json(
         { success: false, error: 'No active lease found for this tenant.' },
         { status: 404 },
       )
     }
+    if (lease.status === 'ended') {
+      return NextResponse.json(
+        { success: false, error: 'This lease has already ended.' },
+        { status: 409 },
+      )
+    }
 
-    // Prevent duplicate pending requests
+    // Prevent duplicate pending requests on the same lease
     const existing = await MoveOutRequest.findOne({
-      tenantId: session.user.id,
-      leaseId: activeLease._id,
+      leaseId: lease._id,
       status: 'pending',
     })
-
     if (existing) {
       return NextResponse.json(
         { success: false, error: 'A pending move-out request already exists for this lease.' },
@@ -111,45 +125,50 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    const requestedDate = new Date(requestedMoveOutDate)
+
     const moveOutRequest = await MoveOutRequest.create({
-      tenantId: session.user.id,
-      leaseId: activeLease._id,
-      unitId: activeLease.unitId,
-      requestedMoveOutDate: new Date(requestedMoveOutDate),
-      stripePaymentMethodConfirmed,
+      tenantId: effectiveTenantId,
+      leaseId: lease._id,
+      unitId: lease.unitId,
+      requestedMoveOutDate: requestedDate,
+      stripePaymentMethodConfirmed: stripePaymentMethodConfirmed ?? false,
       lastFourDigits,
       photoUrls: photoUrls ?? [],
-      guidelines: GUIDELINES_TEXT,
+      guidelines: '',
       status: 'pending',
     })
 
-    // Notify admin of new move-out request
-    const tenant = { firstName: session.user.name?.split(' ')[0] || 'Tenant', lastName: session.user.name?.split(' ').slice(1).join(' ') || '' }
-    const unit = { unitNumber: activeLease.unitId?.toString() || 'N/A' }
+    // Storable-parity: scheduling a move-out flips the lease into
+    // pending_moveout and marks the unit as reserved so it shows the
+    // "Moving out" state on both portal and admin until finalized.
+    lease.status = 'pending_moveout'
+    lease.moveOutDate = requestedDate
+    await lease.save()
 
-    // Try to get richer tenant/unit info if populated
-    try {
-      const populatedLease = await Lease.findById(activeLease._id).populate('unitId', 'unitNumber')
-      if (populatedLease?.unitId && typeof populatedLease.unitId === 'object' && 'unitNumber' in populatedLease.unitId) {
-        unit.unitNumber = (populatedLease.unitId as { unitNumber: string }).unitNumber
-      }
-    } catch { /* use fallback */ }
+    await Unit.findByIdAndUpdate(lease.unitId, { status: 'reserved' })
 
-    await sendAdminNotification(
-      `Move-Out Request: ${tenant.firstName} ${tenant.lastName}`,
-      `
-        <h2>New Move-Out Request</h2>
-        <p><strong>Tenant:</strong> ${tenant.firstName} ${tenant.lastName}</p>
-        <p><strong>Unit:</strong> ${unit.unitNumber}</p>
-        <p><strong>Requested Date:</strong> ${new Date(requestedMoveOutDate).toLocaleDateString('en-US')}</p>
-        <p><a href="https://tuscanystorage.com/admin/move-out">Review in Admin Panel</a></p>
-      `
-    ).catch(() => {})
+    // Notify admin
+    const unit = await Unit.findById(lease.unitId).select('unitNumber').lean() as
+      | { unitNumber?: string }
+      | null
+    const firstName = session.user.name?.split(' ')[0] ?? 'Tenant'
+    const lastName = session.user.name?.split(' ').slice(1).join(' ') ?? ''
 
-    // No tenant-facing email here — Storable's default templates don't include
-    // a "Move Out Request" template. The tenant receives "Scheduled Move Out"
-    // once an admin approves the request with a future date (handled in the
-    // PATCH /api/move-out/[id] route).
+    // Only notify the admin when the tenant initiates the request — admin-
+    // initiated schedules are self-evident.
+    if (!isAdmin || effectiveTenantId === session.user.id) {
+      await sendAdminNotification(
+        `Move-Out Request: ${firstName} ${lastName}`.trim(),
+        `
+          <h2>New Move-Out Request</h2>
+          <p><strong>Tenant:</strong> ${firstName} ${lastName}</p>
+          <p><strong>Unit:</strong> ${unit?.unitNumber ?? 'N/A'}</p>
+          <p><strong>Requested Date:</strong> ${requestedDate.toLocaleDateString('en-US')}</p>
+          <p><a href="${process.env.NEXT_PUBLIC_APP_URL ?? ''}/admin/tenants/${effectiveTenantId}">Review in Admin Panel</a></p>
+        `,
+      ).catch(() => {})
+    }
 
     return NextResponse.json({ success: true, data: moveOutRequest }, { status: 201 })
   } catch (error) {

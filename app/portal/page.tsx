@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import MoveInCompleteDialog from '@/components/portal/MoveInCompleteDialog'
 
@@ -34,6 +34,7 @@ interface Rental {
   monthlyRate: number
   status: string
   movedInAt: string
+  moveOutDate: string | null
   nextBillAt: string
   deposit: number
   protectionPlanId: string | null
@@ -77,7 +78,7 @@ const fmtDate = (iso: string) => {
 
 const STATUS_LABEL: Record<string, string> = {
   active: 'Active',
-  pending_moveout: 'Pending Move-Out',
+  pending_moveout: 'Moving out',
 }
 
 function billingItemLabel(row: BillingRow): string {
@@ -108,13 +109,29 @@ function billingDescription(row: BillingRow): string {
 
 // ─── Page ────────────────────────────────────────────────────────────────────
 
-export default function PortalDashboard() {
-  const router = useRouter()
+export default function PortalDashboardPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex justify-center py-20">
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-olive border-t-transparent" />
+      </div>
+    }>
+      <PortalDashboard />
+    </Suspense>
+  )
+}
+
+function PortalDashboard() {
+  const search = useSearchParams()
   const { data: session } = useSession()
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [dismissedAgreement, setDismissedAgreement] = useState(false)
-  const [moveOutTarget, setMoveOutTarget] = useState<Rental | null>(null)
+  const [showMoveOutSuccess, setShowMoveOutSuccess] = useState(false)
+
+  useEffect(() => {
+    if (search.get('moveout') === 'success') setShowMoveOutSuccess(true)
+  }, [search])
 
   useEffect(() => {
     if (!session?.user?.id) return
@@ -154,6 +171,20 @@ export default function PortalDashboard() {
       </Suspense>
 
       {/* ── Banners ── */}
+      {showMoveOutSuccess && (
+        <div className="flex items-center justify-between rounded border border-green-200 bg-green-50 px-4 py-3">
+          <p className="text-sm text-gray-800">Successfully requested move out.</p>
+          <button
+            type="button"
+            onClick={() => setShowMoveOutSuccess(false)}
+            className="text-gray-500 hover:text-gray-800"
+            aria-label="Dismiss"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       {unsignedRentals.length > 0 && !dismissedAgreement && (
         <div className="flex items-center justify-between rounded border border-yellow-200 bg-yellow-50 px-4 py-3">
           <p className="text-sm text-gray-800">
@@ -276,15 +307,18 @@ export default function PortalDashboard() {
                       />
                       <RentalRow label="Moved-in" value={fmtDate(rental.movedInAt)} />
                       <RentalRow
-                        label="Move-out"
+                        label="Moved-out"
                         value={
-                          <button
-                            type="button"
-                            onClick={() => setMoveOutTarget(rental)}
-                            className="text-[#3E5DAA] underline hover:no-underline"
-                          >
-                            Request
-                          </button>
+                          rental.status === 'pending_moveout' && rental.moveOutDate ? (
+                            <span className="text-gray-700">{fmtDate(rental.moveOutDate)}</span>
+                          ) : (
+                            <Link
+                              href={`/portal/move-out?leaseId=${rental.leaseId}`}
+                              className="text-[#3E5DAA] underline hover:no-underline"
+                            >
+                              Request Move Out
+                            </Link>
+                          )
                         }
                       />
                       <RentalRow label="Next Bill" value={fmtDate(rental.nextBillAt)} />
@@ -391,15 +425,6 @@ export default function PortalDashboard() {
         </div>
       </div>
 
-      {/* Move-out confirmation modal — barrier against misclick on the
-          discreet "Request" link inside each Current Rentals card. */}
-      {moveOutTarget && (
-        <MoveOutConfirmModal
-          rental={moveOutTarget}
-          onCancel={() => setMoveOutTarget(null)}
-          onConfirm={() => router.push(`/portal/move-out?leaseId=${moveOutTarget.leaseId}`)}
-        />
-      )}
     </div>
   )
 }
@@ -461,50 +486,3 @@ function RentalRow({ label, value }: { label: string; value: React.ReactNode }) 
   )
 }
 
-function MoveOutConfirmModal({
-  rental, onCancel, onConfirm,
-}: {
-  rental: Rental
-  onCancel: () => void
-  onConfirm: () => void
-}) {
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="moveout-title"
-      onClick={onCancel}
-    >
-      <div
-        className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h3 id="moveout-title" className="mb-2 text-lg font-semibold text-olive-darker">
-          Request move-out for Unit {rental.unitNumber}?
-        </h3>
-        <p className="mb-5 text-sm text-gray-700">
-          You&apos;re about to start the move-out request flow for <strong>Unit {rental.unitNumber}</strong>.
-          You&apos;ll be asked to confirm a move-out date (minimum 30 days out), upload photos of the empty unit,
-          and review final billing. Are you sure you want to continue?
-        </p>
-        <div className="flex justify-end gap-2">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="rounded border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={onConfirm}
-            className="rounded bg-olive px-4 py-2 text-sm font-semibold text-white hover:bg-olive-dark"
-          >
-            Yes, continue
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
+import { z } from 'zod'
 import { authOptions } from '@/lib/auth'
 import { connectDB } from '@/lib/db'
 import MoveOutRequest from '@/models/MoveOutRequest'
@@ -7,17 +8,22 @@ import Lease from '@/models/Lease'
 import Unit from '@/models/Unit'
 import Tenant from '@/models/Tenant'
 import Payment from '@/models/Payment'
-import { sendTemplatedNotification } from '@/lib/sendNotification'
 import { revokeGateAccess } from '@/lib/gateAccess'
 
 interface RouteContext {
   params: Promise<{ id: string }>
 }
 
+const finalizeSchema = z.object({
+  unitStatusAfter: z.enum(['available', 'maintenance', 'reserved', 'unavailable']).optional(),
+  archiveCustomer: z.boolean().optional(),
+})
+
 // POST /api/move-out/[id]/finalize
 // Admin executes the move-out: end lease, free unit, stop autopay, notify tenant.
-// Distinct from PATCH (which approves the plan).
-export async function POST(_req: NextRequest, context: RouteContext) {
+// Storable-parity: requests are auto-approved at submit, so this also
+// transitions pending → approved if needed.
+export async function POST(req: NextRequest, context: RouteContext) {
   try {
     const session = await getServerSession(authOptions)
     if (!session || session.user.role !== 'admin') {
@@ -25,17 +31,32 @@ export async function POST(_req: NextRequest, context: RouteContext) {
     }
 
     const { id } = await context.params
+    let body: { unitStatusAfter?: string; archiveCustomer?: boolean } = {}
+    try { body = await req.json() } catch { /* empty body is allowed */ }
+    const parsed = finalizeSchema.safeParse(body)
+    if (!parsed.success) {
+      return NextResponse.json({ success: false, error: parsed.error.message }, { status: 400 })
+    }
+    const unitStatusAfter = parsed.data.unitStatusAfter ?? 'available'
+    const archiveCustomer = parsed.data.archiveCustomer ?? false
+
     await connectDB()
 
     const request = await MoveOutRequest.findById(id)
     if (!request) {
       return NextResponse.json({ success: false, error: 'Move-out request not found' }, { status: 404 })
     }
-    if (request.status !== 'approved') {
+    if (request.status === 'denied') {
       return NextResponse.json(
-        { success: false, error: 'Request must be approved before finalizing' },
+        { success: false, error: 'Request was denied — cannot finalize' },
         { status: 409 },
       )
+    }
+    if (request.status === 'pending') {
+      request.status = 'approved'
+      request.reviewedBy = session.user.id as unknown as typeof request.reviewedBy
+      request.reviewedAt = new Date()
+      await request.save()
     }
 
     const lease = await Lease.findById(request.leaseId)
@@ -54,18 +75,20 @@ export async function POST(_req: NextRequest, context: RouteContext) {
     lease.moveOutDate = now
     await lease.save()
 
-    // Free unit
+    // Free unit (with admin-selected status)
     await Unit.findByIdAndUpdate(request.unitId, {
-      status: 'available',
+      status: unitStatusAfter,
       $unset: { currentTenantId: '', currentLeaseId: '' },
     })
 
-    // Stop autopay + flip status — billing and gate access end at move-out
-    const tenant = await Tenant.findByIdAndUpdate(
-      request.tenantId,
-      { autopayEnabled: false, status: 'moved_out' },
-      { new: true },
-    )
+    // Stop autopay + flip status — billing and gate access end at move-out.
+    // Optionally archive the customer per admin choice.
+    const tenantUpdate: Record<string, unknown> = {
+      autopayEnabled: false,
+      status: 'moved_out',
+    }
+    if (archiveCustomer) tenantUpdate.archived = true
+    const tenant = await Tenant.findByIdAndUpdate(request.tenantId, tenantUpdate, { new: true })
 
     // Wipe gate code, additional cards, gate groups + audit-log the revocation
     await revokeGateAccess(request.tenantId, 'move_out', request.unitId)
@@ -124,27 +147,20 @@ export async function POST(_req: NextRequest, context: RouteContext) {
 
     const finalBalance = owedTotal - prorationCredit
 
-    // Get unit number for the receipt
+    // Get unit number for the receipt — admin previews and explicitly sends
+    // from the receipt page, so no auto-send here.
     const unit = (await Unit.findById(request.unitId).select('unitNumber').lean()) as
       | { unitNumber?: string }
       | null
-
-    // Send move-out receipt to tenant
-    if (tenant) {
-      await sendTemplatedNotification({
-        templateName: 'Move Out Receipt',
-        notificationType: 'move_out_confirmation',
-        tenant,
-        unitNumber: unit?.unitNumber,
-        balance: finalBalance,
-      })
-    }
+    void tenant
 
     return NextResponse.json({
       success: true,
       data: {
         leaseId: lease._id.toString(),
         unitId: request.unitId.toString(),
+        unitNumber: unit?.unitNumber ?? '',
+        tenantId: request.tenantId.toString(),
         owedTotal,
         prorationCredit,
         finalBalance,

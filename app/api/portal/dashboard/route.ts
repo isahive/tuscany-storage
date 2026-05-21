@@ -63,6 +63,7 @@ export async function GET() {
         monthlyRate: lease.monthlyRate,
         status: lease.status,
         movedInAt: lease.startDate.toISOString(),
+        moveOutDate: lease.moveOutDate ? new Date(lease.moveOutDate).toISOString() : null,
         nextBillAt: nextBill.toISOString(),
         deposit: lease.deposit ?? 0,
         protectionPlanId: lease.protectionPlanId?.toString() ?? null,

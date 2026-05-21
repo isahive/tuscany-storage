@@ -209,21 +209,23 @@ export default function TenantDetailPage() {
   const [noteSaving, setNoteSaving] = useState(false)
   const [showExtended, setShowExtended] = useState(false)
   const [resetDialogOpen, setResetDialogOpen] = useState(false)
+  const [pendingMoveOuts, setPendingMoveOuts] = useState<Record<string, { id: string; requestedDate: string }>>({})
 
   // Publish title for breadcrumb (shows the customer name instead of the raw ID)
   useSetAdminPageTitle(tenant ? `${tenant.firstName} ${tenant.lastName}` : null)
 
   const loadData = useCallback(async () => {
     try {
-      const [tRes, lRes, pRes, nRes, bRes] = await Promise.all([
+      const [tRes, lRes, pRes, nRes, bRes, mRes] = await Promise.all([
         fetch(`/api/tenants/${tenantId}`),
         fetch(`/api/leases?tenantId=${tenantId}&limit=50`),
         fetch(`/api/payments?tenantId=${tenantId}&limit=100`),
         fetch(`/api/tenants/${tenantId}/notes`),
         fetch(`/api/tenants/${tenantId}/balance`),
+        fetch(`/api/move-out?tenantId=${tenantId}&status=pending`),
       ])
-      const [tJson, lJson, pJson, nJson, bJson] = await Promise.all([
-        tRes.json(), lRes.json(), pRes.json(), nRes.json(), bRes.json(),
+      const [tJson, lJson, pJson, nJson, bJson, mJson] = await Promise.all([
+        tRes.json(), lRes.json(), pRes.json(), nRes.json(), bRes.json(), mRes.json(),
       ])
 
       if (!tJson.success) throw new Error(tJson.error ?? 'Tenant not found')
@@ -237,6 +239,14 @@ export default function TenantDetailPage() {
         setCredit(bJson.data.credit ?? 0)
         setRecurringBillingActive(!!bJson.data.recurringBillingActive)
         setRecurringFeesCount(bJson.data.recurringFeesCount ?? 0)
+      }
+      if (mJson.success && Array.isArray(mJson.data)) {
+        const map: Record<string, { id: string; requestedDate: string }> = {}
+        for (const r of mJson.data as Array<{ _id: string; leaseId?: { _id?: string } | string; requestedMoveOutDate: string }>) {
+          const lid = typeof r.leaseId === 'object' ? r.leaseId?._id : r.leaseId
+          if (lid) map[String(lid)] = { id: r._id, requestedDate: r.requestedMoveOutDate }
+        }
+        setPendingMoveOuts(map)
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load tenant')
@@ -618,6 +628,7 @@ export default function TenantDetailPage() {
                         <TableCell>Promotion</TableCell>
                         <TableCell>Rate Mgmt</TableCell>
                         <TableCell>Signed</TableCell>
+                        <TableCell>Move Out</TableCell>
                         <TableCell align="right">Agreement</TableCell>
                       </TableRow>
                     </TableHead>
@@ -736,6 +747,55 @@ export default function TenantDetailPage() {
                             </TableCell>
                             <TableCell>
                               {l.signedAt ? formatDate(l.signedAt) : <Typography variant="body2" color="warning.main">Unsigned</Typography>}
+                            </TableCell>
+                            <TableCell>
+                              {l.status === 'ended' ? (
+                                <Typography variant="body2" sx={{ color: 'text.secondary' }}>—</Typography>
+                              ) : pendingMoveOuts[l._id] ? (
+                                <Box>
+                                  <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary' }}>
+                                    Requested: {formatDate(pendingMoveOuts[l._id].requestedDate)}
+                                  </Typography>
+                                  <Box sx={{ display: 'flex', gap: 1, mt: 0.5, alignItems: 'center' }}>
+                                    <Button
+                                      size="small"
+                                      variant="contained"
+                                      onClick={() => router.push(`/admin/tenants/${tenantId}/finalize-move-out?moveOutId=${pendingMoveOuts[l._id].id}`)}
+                                      sx={{ bgcolor: '#3B82F6', '&:hover': { bgcolor: '#2563EB' }, textTransform: 'none', fontSize: '0.7rem', px: 1.25, py: 0.25, minWidth: 0 }}
+                                    >
+                                      Finalize Move Out
+                                    </Button>
+                                    <MuiLink
+                                      component="button"
+                                      type="button"
+                                      onClick={async () => {
+                                        if (!confirm('Cancel this pending move-out request?')) return
+                                        const res = await fetch(`/api/move-out/${pendingMoveOuts[l._id].id}`, {
+                                          method: 'PATCH',
+                                          headers: { 'Content-Type': 'application/json' },
+                                          body: JSON.stringify({ status: 'denied', adminNotes: 'Cancelled by admin' }),
+                                        })
+                                        const json = await res.json().catch(() => ({}))
+                                        if (!res.ok || !json.success) { alert(json.error ?? 'Failed'); return }
+                                        loadData()
+                                      }}
+                                      variant="caption"
+                                      sx={{ color: '#EF4444', fontSize: '0.7rem' }}
+                                    >
+                                      cancel
+                                    </MuiLink>
+                                  </Box>
+                                </Box>
+                              ) : (
+                                <Button
+                                  size="small"
+                                  variant="outlined"
+                                  onClick={() => router.push(`/admin/tenants/${tenantId}/schedule-move-out?leaseId=${l._id}`)}
+                                  sx={{ textTransform: 'none', fontSize: '0.7rem', borderColor: '#B8914A', color: '#B8914A', '&:hover': { borderColor: '#9A7A3E', bgcolor: '#FAF7F2' } }}
+                                >
+                                  Schedule Move Out
+                                </Button>
+                              )}
                             </TableCell>
                             <TableCell align="right">
                               <Tooltip title="Email Storage Agreement to customer">
