@@ -38,7 +38,7 @@ describe('gateController', () => {
         }),
       }),
     )
-    const body = JSON.parse((fetchSpy.mock.calls[0][1] as RequestInit).body as string)
+    const body = JSON.parse(((fetchSpy.mock.calls[0] as unknown as [string, RequestInit])[1]).body as string)
     expect(body).toMatchObject({ action: 'revoke', gateCode: '1234', reason: 'lockout' })
     expect(body.tenantId).toBe(String(TENANT._id))
   })
@@ -47,7 +47,7 @@ describe('gateController', () => {
     const fetchSpy = vi.fn(async () => ({ ok: true, text: async () => '' } as Response))
     vi.stubGlobal('fetch', fetchSpy)
     expect(await grantAccess(TENANT, SETTINGS_WIRED, 'payment_received')).toBe(true)
-    const body = JSON.parse((fetchSpy.mock.calls[0][1] as RequestInit).body as string)
+    const body = JSON.parse(((fetchSpy.mock.calls[0] as unknown as [string, RequestInit])[1]).body as string)
     expect(body.action).toBe('grant')
   })
 
@@ -66,7 +66,7 @@ describe('gateController', () => {
     vi.stubGlobal('fetch', fetchSpy)
     const noNode = { gateApiEndpoint: 'https://x', gateApiKey: 'k' } as any
     await revokeAccess(TENANT, noNode)
-    const headers = (fetchSpy.mock.calls[0][1] as RequestInit).headers as Record<string, string>
+    const headers = ((fetchSpy.mock.calls[0] as unknown as [string, RequestInit])[1]).headers as Record<string, string>
     expect(headers['X-Gate-Node']).toBeUndefined()
   })
 
@@ -75,7 +75,7 @@ describe('gateController', () => {
     vi.stubGlobal('fetch', fetchSpy)
     const noCode = { _id: new Types.ObjectId() } as any
     await revokeAccess(noCode, SETTINGS_WIRED)
-    const body = JSON.parse((fetchSpy.mock.calls[0][1] as RequestInit).body as string)
+    const body = JSON.parse(((fetchSpy.mock.calls[0] as unknown as [string, RequestInit])[1]).body as string)
     expect(body.gateCode).toBeNull()
   })
 })

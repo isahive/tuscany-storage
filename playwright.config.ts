@@ -41,6 +41,36 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'], storageState: 'e2e/.auth/admin.json' },
       testMatch: /admin\..*\.spec\.ts/,
     },
+    // Multi-browser smoke — only the dashboard spec to keep CI time bounded.
+    // Install with `npx playwright install firefox webkit` before running.
+    {
+      name: 'firefox-tenant',
+      dependencies: ['setup'],
+      use: { ...devices['Desktop Firefox'], storageState: 'e2e/.auth/tenant.json' },
+      testMatch: /portal-dashboard\.spec\.ts/,
+    },
+    {
+      name: 'webkit-tenant',
+      dependencies: ['setup'],
+      use: { ...devices['Desktop Safari'], storageState: 'e2e/.auth/tenant.json' },
+      testMatch: /portal-dashboard\.spec\.ts/,
+    },
+    // Mobile viewport — same dashboard smoke under iPhone 13 to catch
+    // responsive regressions.
+    {
+      name: 'mobile-iphone-tenant',
+      dependencies: ['setup'],
+      use: { ...devices['iPhone 13'], storageState: 'e2e/.auth/tenant.json' },
+      testMatch: /portal-dashboard\.spec\.ts/,
+    },
+    // Accessibility scan — uses @axe-core/playwright to assert no critical/
+    // serious violations on the portal dashboard.
+    {
+      name: 'a11y-tenant',
+      dependencies: ['setup'],
+      use: { ...devices['Desktop Chrome'], storageState: 'e2e/.auth/tenant.json' },
+      testMatch: /a11y\.spec\.ts/,
+    },
   ],
 
   // Boot Next.js dev server unless one is already running. The check is
