@@ -33,7 +33,8 @@ describe('verifyTurnstileToken', () => {
     const fetchSpy = vi.fn(async () => ({ json: async () => ({ success: true }) } as Response))
     vi.stubGlobal('fetch', fetchSpy)
     await verifyTurnstileToken('tok')
-    const body = (fetchSpy.mock.calls[0][1] as RequestInit).body as URLSearchParams
+    const call = fetchSpy.mock.calls[0] as unknown as [string, RequestInit]
+    const body = call[1].body as URLSearchParams
     expect(body.get('secret')).toBe('1x0000000000000000000000000000000AA')
   })
 
@@ -42,7 +43,8 @@ describe('verifyTurnstileToken', () => {
     const fetchSpy = vi.fn(async () => ({ json: async () => ({ success: true }) } as Response))
     vi.stubGlobal('fetch', fetchSpy)
     await verifyTurnstileToken('tok')
-    const body = (fetchSpy.mock.calls[0][1] as RequestInit).body as URLSearchParams
+    const call = fetchSpy.mock.calls[0] as unknown as [string, RequestInit]
+    const body = call[1].body as URLSearchParams
     expect(body.get('secret')).toBe('real-secret')
   })
 

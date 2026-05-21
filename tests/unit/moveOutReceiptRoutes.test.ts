@@ -103,7 +103,7 @@ describe('POST /api/move-out/[id]/receipt/email', () => {
     const res = await emailReceipt(makeRequest('POST', '') as any, { params: Promise.resolve({ id: moveOutRequest._id.toString() }) })
     expect(res.status).toBe(200)
     expect(sendTemplatedMock).toHaveBeenCalledTimes(1)
-    expect(sendTemplatedMock.mock.calls[0][0]).toMatchObject({
+    expect((sendTemplatedMock.mock.calls[0] as unknown as unknown[])[0]).toMatchObject({
       templateName: 'Move Out Receipt',
       channels: 'email',
     })
@@ -133,7 +133,7 @@ describe('POST /api/move-out/[id]/receipt/text', () => {
     vi.mocked(getServerSession).mockResolvedValueOnce(adminSession() as never)
     const res = await textReceipt(makeRequest('POST', '') as any, { params: Promise.resolve({ id: moveOutRequest._id.toString() }) })
     expect(res.status).toBe(200)
-    expect(sendTemplatedMock.mock.calls[0][0]).toMatchObject({ channels: 'sms' })
+    expect((sendTemplatedMock.mock.calls[0] as unknown as unknown[])[0]).toMatchObject({ channels: 'sms' })
   })
 
   it('400s when tenant has no phone on file', async () => {

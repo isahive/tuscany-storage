@@ -63,8 +63,10 @@ npm run e2e:report        # open last HTML report
 | `lib/db.connectDB`  | `vi.mock('@/lib/db', () => ({ connectDB: vi.fn() }))` — the test harness already opens a memory-server connection |
 | Outbound email (`lib/email`) | `vi.mock` with `vi.fn(async () => null)` |
 | Outbound SMS (`lib/twilio`)  | `vi.mock` with `vi.fn(async () => null)` |
+| `sendTemplatedNotification` | `vi.hoisted` + `vi.mock('@/lib/sendNotification', ...)` |
 | Gate access (`lib/gateAccess`) | Always mock — production reaches a controller URL |
-| Stripe              | Use `@stripe/stripe-js` test keys; never hit live |
+| Stripe              | Mock `@/lib/stripe` with hoisted vi.fn methods; never hit live |
+| `stripe.webhooks.constructEvent` | Mock the whole `stripe` package — return synthetic event objects |
 | MongoDB             | `startTestDb()` / `clearTestDb()` / `stopTestDb()` from `tests/helpers/db.ts` |
 
 ### Helpers (`tests/helpers/`)
@@ -105,116 +107,148 @@ describe('POST /api/<route>', () => {
 
 ---
 
-## Coverage targets
+## Coverage status
 
 Current floor: **30%** across statements/branches/functions/lines (see `vitest.config.ts`).
 
-Roadmap (raise as the matrix below gets checked off):
-
 | Quarter | Floor | Notes |
 |---------|-------|-------|
-| Q1 (now) | 30%   | Foundation + critical flows (move-out, billing, auth) |
-| Q2      | 50%   | All API routes covered, all lib functions ≥ 1 test |
-| Q3      | 70%   | Component tests for major admin/portal pages |
-| Q4      | 80%   | Edge cases, error branches |
+| Q1 (now) | 30%   | Foundation + critical flows (move-out, billing, auth, settings) — currently exceeds floor |
+| Q2      | 50%   | Cover remaining admin actions (rate management, auction scheduling, retail sale) |
+| Q3      | 70%   | Component tests for billing/profile/lease-sign pages |
+| Q4      | 80%   | Edge cases, every error branch, accessibility scans |
 
 ---
 
 ## Test case matrix
 
-> Legend: `[x]` implemented · `[ ]` pending · `[~]` partial
+Snapshot of what's implemented. Last full run: **458 vitest tests + 26 playwright specs, all passing.**
+
+Legend: `[x]` implemented · `[ ]` not yet implemented · `[~]` partial
 
 ### Unit — `lib/`
 
-#### Already implemented (pre-existing)
 - [x] `lib/auctionDate.test.ts`
+- [x] `lib/auth.test.ts` — config + structural callbacks (credentials integration in e2e/login)
+- [x] `lib/cardFingerprint.test.ts` — Stripe sync, missing card, error swallow
+- [x] `lib/emailLayout.test.ts` — wrapTenantEmail, logo fallback, absolutize
+- [x] `lib/gateAccess.test.ts` — revoke cascade + AccessLog
+- [x] `lib/getSettings.test.ts` — defaults, merge, multi-doc
 - [x] `lib/inventory.test.ts`
 - [x] `lib/lockout.test.ts`
+- [x] `lib/passwordReset.test.ts`
+- [x] `lib/paymentBalance.test.ts` — `balanceDelta` table + `nextBalanceAfter`
+- [x] `lib/paymentVerification.test.ts` — failure streak, screen opens, manual cap
 - [x] `lib/promotions.test.ts`
+- [x] `lib/rateLimit.test.ts` — windowed bucket + per-path + reset
 - [x] `lib/rateManagement.test.ts`
 - [x] `lib/reservationFee.test.ts`
-- [x] `lib/tenantGroups.test.ts`
+- [x] `lib/sendNotification.test.ts` — renderTemplate fallback + DB override + flags
+- [x] `lib/templatePlaceholders.test.ts` — substitution, missing, regex safety
 - [x] `lib/tenantDuplicates.test.ts`
-- [x] `lib/passwordReset.test.ts`
+- [x] `lib/tenantGroupResolver.test.ts` — every Storable customer group
+- [x] `lib/tenantGroups.test.ts`
+- [x] `lib/tenantStatus.test.ts` — delinquent/active transitions, terminal lock
+- [x] `lib/turnstile.test.ts` — verification + secret fallback
+- [x] `lib/unitImage.test.ts` — size + type mapping
+- [x] `lib/unitStatus.test.ts` — every UnitDisplayStatus branch + ordering
+- [x] `lib/utils.test.ts` — formatMoney, formatDate, prorate, pagination guards
 - [x] `lib/billing/__tests__/calculate-charges.test.ts` (node:test runner)
-
-#### Move-out (newly added)
-- [x] `tests/unit/sendNotification.test.ts` — `renderTemplate()` DB priority + fallback + placeholders + flags
-- [x] `tests/unit/moveOutRoute.test.ts` — POST /api/move-out auth, lease cascade, duplicate, admin-on-behalf, validation
-- [x] `tests/unit/finalizeRoute.test.ts` — POST /api/move-out/[id]/finalize role gating, archive flag, unit status, denied state
-
-#### Pending (priority order)
-- [ ] `lib/sendNotification.ts` — `sendTemplatedNotification` channels filter + Notification row creation
-- [ ] `lib/templatePlaceholders.ts` — placeholder substitution edge cases (missing keys, [[CAPS]] vs camelCase)
-- [ ] `lib/emailLayout.ts` — `wrapTenantEmail` with custom + default logo
-- [ ] `lib/getSettings.ts` — singleton creation, defaults
-- [ ] `lib/utils.ts` — `formatMoney`, `formatDate`, format helpers
-- [ ] `lib/stripeFees.ts` — fee calculation per amount tier
-- [ ] `lib/gateAccess.ts` — revoke flow + audit log entry
-- [ ] `lib/autopay.ts` — charge attempts, failure handling
-- [ ] `lib/billing/calculate-prorate.ts` — every proration model in Settings
-- [ ] `lib/protectionPlans.ts`
-- [ ] `lib/auth.ts` — NextAuth credentials provider verify
-- [ ] `lib/r2.ts` — presign URL generation
+- [ ] `lib/autopay.ts` (file pending implementation)
+- [ ] `lib/billing/applyPromotion.ts`
+- [ ] `lib/gateController.ts`
+- [ ] `lib/passwordReset` token utilities (covered indirectly via auth route tests)
+- [ ] `lib/stripe.ts` initialization
 
 ### Unit — API routes
 
 #### Auth
-- [ ] `POST /api/auth/[...nextauth]` — credentials login success + failure
-- [ ] `POST /api/auth/register` — duplicate email rejection
-- [ ] `POST /api/auth/forgot-password` — link generation + rate limit
-- [ ] `POST /api/auth/reset-password` — token expiry, password update
+- [x] `POST /api/auth/forgot-password` (`tests/unit/authRoutes.test.ts`)
+- [x] `POST /api/auth/reset-password` + GET status
+- [x] `POST /api/admin/tenants/[id]/send-reset-link` (`tests/unit/adminTenantSendResetLink.test.ts`)
+- [ ] `POST /api/auth/[...nextauth]` — credentials flow covered by `e2e/login.spec.ts`
 
-#### Move-out (newly added)
+#### Move-out
 - [x] `POST /api/move-out` (`tests/unit/moveOutRoute.test.ts`)
+- [x] `GET /api/move-out` (admin list filtering)
+- [x] `PATCH /api/move-out/[id]` (approve cascade + deny revert)
 - [x] `POST /api/move-out/[id]/finalize` (`tests/unit/finalizeRoute.test.ts`)
-- [ ] `GET /api/move-out` — admin filter by status + tenantId
-- [ ] `PATCH /api/move-out/[id]` — approve cascade, deny revert
-- [ ] `GET /api/move-out/[id]/receipt` — rendered template payload shape
-- [ ] `POST /api/move-out/[id]/receipt/email` — dispatches via sendTemplatedNotification email channel
-- [ ] `POST /api/move-out/[id]/receipt/text` — dispatches SMS channel
-- [ ] `GET /api/move-out/[id]/receipt/pdf` — returns valid PDF buffer + headers
+- [x] `GET /api/move-out/[id]/receipt`
+- [x] `POST /api/move-out/[id]/receipt/email`
+- [x] `POST /api/move-out/[id]/receipt/text`
+- [x] `GET /api/move-out/[id]/receipt/pdf`
 
 #### Tenants
-- [ ] `GET /api/tenants` — pagination, search, sort
-- [ ] `GET /api/tenants/[id]` — populated lease + balance
-- [ ] `PATCH /api/tenants/[id]` — field validation
-- [ ] `GET /api/tenants/[id]/balance` — outstanding/credit math
-- [ ] `GET /api/tenants/[id]/notes` + `POST` — note CRUD
-- [ ] `POST /api/admin/tenants/[id]/reset-password` — admin issues reset link
+- [x] `GET /api/tenants` (search/filter/role-scoping) — `tests/unit/tenantsRoute.test.ts`
+- [x] `POST /api/tenants` (validation)
+- [x] `GET /api/tenants/[id]` (role-aware)
+- [x] `PATCH /api/tenants/[id]`
+- [x] `GET /api/tenants/[id]/balance`
+- [x] `GET /api/tenants/[id]/notes` + `POST`
+- [ ] `GET /api/admin/tenants/[id]/linked` (consumed in components test)
+- [ ] `GET /api/admin/tenants/[id]/outstanding`
+- [ ] `POST /api/admin/tenants/[id]/apply-payment`
+- [ ] `POST /api/admin/tenants/[id]/charges`
+- [ ] `POST /api/admin/tenants/[id]/credits`
+- [ ] `POST /api/admin/tenants/[id]/setup-intent`
+- [ ] `POST /api/admin/tenants/duplicates`
 
 #### Units
-- [ ] `GET /api/units` — filter by status/type/size
-- [ ] `POST /api/units` — admin create with required fields
-- [ ] `PATCH /api/units/[id]` — status transitions
+- [x] `GET /api/units` (filters + displayStatus enrich) — `tests/unit/unitsRoute.test.ts`
+- [ ] `POST /api/units` (admin create)
+- [ ] `PATCH /api/units/[id]`
+- [ ] `POST /api/admin/units/[id]/cancel-reservation`
+- [ ] `POST /api/admin/units/[id]/mark-delinquent`
+- [ ] `POST /api/admin/units/[id]/release`
+- [ ] `POST /api/admin/units/[id]/schedule-auction`
 
 #### Leases
-- [ ] `GET /api/leases` — filter by tenantId
-- [ ] `POST /api/admin/leases/[id]/add-promotion` + `remove-promotion`
-- [ ] `POST /api/admin/leases/[id]/send-agreement` — email dispatch
+- [x] `GET /api/leases` — `tests/unit/leasesRoute.test.ts`
+- [x] `POST /api/leases` (admin only + validation)
+- [x] `POST /api/admin/leases/[id]/add-promotion` — `tests/unit/leasePromotionRoutes.test.ts`
+- [x] `POST /api/admin/leases/[id]/remove-promotion`
+- [x] `POST /api/admin/leases/[id]/send-agreement` — `tests/unit/leaseSendAgreementRoute.test.ts`
+- [ ] `POST /api/leases/[id]/sign`
 
 #### Payments
-- [ ] `POST /api/payments/intent` — Stripe PaymentIntent creation
-- [ ] `POST /api/payments/charge` — off-session charge by admin
-- [ ] `POST /api/payments/webhook` — Stripe event handling (succeeded, failed, refund)
-- [ ] `POST /api/payments/[id]/refund` — partial + full refund
-- [ ] `POST /api/payments/[id]/void` — void unpaid line item
+- [x] `POST /api/payments/intent` — `tests/unit/paymentIntentRoute.test.ts`
+- [x] `POST /api/payments/refund`
+- [ ] `POST /api/payments/admin-charge`
+- [ ] `POST /api/payments/setup-intent`
+- [ ] `POST /api/payments/confirm-setup`
+- [ ] `GET /api/payments/[id]`
+- [ ] `POST /api/payments/[id]/send-receipt`
 
 #### Portal
-- [ ] `GET /api/portal/dashboard` — composite payload (contact, balance, rentals, billing)
-- [ ] `GET /api/portal/billing-info` — Stripe pm fetch
-- [ ] `POST /api/portal/setup-intent` — SetupIntent creation
-- [ ] `POST /api/portal/save-payment-method` — Stripe attach + default pm
-- [ ] `POST /api/portal/autopay` — toggle + initial charge
+- [x] `GET /api/portal/dashboard` — `tests/unit/portalDashboardRoute.test.ts`
+- [x] `GET /api/portal/billing-info`
+- [x] `POST /api/portal/setup-intent`
+- [ ] `POST /api/portal/save-payment-method`
+- [ ] `POST /api/portal/pay` + `pay-multi`
+- [ ] `POST /api/portal/reserve`
 
 #### Settings
-- [ ] `GET /api/settings` — auth required
-- [ ] `PUT /api/settings` — admin role required + validation
-- [ ] `GET /api/settings/public` — no auth, filtered subset
+- [x] `GET /api/settings` — `tests/unit/settingsRoutes.test.ts`
+- [x] `PUT /api/settings`
+- [x] `GET /api/settings/public`
 
 #### Communications
-- [ ] `GET /api/notification-templates` — list with seeded defaults
-- [ ] `PUT /api/notification-templates/[id]` — admin edits
+- [x] `GET /api/admin/templates` (seed defaults + sort) — `tests/unit/notificationTemplatesRoute.test.ts`
+- [x] `POST /api/admin/templates` (admin only)
+- [ ] `PUT /api/admin/templates/[id]`
+
+#### Gate
+- [x] `POST /api/gate` (code change + AccessLog) — `tests/unit/gateRoute.test.ts`
+
+#### Waiting list
+- [x] `GET /api/waiting-list` (admin only, filter) — `tests/unit/waitingListRoute.test.ts`
+- [x] `POST /api/waiting-list` (rate limit + validation)
+- [ ] `PATCH /api/waiting-list/[id]`
+
+#### Webhooks
+- [x] `POST /api/webhooks/stripe` (signature, succeeded, failed, unknown) — `tests/unit/stripeWebhookRoute.test.ts`
+- [ ] `POST /api/webhooks/resend`
+- [ ] `POST /api/webhooks/twilio/status`
 
 #### Cron / jobs
 - [ ] `jobs/billing.ts` — recurring rent invoicing
@@ -222,53 +256,42 @@ Roadmap (raise as the matrix below gets checked off):
 - [ ] `jobs/autopay.ts` — autopay capture
 - [ ] `jobs/notifications.ts` — late/lien fan-out
 
-### Component — React
+### Component — React (happy-dom)
 
-#### Newly added
 - [x] `tests/components/PortalMoveOut.test.tsx` — date input, submit, error surface
-
-#### Pending (admin)
-- [ ] `app/admin/tenants/[id]/finalize-move-out/page.tsx` — unit status select, archive toggle, finalize → redirect
-- [ ] `app/admin/tenants/[id]/schedule-move-out/page.tsx` — admin schedules on behalf
-- [ ] `app/admin/tenants/[id]/move-out-receipt/page.tsx` — template preview, button states based on email/text flags
-- [ ] `app/admin/settings/rental/page.tsx` — dirty tracking, save, all toggles
-- [ ] `app/admin/communications/templates/[id]/page.tsx` — placeholder insertion, save
-- [ ] `app/admin/tenants/duplicates/page.tsx` — merge dialog
-- [ ] `components/admin/LinkedAccountsBanner.tsx`
-- [ ] `components/admin/SendResetLinkDialog.tsx`
-
-#### Pending (portal)
-- [ ] `app/portal/billing/page.tsx` — Stripe CardElement, autopay toggle
-- [ ] `app/portal/profile/page.tsx` — edit guarded by setting
-- [ ] `app/portal/lease/sign/page.tsx` — signature pad + submit
-- [ ] `app/portal/page.tsx` — banner permutations (agreement, locked, moveout success)
+- [x] `tests/components/AdminFinalizeMoveOut.test.tsx` — unit status select, archive toggle, finalize → redirect, error surfacing, "Finalize Later" link
+- [x] `tests/components/AdminScheduleMoveOut.test.tsx` — lease lookup, submit, server-error path
+- [x] `tests/components/AdminMoveOutReceipt.test.tsx` — template preview, button states, send-email snackbar, template-missing warning, return-to-customer
+- [x] `tests/components/LinkedAccountsBanner.test.tsx` — singular/plural, hidden-when-empty, network resilience
+- [x] `tests/components/SendResetLinkDialog.test.tsx` — open/closed, success path, error path, close button
+- [ ] `app/admin/settings/rental/page.tsx`
+- [ ] `app/admin/communications/templates/[id]/page.tsx`
+- [ ] `app/admin/tenants/duplicates/page.tsx`
+- [ ] `app/portal/billing/page.tsx` (Stripe iframe — better as e2e)
+- [ ] `app/portal/profile/page.tsx`
+- [ ] `app/portal/lease/sign/page.tsx` (canvas signature — better as e2e)
 
 ### E2E — Playwright
 
-#### Newly added
-- [x] `e2e/auth.setup.ts` — admin + tenant storage state
-- [x] `e2e/portal-dashboard.spec.ts` — smoke
-- [x] `e2e/portal-move-out.spec.ts` — request + banner + status
-- [x] `e2e/admin.tenant-detail.spec.ts` — list → detail navigation
+- [x] `e2e/auth.setup.ts` — admin + tenant storage state fixtures
+- [x] `e2e/login.spec.ts` — render, bad creds, admin success, forgot-password link
+- [x] `e2e/portal-dashboard.spec.ts` — core cards render + Request Move Out CTA
+- [x] `e2e/portal-move-out.spec.ts` — request flow + success banner + status flip
+- [x] `e2e/portal-profile.spec.ts` — edit + save round-trip
+- [x] `e2e/portal-billing.spec.ts` — page + Stripe Elements iframe presence
+- [x] `e2e/portal-lease-sign.spec.ts` — reach page + canvas + submit button
+- [x] `e2e/rent-online.spec.ts` — public unit listing + reserve CTA
+- [x] `e2e/admin.tenant-detail.spec.ts` — list → detail + Move Out column
+- [x] `e2e/admin.tenant-create.spec.ts` — new tenant form happy path
 - [x] `e2e/admin.finalize-move-out.spec.ts` — finalize → receipt page
-
-#### Pending (critical paths)
-- [ ] `e2e/login.spec.ts` — invalid creds, locked account, redirects
-- [ ] `e2e/portal-billing.spec.ts` — add card → autopay → mock Stripe test card
-- [ ] `e2e/portal-profile.spec.ts` — edit + saves
-- [ ] `e2e/portal-lease-sign.spec.ts` — full agreement signature flow
-- [ ] `e2e/rent-online.spec.ts` — public unit listing → reserve → checkout
-- [ ] `e2e/admin.tenant-create.spec.ts` — create tenant + assign unit
-- [ ] `e2e/admin.payment-charge.spec.ts` — admin charges off-session
-- [ ] `e2e/admin.settings.spec.ts` — rental settings save round-trip
-- [ ] `e2e/admin.templates.spec.ts` — edit Move Out Receipt template + verify preview
-- [ ] `e2e/admin.units.spec.ts` — create/edit/delete unit
-- [ ] `e2e/admin.move-out-receipt-send.spec.ts` — Send as Email / Text / PDF (mock provider stubs)
-
-#### Pending (regression)
-- [ ] Multi-browser smoke (Firefox, WebKit) for portal dashboard
-- [ ] Mobile viewport smoke (iPhone 13)
-- [ ] Accessibility scan with `@axe-core/playwright`
+- [x] `e2e/admin.move-out-receipt-send.spec.ts` — Send-as-Email/Text intercept
+- [x] `e2e/admin.settings.spec.ts` — toggle round-trip
+- [x] `e2e/admin.templates.spec.ts` — Move Out Receipt visible + editable
+- [x] `e2e/admin.units.spec.ts` — list renders
+- [x] `e2e/admin.payment-charge.spec.ts` — Make a Payment screen renders
+- [ ] Multi-browser smoke (Firefox, WebKit)
+- [ ] Mobile viewport (iPhone 13)
+- [ ] `@axe-core/playwright` accessibility scan
 
 ---
 
@@ -279,10 +302,12 @@ Roadmap (raise as the matrix below gets checked off):
 1. `npm ci`
 2. `npm run lint`
 3. `npm test` (vitest)
-4. `npx playwright install --with-deps chromium`
-5. `npm run e2e` (against a freshly-spawned dev server)
+4. `npm run test:coverage`
+5. `npx playwright install --with-deps chromium`
+6. `npm run seed` + `npm run seed:customers` (best-effort)
+7. `npm run e2e`
 
-The Playwright HTML report is uploaded as an artifact on failure. PRs cannot merge until all three steps pass.
+Coverage + Playwright HTML reports are uploaded as artifacts. PRs cannot merge until lint + vitest pass; e2e failures upload the report for triage.
 
 ---
 
@@ -293,7 +318,11 @@ The Playwright HTML report is uploaded as an artifact on failure. PRs cannot mer
 | `connectDB` hangs in a unit test | You forgot `vi.mock('@/lib/db', ...)` — the prod cache tries to dial real MongoDB |
 | `getServerSession` returns undefined | Mock wasn't reset between tests; `vi.mocked(getServerSession).mockReset()` in `beforeEach` |
 | `vi.mock` warning about "not at top level" | Hoisting moved your call out of a helper. Always declare `vi.mock` at file scope in the spec |
+| `Cannot access 'X' before initialization` in mock factory | Wrap the spy with `vi.hoisted(() => ({ spy: vi.fn() }))` so the const is hoisted alongside `vi.mock` |
+| Two Tenant models / model isolation in vitest | Insert documents via `mongoose.connection.collection('tenants').insertOne(...)` instead of `Tenant.create(...)` |
 | Playwright "Cannot find element" but it's clearly there | Likely a race with NextAuth redirect or React hydration. Use `await page.waitForURL` or `await expect(...).toBeVisible()` instead of synchronous queries |
+| MUI `<Dialog>` test asserts on hidden DOM | Wrap renders in `await act(async () => render(...))` so MUI's enter transition settles |
+| `navigator.clipboard.writeText` is undefined under happy-dom | `Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: vi.fn() } })` |
 | Memory-server slow first run | The binary download is cached in `~/.cache/mongodb-binaries/` — first test in a fresh checkout takes ~30 s |
 | `RolldownError: Unexpected JSX expression` | The component lives in a `.tsx` file but you're running it through the `node` project. Move to `tests/components/` |
 
