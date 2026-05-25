@@ -19,6 +19,7 @@ export interface ISettingsDocument extends Document {
   timeZone: string       // 'America/New_York'
   phoneFormat: string    // '(555) 555-5555'
   dimensionFormat: string // '10w x 10l x 10h'
+  customerNameFormat: 'last_first' | 'first_last'  // controls list ordering + display
 
   // ── Tax ──────────────────────────────────────────────────────────────────
   taxRate: number               // sales tax percentage (e.g. 9.75)
@@ -218,6 +219,11 @@ const SettingsSchema = new Schema<ISettingsDocument>(
     timeZone:        { type: String, default: 'America/New_York' },
     phoneFormat:     { type: String, default: '(555) 555-5555' },
     dimensionFormat: { type: String, default: '10w x 10l x 10h' },
+    customerNameFormat: {
+      type: String,
+      enum: ['last_first', 'first_last'],
+      default: 'last_first',
+    },
 
     // Tax
     taxRate: { type: Number, default: 9.75 },

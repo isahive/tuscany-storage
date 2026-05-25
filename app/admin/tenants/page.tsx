@@ -23,7 +23,7 @@ import DownloadIcon from '@mui/icons-material/Download'
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf'
 import GroupIcon from '@mui/icons-material/Group'
 import { useRouter } from 'next/navigation'
-import { formatMoney } from '@/lib/utils'
+import { formatMoney, formatCustomerName, customerSortKey, type CustomerNameFormat } from '@/lib/utils'
 import type { TenantStatus } from '@/types'
 import { TENANT_GROUPS, type TenantGroupId } from '@/lib/tenantGroups'
 
@@ -55,11 +55,11 @@ function formatBalanceForExport(cents: number): string {
   return cents < 0 ? `-$${dollars.slice(1)}` : `$${dollars}`
 }
 
-function rowsToCSV(rows: TenantRow[]): string {
+function rowsToCSV(rows: TenantRow[], nameFormat: CustomerNameFormat): string {
   const header = ['Customer', 'Phone', 'Cell Phone', 'Email', 'Balance', 'Rentals']
   const lines = [header.join(',')]
   for (const r of rows) {
-    const fullName = `${r.firstName} ${r.lastName}`.trim()
+    const fullName = formatCustomerName({ firstName: r.firstName, lastName: r.lastName }, nameFormat)
     const rentals = r.rentals.join(' ')
     lines.push([
       csvEscape(fullName),
@@ -85,12 +85,12 @@ function downloadFile(content: string, filename: string, mime: string) {
   URL.revokeObjectURL(url)
 }
 
-function buildPrintableHTML(rows: TenantRow[]): string {
+function buildPrintableHTML(rows: TenantRow[], nameFormat: CustomerNameFormat): string {
   const today = new Date().toLocaleDateString('en-US', {
     year: 'numeric', month: 'long', day: 'numeric',
   })
   const rowsHtml = rows.map((r) => {
-    const name = `${r.firstName} ${r.lastName}`.trim()
+    const name = formatCustomerName({ firstName: r.firstName, lastName: r.lastName }, nameFormat)
     const rentals = r.rentals.join(' ')
     return `<tr>
       <td>${escapeHTML(name)}</td>
@@ -141,6 +141,18 @@ export default function TenantsPage() {
   const [groupFilter, setGroupFilter] = useState<TenantGroupId>('all')
   const [rows, setRows] = useState<TenantRow[]>([])
   const [loading, setLoading] = useState(true)
+  const [nameFormat, setNameFormat] = useState<CustomerNameFormat>('last_first')
+
+  useEffect(() => {
+    fetch('/api/settings')
+      .then((r) => r.json())
+      .then((j) => {
+        if (j.success && j.data?.customerNameFormat) {
+          setNameFormat(j.data.customerNameFormat)
+        }
+      })
+      .catch(() => {})
+  }, [])
 
   const fetchTenants = useCallback(async () => {
     try {
@@ -193,16 +205,38 @@ export default function TenantsPage() {
     return () => clearTimeout(timer)
   }, [fetchTenants])
 
-  const filtered = useMemo(() => rows, [rows])
+  const filtered = useMemo(() => {
+    // Smart-sort: derive the real surname from lastName (handles dirty data
+    // where a middle name was lumped into lastName, e.g. "Robert Smith").
+    // Server-side sort is a coarse pass; this corrects it client-side for the
+    // limit=all fetch used by this page.
+    const sorted = [...rows]
+    if (nameFormat === 'last_first') {
+      sorted.sort((a, b) => {
+        const ka = customerSortKey(a)
+        const kb = customerSortKey(b)
+        if (ka !== kb) return ka < kb ? -1 : 1
+        return (a.firstName ?? '').localeCompare(b.firstName ?? '')
+      })
+    } else {
+      sorted.sort((a, b) => {
+        const fa = (a.firstName ?? '').toLowerCase()
+        const fb = (b.firstName ?? '').toLowerCase()
+        if (fa !== fb) return fa < fb ? -1 : 1
+        return customerSortKey(a).localeCompare(customerSortKey(b))
+      })
+    }
+    return sorted
+  }, [rows, nameFormat])
 
   function handleExportCSV() {
-    const csv = rowsToCSV(filtered)
+    const csv = rowsToCSV(filtered, nameFormat)
     const stamp = new Date().toISOString().slice(0, 10)
     downloadFile(`\uFEFF${csv}`, `customers-${stamp}.csv`, 'text/csv;charset=utf-8;')
   }
 
   function handleExportPDF() {
-    const html = buildPrintableHTML(filtered)
+    const html = buildPrintableHTML(filtered, nameFormat)
     const w = window.open('', '_blank', 'noopener,noreferrer')
     if (!w) return
     w.document.open()
@@ -216,7 +250,8 @@ export default function TenantsPage() {
       headerName: 'Name',
       flex: 1.4,
       minWidth: 160,
-      valueGetter: (_value, row) => `${row.firstName} ${row.lastName}`.trim(),
+      valueGetter: (_value, row) =>
+        formatCustomerName({ firstName: row.firstName, lastName: row.lastName }, nameFormat),
       renderCell: (params: GridRenderCellParams) => (
         <Typography
           variant="body2"

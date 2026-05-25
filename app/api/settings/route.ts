@@ -29,6 +29,7 @@ const updateSettingsSchema = z
     timeZone: z.string(),
     phoneFormat: z.string(),
     dimensionFormat: z.string(),
+    customerNameFormat: z.enum(['last_first', 'first_last']),
     // Billing
     billingDaysBeforeDue: z.number().int().min(0),
     daysRequiredBeforeBillingDay: z.number().int().min(0),

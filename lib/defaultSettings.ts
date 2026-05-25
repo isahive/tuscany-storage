@@ -16,6 +16,7 @@ export const DEFAULT_SETTINGS = {
   timeZone: 'America/New_York',
   phoneFormat: '(555) 555-5555',
   dimensionFormat: '10w x 10l x 10h',
+  customerNameFormat: 'last_first' as const,
   // Tax
   taxRate: 9.75,
   // Billing

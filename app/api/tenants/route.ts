@@ -5,6 +5,7 @@ import bcrypt from 'bcryptjs'
 import { authOptions } from '@/lib/auth'
 import { connectDB } from '@/lib/db'
 import Tenant from '@/models/Tenant'
+import Settings from '@/models/Settings'
 import { buildTenantGroupFilter } from '@/lib/tenantGroupResolver'
 
 export async function GET(req: NextRequest) {
@@ -65,10 +66,16 @@ export async function GET(req: NextRequest) {
         : Math.min(parsedLimit, total)
     const skip = (page - 1) * limit
 
+    const settings = await Settings.findOne({}).lean<{ customerNameFormat?: 'last_first' | 'first_last' }>()
+    const sortByLastFirst = (settings?.customerNameFormat ?? 'last_first') === 'last_first'
+    const sortSpec = sortByLastFirst
+      ? { lastName: 1 as const, firstName: 1 as const }
+      : { firstName: 1 as const, lastName: 1 as const }
+
     const items = await Tenant.find(filter)
       .skip(skip)
       .limit(limit)
-      .sort({ firstName: 1, lastName: 1 })
+      .sort(sortSpec)
 
     return NextResponse.json({
       success: true,

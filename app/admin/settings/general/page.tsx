@@ -43,6 +43,7 @@ interface FormState {
   timeZone: string
   phoneFormat: string
   dimensionFormat: string
+  customerNameFormat: 'last_first' | 'first_last'
 }
 
 const DEFAULTS: FormState = {
@@ -52,6 +53,7 @@ const DEFAULTS: FormState = {
   timeZone: 'America/New_York',
   phoneFormat: '(555) 555-5555',
   dimensionFormat: '10w x 10l x 10h',
+  customerNameFormat: 'last_first',
 }
 
 // ── Field wrapper ─────────────────────────────────────────────────────────────
@@ -95,6 +97,7 @@ export default function GeneralSettingsPage() {
             timeZone: d.timeZone ?? DEFAULTS.timeZone,
             phoneFormat: d.phoneFormat ?? DEFAULTS.phoneFormat,
             dimensionFormat: d.dimensionFormat ?? DEFAULTS.dimensionFormat,
+            customerNameFormat: d.customerNameFormat ?? DEFAULTS.customerNameFormat,
           }
           setForm(loaded)
           setSavedForm(loaded)
@@ -226,6 +229,19 @@ export default function GeneralSettingsPage() {
             {DIMENSION_FORMATS.map((f) => (
               <MenuItem key={f.value} value={f.value}>{f.label}</MenuItem>
             ))}
+          </Select>
+        </Field>
+
+        <Field label="Customer Name Format" hint="Controls how customer names are displayed and ordered in the customers list.">
+          <Select
+            fullWidth
+            size="small"
+            value={form.customerNameFormat}
+            onChange={(e) => set('customerNameFormat', e.target.value as 'last_first' | 'first_last')}
+            sx={selectSx}
+          >
+            <MenuItem value="last_first">Last Name, First Name</MenuItem>
+            <MenuItem value="first_last">First Name Last Name</MenuItem>
           </Select>
         </Field>
 
