@@ -185,7 +185,7 @@ export default function FullBillingHistoryPage() {
         >
           Return to Customer
         </Button>
-        <Typography variant="h5" sx={{ fontWeight: 700, fontFamily: '"Playfair Display", serif', flex: 1 }}>
+        <Typography variant="h5" sx={{ fontWeight: 700, fontFamily: 'var(--font-outfit), system-ui, sans-serif', flex: 1 }}>
           Full Billing and Payments Report
         </Typography>
         <Button

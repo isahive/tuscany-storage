@@ -108,7 +108,7 @@ const ADMIN_NOTIFICATION_LABELS: Record<
 // ── Shared styles ────────────────────────────────────────────────────────────
 
 const sectionHeaderSx = {
-  bgcolor: '#1C0F06',
+  bgcolor: '#2C3826',
   color: 'white',
   px: 2.5,
   py: 1.5,
@@ -122,7 +122,7 @@ const sectionHeaderSx = {
 
 const inputSx = {
   '& .MuiOutlinedInput-root': {
-    '& fieldset': { borderColor: '#EDE5D8' },
+    '& fieldset': { borderColor: '#E5E7EB' },
     '&:hover fieldset': { borderColor: '#B8914A' },
     '&.Mui-focused fieldset': { borderColor: '#B8914A' },
   },
@@ -252,9 +252,9 @@ export default function CommunicationSettingsPage() {
         <Typography
           variant="h5"
           sx={{
-            fontFamily: '"Playfair Display", serif',
+            fontFamily: 'var(--font-outfit), system-ui, sans-serif',
             fontWeight: 700,
-            color: '#1C0F06',
+            color: '#2C3826',
             flex: 1,
           }}
         >
@@ -296,7 +296,7 @@ export default function CommunicationSettingsPage() {
 
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
         {/* ── Email Settings ──────────────────────────────────────────────── */}
-        <Card sx={{ border: '1px solid #EDE5D8', boxShadow: 'none', borderRadius: 2 }}>
+        <Card sx={{ border: '1px solid #E5E7EB', boxShadow: 'none', borderRadius: 2 }}>
           <Box sx={sectionHeaderSx}>
             <EmailIcon sx={{ fontSize: 18 }} />
             Email Settings
@@ -360,7 +360,7 @@ export default function CommunicationSettingsPage() {
         </Card>
 
         {/* ── Text Message Settings ───────────────────────────────────────── */}
-        <Card sx={{ border: '1px solid #EDE5D8', boxShadow: 'none', borderRadius: 2 }}>
+        <Card sx={{ border: '1px solid #E5E7EB', boxShadow: 'none', borderRadius: 2 }}>
           <Box sx={sectionHeaderSx}>
             <SmsIcon sx={{ fontSize: 18 }} />
             Text Message Settings
@@ -404,7 +404,7 @@ export default function CommunicationSettingsPage() {
         </Card>
 
         {/* ── Print Settings ──────────────────────────────────────────────── */}
-        <Card sx={{ border: '1px solid #EDE5D8', boxShadow: 'none', borderRadius: 2 }}>
+        <Card sx={{ border: '1px solid #E5E7EB', boxShadow: 'none', borderRadius: 2 }}>
           <Box sx={sectionHeaderSx}>
             <PrintIcon sx={{ fontSize: 18 }} />
             Print Settings
@@ -500,7 +500,7 @@ export default function CommunicationSettingsPage() {
         </Card>
 
         {/* ── Admin Notifications ─────────────────────────────────────────── */}
-        <Card sx={{ border: '1px solid #EDE5D8', boxShadow: 'none', borderRadius: 2 }}>
+        <Card sx={{ border: '1px solid #E5E7EB', boxShadow: 'none', borderRadius: 2 }}>
           <Box sx={sectionHeaderSx}>
             <NotificationsIcon sx={{ fontSize: 18 }} />
             Admin Notifications

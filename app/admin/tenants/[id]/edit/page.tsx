@@ -30,7 +30,7 @@ function SectionCard({ title, children }: { title: string; children: React.React
   return (
     <Card variant="outlined" sx={{ mb: 3, borderColor: '#E5E1D8' }}>
       <Box sx={{ bgcolor: '#F1EEE8', px: 3, py: 1.75, borderBottom: '1px solid #E5E1D8' }}>
-        <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#1C0F06' }}>
+        <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#2C3826' }}>
           {title}
         </Typography>
       </Box>

@@ -198,7 +198,7 @@ export default function NewQuotePage() {
     <Box>
       <Typography
         variant="h5"
-        sx={{ fontWeight: 700, color: '#1C0F06', fontFamily: '"Playfair Display", serif', mb: 1 }}
+        sx={{ fontWeight: 700, color: '#2C3826', fontFamily: 'var(--font-outfit), system-ui, sans-serif', mb: 1 }}
       >
         New Quote
       </Typography>

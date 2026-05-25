@@ -183,7 +183,7 @@ export default function TenantTemplateLettersPage() {
           Customer
         </Button>
         <Box sx={{ flex: 1 }}>
-          <Typography variant="h5" sx={{ fontFamily: '"Playfair Display", serif', fontWeight: 700, color: '#1C0F06' }}>
+          <Typography variant="h5" sx={{ fontFamily: 'var(--font-outfit), system-ui, sans-serif', fontWeight: 700, color: '#2C3826' }}>
             Template Letters
           </Typography>
           <Typography variant="body2" sx={{ color: 'text.secondary' }}>
@@ -221,7 +221,7 @@ export default function TenantTemplateLettersPage() {
           </TextField>
 
           <FormControl sx={{ mb: 2.5 }}>
-            <FormLabel sx={{ color: '#1C0F06', mb: 0.5 }}>Contact method</FormLabel>
+            <FormLabel sx={{ color: '#2C3826', mb: 0.5 }}>Contact method</FormLabel>
             <RadioGroup value={contactMethod} onChange={(event) => setContactMethod(event.target.value as ContactMethod)}>
               <FormControlLabel value="email" control={<Radio size="small" />} label="Email" />
               <FormControlLabel value="print" control={<Radio size="small" />} label="Print" />

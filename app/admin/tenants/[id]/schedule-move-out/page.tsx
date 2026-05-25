@@ -87,7 +87,7 @@ function ScheduleMoveOutInner() {
 
   return (
     <Box sx={{ maxWidth: 720 }}>
-      <Typography variant="h5" sx={{ fontFamily: '"Playfair Display", serif', fontWeight: 700, color: '#9A3412', mb: 1 }}>
+      <Typography variant="h5" sx={{ fontFamily: 'var(--font-outfit), system-ui, sans-serif', fontWeight: 700, color: '#9A3412', mb: 1 }}>
         Schedule Move Out{unitNumber ? ` of Unit ${unitNumber}` : ''}
       </Typography>
 

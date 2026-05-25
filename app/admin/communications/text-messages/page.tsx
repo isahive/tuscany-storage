@@ -132,8 +132,8 @@ export default function TextMessagesPage() {
           variant="h5"
           sx={{
             fontWeight: 700,
-            color: '#1C0F06',
-            fontFamily: '"Playfair Display", serif',
+            color: '#2C3826',
+            fontFamily: 'var(--font-outfit), system-ui, sans-serif',
           }}
         >
           Text Messages
@@ -165,11 +165,11 @@ export default function TextMessagesPage() {
       </Alert>
 
       {/* Monthly usage */}
-      <Card sx={{ mb: 3, border: '1px solid #EDE5D8', boxShadow: 'none' }}>
+      <Card sx={{ mb: 3, border: '1px solid #E5E7EB', boxShadow: 'none' }}>
         <Box sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
           <SmsIcon sx={{ color: '#6B5B3E', fontSize: 28 }} />
           <Box>
-            <Typography variant="h6" sx={{ fontWeight: 700, color: '#1C0F06', lineHeight: 1.2 }}>
+            <Typography variant="h6" sx={{ fontWeight: 700, color: '#2C3826', lineHeight: 1.2 }}>
               {monthlyCount} / 800
             </Typography>
             <Typography variant="caption" sx={{ color: 'text.secondary' }}>
@@ -181,7 +181,7 @@ export default function TextMessagesPage() {
               flex: 1,
               ml: 2,
               height: 8,
-              bgcolor: '#EDE5D8',
+              bgcolor: '#E5E7EB',
               borderRadius: 4,
               overflow: 'hidden',
             }}
@@ -200,14 +200,14 @@ export default function TextMessagesPage() {
       </Card>
 
       {/* Messages table */}
-      <Card sx={{ border: '1px solid #EDE5D8', boxShadow: 'none' }}>
+      <Card sx={{ border: '1px solid #E5E7EB', boxShadow: 'none' }}>
         {loading ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
             <CircularProgress size={32} />
           </Box>
         ) : messages.length === 0 ? (
           <Box sx={{ textAlign: 'center', py: 8 }}>
-            <SmsIcon sx={{ fontSize: 48, color: '#EDE5D8', mb: 1 }} />
+            <SmsIcon sx={{ fontSize: 48, color: '#E5E7EB', mb: 1 }} />
             <Typography variant="body2" sx={{ color: 'text.secondary' }}>
               No text messages have been sent yet.
             </Typography>
@@ -217,7 +217,7 @@ export default function TextMessagesPage() {
             <TableContainer>
               <Table>
                 <TableHead>
-                  <TableRow sx={{ bgcolor: '#1C0F06' }}>
+                  <TableRow sx={{ bgcolor: '#2C3826' }}>
                     <TableCell sx={{ color: 'white', fontWeight: 600 }}>Customer</TableCell>
                     <TableCell sx={{ color: 'white', fontWeight: 600 }}>Message</TableCell>
                     <TableCell sx={{ color: 'white', fontWeight: 600 }}>Date/Time</TableCell>
@@ -238,7 +238,7 @@ export default function TextMessagesPage() {
                         key={msg._id}
                         sx={{
                           '&:hover': { bgcolor: '#FAF7F2' },
-                          '& td': { borderColor: '#EDE5D8' },
+                          '& td': { borderColor: '#E5E7EB' },
                         }}
                       >
                         <TableCell>
@@ -311,7 +311,7 @@ export default function TextMessagesPage() {
               onPageChange={(_, newPage) => setPage(newPage)}
               rowsPerPage={rowsPerPage}
               rowsPerPageOptions={[25]}
-              sx={{ borderTop: '1px solid #EDE5D8' }}
+              sx={{ borderTop: '1px solid #E5E7EB' }}
             />
           </>
         )}

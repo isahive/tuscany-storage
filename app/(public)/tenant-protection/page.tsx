@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import Link from 'next/link'
+import Image from 'next/image'
 
 export const metadata: Metadata = {
   title: 'Tenant Protection',
@@ -7,16 +7,16 @@ export const metadata: Metadata = {
     'Protect your stored belongings against burglary, vandalism, weather, fire, and more. Affordable monthly plans from $12.',
 }
 
-const PLANS = [
-  { coverage: '$2,000', price: '$12.00' },
-  { coverage: '$3,000', price: '$15.00' },
-  { coverage: '$5,000', price: '$20.00' },
-  { coverage: '$10,000', price: '$33.00' },
-  { coverage: '$15,000', price: '$42.00' },
+const PLANS: Array<{ coverage: string; price: string }> = [
+  { coverage: '$2,000.00', price: '$12.00/month' },
+  { coverage: '$3,000.00', price: '$15.00/month' },
+  { coverage: '$5,000.00', price: '$20.00/month' },
+  { coverage: '$10,000.00', price: '$33.00/month' },
+  { coverage: '$15,000.00', price: '$42.00/month' },
 ]
 
-const COVERED = [
-  'Burglary / Vandalism',
+const COVERED: string[] = [
+  'Burglary/Vandalism',
   'Wind',
   'Lightning',
   'Hail',
@@ -24,234 +24,161 @@ const COVERED = [
   'Fire',
   'Smoke',
   'Explosion',
-  'Vermin (capped at $500)',
+  'Vermin (covered up to $500)',
   'Sinkhole',
   'Building Collapse',
 ]
 
-const REASONS = [
-  {
-    title: 'Homeowners may not cover stored items',
-    body: "Many homeowners' policies exclude or limit coverage for belongings stored away from your primary residence.",
-  },
-  {
-    title: 'Claims can raise your premium',
-    body: 'Filing a claim against your homeowners or renters policy could result in higher premiums at your next renewal.',
-  },
-  {
-    title: 'Claims can trigger cancellation',
-    body: 'In some cases, a claim could lead your home insurance carrier to cancel or non-renew your policy.',
-  },
-]
-
-const CLAIM_STEPS = [
-  { n: '01', title: 'Notify the manager', body: 'Reach out to Tuscany Village so we can document the incident on our end.' },
-  { n: '02', title: 'Document the damage', body: 'Take photos of the damage and preserve all affected items pending specialist review.' },
-  { n: '03', title: 'File the claim', body: 'Submit the claim online or call 833-682-8879.' },
-  { n: '04', title: 'Police report (if applicable)', body: "For burglary or vandalism, obtain a police report and request the officer visit the unit." },
-]
-
 export default function TenantProtectionPage() {
   return (
-    <>
-      {/* Hero */}
-      <section className="relative overflow-hidden bg-brown py-24 sm:py-28">
-        <div className="absolute inset-0 z-0 opacity-[0.03]" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 256 256\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'noise\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.9\' numOctaves=\'4\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23noise)\'/%3E%3C/svg%3E")', backgroundRepeat: 'repeat' }} />
-        <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-tan/40 to-transparent" />
+    <div className="bg-gray-100">
+      <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6 lg:px-8">
+        {/* Title */}
+        <h1 className="text-center text-4xl font-semibold text-gray-900">
+          Tenant Protection
+        </h1>
+        <p className="mt-5 text-center text-xl font-bold text-gray-900">
+          Protect your storage against the unexpected!
+        </p>
 
-        <div className="relative z-10 mx-auto max-w-4xl px-4 text-center sm:px-6 lg:px-8">
-          <div className="mb-5 flex items-center justify-center gap-3">
-            <div className="h-px w-12 bg-tan/40" />
-            <div className="h-1.5 w-1.5 rounded-full bg-tan/60" />
-            <div className="h-px w-12 bg-tan/40" />
-          </div>
-          <h1 className="font-serif text-4xl font-bold leading-tight text-cream sm:text-5xl lg:text-6xl">
-            Protect your storage against{' '}
-            <span className="text-tan">the unexpected.</span>
-          </h1>
-          <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-cream/60">
-            Affordable monthly protection plans for your stored belongings — starting at just $12/month.
-            Add tenant protection when you rent, or any time from your online account.
+        {/* Why */}
+        <div className="mt-10">
+          <p className="text-base text-gray-900">
+            We recommend Tenant Protection over homeowner&apos;s insurance because:
           </p>
+          <ul className="mt-3 list-disc space-y-1 pl-8 text-base text-gray-900">
+            <li>Your stored items may not be covered by your homeowner&apos;s policy</li>
+            <li>Your premiums could go up if you file a claim</li>
+            <li>Your homeowner&apos;s policy could be canceled if you file a claim</li>
+          </ul>
         </div>
-      </section>
 
-      {/* Why tenant protection */}
-      <section className="bg-white py-24">
-        <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-          <div className="mb-14 text-center">
-            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.25em] text-tan">Why Choose Tenant Protection</p>
-            <h2 className="font-serif text-3xl font-bold text-brown sm:text-4xl">
-              Better than relying on your homeowner&apos;s policy
-            </h2>
+        {/* AVOID THE $200 DEDUCTIBLE — gray banner */}
+        <div className="mt-10 flex flex-col items-center gap-6 rounded bg-gray-200 px-6 py-10 sm:flex-row sm:gap-8 sm:px-10">
+          <div className="flex-shrink-0">
+            <Image
+              src="/images/tenant-protection/shield-lock.png"
+              alt="Shield with disc lock"
+              width={200}
+              height={200}
+              className="h-auto w-36 sm:w-44"
+            />
           </div>
-          <div className="grid gap-6 sm:grid-cols-3">
-            {REASONS.map((r, idx) => (
-              <div key={r.title} className="rounded-2xl border border-mid bg-cream/40 p-7">
-                <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-full bg-tan/15 text-sm font-semibold text-brown">
-                  {idx + 1}
-                </div>
-                <h3 className="mb-2 font-serif text-lg font-semibold text-brown">{r.title}</h3>
-                <p className="text-sm leading-relaxed text-muted">{r.body}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Coverage plans */}
-      <section className="bg-cream py-24">
-        <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
-          <div className="mb-14 text-center">
-            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.25em] text-tan">Coverage Plans</p>
-            <h2 className="font-serif text-3xl font-bold text-brown sm:text-4xl">
-              Choose the coverage that fits
+          <div className="flex-1 text-center">
+            <h2 className="text-2xl font-bold tracking-wide text-gray-700 sm:text-3xl">
+              AVOID THE $200 DEDUCTIBLE
             </h2>
-            <p className="mx-auto mt-4 max-w-xl text-base leading-relaxed text-muted">
-              Five tiers from $2,000 up to $15,000 in coverage. Cancel or change anytime.
+            <p className="mt-4 text-base text-gray-700">
+              Be sure to use a disc or cylinder lock to avoid the $200 deductible.
             </p>
           </div>
+        </div>
 
-          <div className="overflow-hidden rounded-2xl border border-mid bg-white shadow-sm">
-            <table className="w-full">
-              <thead className="bg-brown text-cream">
-                <tr>
-                  <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-[0.2em]">
-                    Coverage Amount
-                  </th>
-                  <th className="px-6 py-4 text-right text-xs font-semibold uppercase tracking-[0.2em]">
-                    Monthly Cost
-                  </th>
-                </tr>
-              </thead>
+        {/* Coverage Options */}
+        <h2 className="mt-14 text-center text-3xl font-normal text-gray-700">Coverage Options</h2>
+
+        <div className="mt-6 grid grid-cols-1 items-center gap-8 md:grid-cols-2 md:gap-12">
+          <p className="text-xl font-normal leading-snug text-gray-900">
+            Add tenant protection when renting a unit or add to an existing rental through your
+            online account.
+          </p>
+
+          <div className="overflow-hidden rounded border border-gray-300 bg-white">
+            <table className="w-full border-collapse">
               <tbody>
                 {PLANS.map((plan, idx) => (
                   <tr
                     key={plan.coverage}
-                    className={`border-t border-mid/60 ${idx % 2 === 0 ? 'bg-white' : 'bg-cream/30'}`}
+                    className={idx > 0 ? 'border-t border-gray-300' : ''}
                   >
-                    <td className="px-6 py-5">
-                      <span className="font-serif text-2xl font-bold text-brown">{plan.coverage}</span>
-                    </td>
-                    <td className="px-6 py-5 text-right">
-                      <span className="font-serif text-xl font-semibold text-tan">{plan.price}</span>
-                      <span className="ml-1 text-sm text-muted">/mo</span>
+                    <td className="px-4 py-3 text-center text-base text-gray-900">{plan.coverage}</td>
+                    <td className="border-l border-gray-300 px-4 py-3 text-center text-base text-gray-900">
+                      {plan.price}
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
+        </div>
 
-          <div className="mt-6 rounded-xl border-l-4 border-tan bg-tan/5 px-5 py-4">
-            <p className="text-sm leading-relaxed text-brown">
-              <strong className="font-semibold">Lock requirement:</strong> Be sure to use a disc or
-              cylinder lock to avoid the $200 deductible.
-            </p>
+        {/* What's Covered — gray banner */}
+        <div className="mt-12 flex flex-col items-center gap-6 rounded bg-gray-200 px-6 py-10 sm:flex-row sm:items-start sm:gap-8 sm:px-10">
+          <div className="flex-shrink-0">
+            <Image
+              src="/images/tenant-protection/checklist.png"
+              alt="Checklist of covered items"
+              width={220}
+              height={220}
+              className="h-auto w-36 sm:w-48"
+            />
+          </div>
+          <div className="flex-1">
+            <h2 className="text-2xl font-bold text-gray-900">What&apos;s Covered?</h2>
+            <ul className="mt-3 list-disc space-y-1 pl-6 text-base text-gray-900">
+              {COVERED.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
           </div>
         </div>
-      </section>
 
-      {/* What's covered */}
-      <section className="bg-white py-24">
-        <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
-          <div className="mb-12 text-center">
-            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.25em] text-tan">What&apos;s Covered</p>
-            <h2 className="font-serif text-3xl font-bold text-brown sm:text-4xl">
-              Protection against the most common risks
-            </h2>
-          </div>
-          <ul className="mx-auto grid max-w-3xl grid-cols-1 gap-3 sm:grid-cols-2">
-            {COVERED.map((item) => (
-              <li
-                key={item}
-                className="flex items-center gap-3 rounded-lg border border-mid/60 bg-cream/30 px-5 py-3.5"
+        {/* How to File a Claim */}
+        <h2 className="mt-14 text-center text-3xl font-normal text-gray-700">How to File a Claim</h2>
+
+        <div className="mt-6 grid grid-cols-1 items-center gap-8 md:grid-cols-[1fr_auto] md:gap-12">
+          <ol className="space-y-3 text-base leading-relaxed text-gray-900">
+            <li>1. Notify the manager.</li>
+            <li>
+              2. Take photos of any damage to your items and the storage unit. Please take photos of
+              the source of damage if possible. DO NOT throw anything away until you speak with a
+              claims specialist.
+            </li>
+            <li>
+              3.{' '}
+              <a
+                href="#"
+                className="inline-flex items-center gap-1 text-[#3E5DAA] underline hover:no-underline"
               >
+                Click here
                 <svg
-                  className="h-5 w-5 flex-shrink-0 text-olive"
+                  className="h-3.5 w-3.5"
                   fill="none"
                   viewBox="0 0 24 24"
-                  strokeWidth={2.5}
+                  strokeWidth={1.5}
                   stroke="currentColor"
+                  aria-hidden="true"
                 >
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"
+                  />
                 </svg>
-                <span className="text-sm font-medium text-brown">{item}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </section>
+              </a>{' '}
+              to file your claim. For assistance, please call{' '}
+              <a href="tel:+18336828879" className="text-[#3E5DAA] underline hover:no-underline">
+                833-682-8879
+              </a>
+              .
+            </li>
+            <li>
+              4. For claims involving crime, have a police officer visit the unit and file a police
+              report.
+            </li>
+          </ol>
 
-      {/* Claims process */}
-      <section className="bg-brown py-24">
-        <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-          <div className="mb-14 text-center">
-            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.25em] text-tan">Filing a Claim</p>
-            <h2 className="font-serif text-3xl font-bold text-cream sm:text-4xl">
-              Simple, supported, and on your side
-            </h2>
-          </div>
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            {CLAIM_STEPS.map((step) => (
-              <div
-                key={step.n}
-                className="rounded-2xl border border-cream/10 bg-cream/[0.04] p-7 backdrop-blur-sm"
-              >
-                <p className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-tan/70">
-                  {step.n}
-                </p>
-                <h3 className="mb-2 font-serif text-lg font-semibold text-cream">{step.title}</h3>
-                <p className="text-sm leading-relaxed text-cream/55">{step.body}</p>
-              </div>
-            ))}
-          </div>
-          <div className="mt-10 rounded-2xl border border-tan/30 bg-tan/[0.06] p-6 text-center">
-            <p className="text-sm uppercase tracking-[0.2em] text-tan">Claims Hotline</p>
-            <a
-              href="tel:8336828879"
-              className="mt-2 inline-block font-serif text-3xl font-bold text-cream hover:text-tan transition-colors"
-            >
-              833-682-8879
-            </a>
+          <div className="flex flex-shrink-0 justify-center md:justify-end">
+            <Image
+              src="/images/tenant-protection/claim-form.png"
+              alt="Claim form"
+              width={200}
+              height={200}
+              className="h-auto w-36 sm:w-44"
+            />
           </div>
         </div>
-      </section>
-
-      {/* CTA */}
-      <section className="bg-cream py-24">
-        <div className="mx-auto max-w-3xl px-4 text-center sm:px-6 lg:px-8">
-          <h2 className="font-serif text-3xl font-bold text-brown sm:text-4xl">
-            Ready to add protection?
-          </h2>
-          <p className="mx-auto mt-4 max-w-xl text-base leading-relaxed text-muted">
-            Add tenant protection when you rent a unit, or any time from your online account.
-          </p>
-          <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
-            <Link
-              href="/units"
-              className="w-full rounded-lg bg-tan px-10 py-4 font-semibold text-brown transition-all duration-300 hover:bg-tan-light hover:shadow-lg hover:shadow-tan/20 sm:w-auto"
-            >
-              Rent a Unit
-            </Link>
-            <Link
-              href="/portal"
-              className="w-full rounded-lg border border-brown/20 px-10 py-4 font-semibold text-brown transition-all duration-300 hover:border-tan hover:text-tan sm:w-auto"
-            >
-              Manage Existing Rental
-            </Link>
-          </div>
-          <p className="mt-8 text-sm text-muted">
-            Questions?{' '}
-            <a
-              href="tel:+18654262100"
-              className="font-medium text-brown underline decoration-mid underline-offset-2 transition-colors hover:text-tan"
-            >
-              Call us at (865) 426-2100
-            </a>
-          </p>
-        </div>
-      </section>
-    </>
+      </div>
+    </div>
   )
 }

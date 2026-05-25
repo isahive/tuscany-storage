@@ -152,7 +152,7 @@ function DrawerContent() {
             variant="subtitle1"
             sx={{
               color: 'white',
-              fontFamily: '"Playfair Display", serif',
+              fontFamily: 'var(--font-outfit), system-ui, sans-serif',
               fontWeight: 700,
               lineHeight: 1.2,
             }}
@@ -161,7 +161,7 @@ function DrawerContent() {
           </Typography>
           <Typography
             variant="caption"
-            sx={{ color: 'rgba(255,255,255,0.7)', fontFamily: '"DM Sans", sans-serif' }}
+            sx={{ color: 'rgba(255,255,255,0.7)', fontFamily: 'var(--font-inter), system-ui, sans-serif' }}
           >
             Admin Panel
           </Typography>
@@ -267,7 +267,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
         elevation={0}
         sx={{
           bgcolor: 'white',
-          borderBottom: '1px solid #EDE5D8',
+          borderBottom: '1px solid #E5E7EB',
           zIndex: (t) => t.zIndex.drawer + 1,
           width: { md: `calc(100% - ${DRAWER_WIDTH}px)` },
           ml: { md: `${DRAWER_WIDTH}px` },
@@ -377,7 +377,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
           '& .MuiDrawer-paper': {
             width: DRAWER_WIDTH,
             boxSizing: 'border-box',
-            borderRight: '1px solid #EDE5D8',
+            borderRight: '1px solid #E5E7EB',
           },
         }}
         open

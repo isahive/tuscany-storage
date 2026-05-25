@@ -270,7 +270,7 @@ function EmailLetterEditor({ value, onChange }: { value: string; onChange: (html
         sx={{
           minHeight: 320,
           p: 2,
-          fontFamily: '"DM Sans", sans-serif',
+          fontFamily: 'var(--font-inter), system-ui, sans-serif',
           fontSize: '0.95rem',
           lineHeight: 1.6,
           '& .ProseMirror': { outline: 'none', minHeight: 300 },
@@ -328,7 +328,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   return (
     <Box sx={{ border: '1px solid #E5E1D8', borderRadius: 1, mb: 3, overflow: 'hidden' }}>
       <Box sx={{ bgcolor: '#F1EEE8', px: 3, py: 1.75, borderBottom: '1px solid #E5E1D8' }}>
-        <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#1C0F06' }}>{title}</Typography>
+        <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#2C3826' }}>{title}</Typography>
       </Box>
       <Box sx={{ p: 3 }}>{children}</Box>
     </Box>

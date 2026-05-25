@@ -23,7 +23,7 @@ import {
 
 function SectionHeader({ title }: { title: string }) {
   return (
-    <Box sx={{ bgcolor: '#1C0F06', color: 'white', px: 2.5, py: 1.2, borderRadius: 1, mb: 2, mt: 3 }}>
+    <Box sx={{ bgcolor: '#2C3826', color: 'white', px: 2.5, py: 1.2, borderRadius: 1, mb: 2, mt: 3 }}>
       <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>{title}</Typography>
     </Box>
   )
@@ -227,7 +227,7 @@ export default function NewCustomerPage() {
     <Box>
       <Typography
         variant="h5"
-        sx={{ fontWeight: 700, color: '#B8914A', fontFamily: '"Playfair Display", serif', mb: 0.5 }}
+        sx={{ fontWeight: 700, color: '#B8914A', fontFamily: 'var(--font-outfit), system-ui, sans-serif', mb: 0.5 }}
       >
         New Customer
       </Typography>
@@ -309,7 +309,7 @@ export default function NewCustomerPage() {
               </Grid>
               <Grid item xs={12} sm={6}>
                 <TextField label="Username" fullWidth size="small" value={email} disabled
-                  sx={{ '& .MuiInputBase-root': { bgcolor: '#EDE5D8' } }}
+                  sx={{ '& .MuiInputBase-root': { bgcolor: '#E5E7EB' } }}
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
@@ -363,7 +363,7 @@ export default function NewCustomerPage() {
                   </Typography>
                   {idPhoto ? (
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                      <img src={idPhoto} alt="ID" style={{ height: 48, borderRadius: 4, border: '1px solid #EDE5D8' }} />
+                      <img src={idPhoto} alt="ID" style={{ height: 48, borderRadius: 4, border: '1px solid #E5E7EB' }} />
                       <Button size="small" color="error" onClick={() => setIdPhoto(null)}>Remove</Button>
                     </Box>
                   ) : (

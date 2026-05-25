@@ -17,12 +17,15 @@ const config: Config = {
         olive:  { DEFAULT: '#8CA87C', dark: '#7E9770', darker: '#708663' },
       },
       fontFamily: {
-        // CSS variables exposed by app/layout.tsx — change ACTIVE_FONTS there
-        // to swap font stacks app-wide. System-ui fallback prevents FOUT.
-        sans:    ['var(--font-inter)',   'var(--font-dm-sans)',     'var(--font-open-sans)',     'var(--font-plus-jakarta)',  'system-ui', '-apple-system', '"Segoe UI"', 'Roboto', 'Arial', 'sans-serif'],
-        display: ['var(--font-outfit)',  'var(--font-poppins)',     'var(--font-plus-jakarta)',  'var(--font-playfair)',      'system-ui', '-apple-system', '"Segoe UI"', 'Roboto', 'Arial', 'sans-serif'],
-        // 'serif' kept for backward compatibility — points at the display font.
-        serif:   ['var(--font-outfit)',  'var(--font-playfair)',    'Georgia',                   '"Times New Roman"',         'serif'],
+        // Active fonts come from CSS variables set by app/layout.tsx (ACTIVE_FONTS=1
+        // exposes --font-outfit + --font-inter). DO NOT reference undefined variables
+        // here — an empty var() with no fallback makes the whole font-family
+        // declaration "invalid at computed-value time" and CSS falls back to the
+        // user-agent default (Times New Roman on Windows).
+        sans:    ['var(--font-inter)',  'system-ui', '-apple-system', '"Segoe UI"', 'Roboto', 'Arial', 'sans-serif'],
+        display: ['var(--font-outfit)', 'system-ui', '-apple-system', '"Segoe UI"', 'Roboto', 'Arial', 'sans-serif'],
+        // `font-serif` is aliased to display so legacy headings keep working.
+        serif:   ['var(--font-outfit)', 'system-ui', '-apple-system', '"Segoe UI"', 'Roboto', 'Arial', 'sans-serif'],
       },
       backgroundImage: {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',

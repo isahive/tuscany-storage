@@ -56,7 +56,7 @@ const fmt = (cents: number) => `$${(cents / 100).toFixed(2)}`
 
 // ── Shared styles ────────────────────────────────────────────────────────────
 
-const inputSx = { '& .MuiOutlinedInput-root': { '& fieldset': { borderColor: '#EDE5D8' }, '&:hover fieldset': { borderColor: '#B8914A' }, '&.Mui-focused fieldset': { borderColor: '#B8914A' } } }
+const inputSx = { '& .MuiOutlinedInput-root': { '& fieldset': { borderColor: '#E5E7EB' }, '&:hover fieldset': { borderColor: '#B8914A' }, '&.Mui-focused fieldset': { borderColor: '#B8914A' } } }
 const switchSx = { '& .MuiSwitch-switchBase.Mui-checked': { color: '#B8914A' }, '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': { bgcolor: '#B8914A' } }
 
 const thSx = { fontWeight: 600, color: 'text.secondary', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }
@@ -222,7 +222,7 @@ export default function FeesSettingsPage() {
         >
           Setup
         </Button>
-        <Typography variant="h5" sx={{ fontFamily: '"Playfair Display", serif', fontWeight: 700, color: '#1C0F06', flex: 1 }}>
+        <Typography variant="h5" sx={{ fontFamily: 'var(--font-outfit), system-ui, sans-serif', fontWeight: 700, color: '#2C3826', flex: 1 }}>
           Fees &amp; Charges
         </Typography>
         <Button
@@ -239,7 +239,7 @@ export default function FeesSettingsPage() {
       {error && <Alert severity="error" onClose={() => setError(null)} sx={{ mb: 2.5, borderRadius: 2 }}>{error}</Alert>}
 
       {/* Fees Table */}
-      <Card sx={{ border: '1px solid #EDE5D8', boxShadow: 'none', borderRadius: 2 }}>
+      <Card sx={{ border: '1px solid #E5E7EB', boxShadow: 'none', borderRadius: 2 }}>
         <CardContent sx={{ p: 3 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -279,7 +279,7 @@ export default function FeesSettingsPage() {
                       </Box>
                     </TableCell>
                     <TableCell>
-                      <Typography variant="body2" fontWeight={600} sx={{ color: '#1C0F06' }}>
+                      <Typography variant="body2" fontWeight={600} sx={{ color: '#2C3826' }}>
                         {fmt(fee.amount)}
                       </Typography>
                     </TableCell>
@@ -331,7 +331,7 @@ export default function FeesSettingsPage() {
 
       {/* Add/Edit Dialog */}
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ fontFamily: '"Playfair Display", serif', fontWeight: 700 }}>
+        <DialogTitle sx={{ fontFamily: 'var(--font-outfit), system-ui, sans-serif', fontWeight: 700 }}>
           {editingBuiltIn ? `Edit ${dialogForm.name}` : editingId ? 'Edit Fee' : 'Add New Fee'}
         </DialogTitle>
         <DialogContent sx={{ pt: '16px !important' }}>
@@ -401,7 +401,7 @@ export default function FeesSettingsPage() {
 
       {/* Delete confirmation */}
       <Dialog open={!!deleteId} onClose={() => setDeleteId(null)} maxWidth="xs" fullWidth>
-        <DialogTitle sx={{ fontFamily: '"Playfair Display", serif' }}>Delete Fee?</DialogTitle>
+        <DialogTitle sx={{ fontFamily: 'var(--font-outfit), system-ui, sans-serif' }}>Delete Fee?</DialogTitle>
         <DialogContent>
           <Typography variant="body2" color="text.secondary">
             This fee will be removed from the schedule. This action cannot be undone.

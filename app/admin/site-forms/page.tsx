@@ -148,7 +148,7 @@ function MessageDialog({
             onReply(row);
           }}
           sx={{
-            bgcolor: "#1C0F06",
+            bgcolor: "#2C3826",
             color: "#fff",
             "&:hover": {
               bgcolor: "#2C1F16",
@@ -250,7 +250,7 @@ function ReplyDialog({
             onClick={onSend}
             disabled={sending || !message.trim()}
             sx={{
-              bgcolor: "#1C0F06",
+              bgcolor: "#2C3826",
               color: "#fff",
               "&:hover": {
                 bgcolor: "#2C1F16",
@@ -286,10 +286,10 @@ function NotificationSettings({
   onRemove: (id: string) => void;
 }) {
   return (
-    <Card sx={{ mt: 3, border: "1px solid #EDE5D8", boxShadow: "none" }}>
+    <Card sx={{ mt: 3, border: "1px solid #E5E7EB", boxShadow: "none" }}>
       <CardContent sx={{ p: 2.5, "&:last-child": { pb: 2.5 } }}>
         <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
-          <NotificationsIcon fontSize="small" sx={{ color: "#1C0F06" }} />
+          <NotificationsIcon fontSize="small" sx={{ color: "#2C3826" }} />
           <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
             Notification Recipients
           </Typography>
@@ -370,7 +370,7 @@ function NotificationSettings({
             disabled={addingEmail || !newEmail.trim()}
             startIcon={<AddIcon />}
             sx={{
-              bgcolor: "#1C0F06",
+              bgcolor: "#2C3826",
               color: "#fff",
               "&:hover": { bgcolor: "#2C1F16" },
               textTransform: "none",
@@ -724,8 +724,8 @@ export default function SiteFormsPage() {
             onClick={() => setSettingsOpen((v) => !v)}
             sx={{
               textTransform: "none",
-              color: settingsOpen ? "#1C0F06" : "text.secondary",
-              borderColor: settingsOpen ? "#1C0F06" : undefined,
+              color: settingsOpen ? "#2C3826" : "text.secondary",
+              borderColor: settingsOpen ? "#2C3826" : undefined,
               fontSize: "0.75rem",
             }}
             variant={settingsOpen ? "outlined" : "text"}
@@ -753,7 +753,7 @@ export default function SiteFormsPage() {
       </Box>
 
       {/* Filters */}
-      <Card sx={{ mb: 2, border: "1px solid #EDE5D8", boxShadow: "none" }}>
+      <Card sx={{ mb: 2, border: "1px solid #E5E7EB", boxShadow: "none" }}>
         <CardContent sx={{ p: 2, "&:last-child": { pb: 2 } }}>
           <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
             <TextField
@@ -793,7 +793,7 @@ export default function SiteFormsPage() {
       </Card>
 
       {/* DataGrid */}
-      <Card sx={{ border: "1px solid #EDE5D8", boxShadow: "none" }}>
+      <Card sx={{ border: "1px solid #E5E7EB", boxShadow: "none" }}>
         <DataGrid
           rows={filtered}
           columns={columns}
@@ -805,7 +805,7 @@ export default function SiteFormsPage() {
             border: "none",
             bgcolor: "#FFFFFF",
             "& .MuiDataGrid-columnHeader": {
-              bgcolor: "#1C0F06",
+              bgcolor: "#2C3826",
               color: "#FFFFFF",
               fontWeight: 600,
             },
@@ -814,11 +814,11 @@ export default function SiteFormsPage() {
             "& .MuiDataGrid-menuIconButton": { color: "rgba(255,255,255,0.7)" },
             "& .MuiDataGrid-row:hover": { bgcolor: "#FAF7F2" },
             "& .MuiDataGrid-cell": {
-              borderColor: "#EDE5D8",
+              borderColor: "#E5E7EB",
               display: "flex",
               alignItems: "center",
             },
-            "& .MuiDataGrid-footerContainer": { borderColor: "#EDE5D8" },
+            "& .MuiDataGrid-footerContainer": { borderColor: "#E5E7EB" },
             "& .MuiDataGrid-columnSeparator": {
               color: "rgba(255,255,255,0.2)",
             },

@@ -106,10 +106,10 @@ function buildPrintableHTML(rows: TenantRow[]): string {
     <style>
       @page { size: letter landscape; margin: 0.5in; }
       body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: #1f2937; padding: 0; margin: 0; }
-      h1 { font-size: 22px; margin: 0 0 4px; color: #1C0F06; }
+      h1 { font-size: 22px; margin: 0 0 4px; color: #2C3826; }
       .subtitle { font-size: 12px; color: #6B7280; margin-bottom: 16px; }
       table { border-collapse: collapse; width: 100%; font-size: 11px; }
-      th { background: #1C0F06; color: white; padding: 6px 8px; text-align: left; font-weight: 600; }
+      th { background: #2C3826; color: white; padding: 6px 8px; text-align: left; font-weight: 600; }
       td { padding: 5px 8px; border-bottom: 1px solid #E5E7EB; vertical-align: top; }
       tr:nth-child(even) td { background: #FAFAFA; }
     </style></head><body>
@@ -410,7 +410,7 @@ export default function TenantsPage() {
             sx={{
               border: 'none',
               '& .MuiDataGrid-columnHeader': {
-                bgcolor: '#1C0F06',
+                bgcolor: '#2C3826',
                 color: 'white',
                 fontWeight: 600,
               },
@@ -419,11 +419,11 @@ export default function TenantsPage() {
               '& .MuiDataGrid-menuIconButton': { color: 'rgba(255,255,255,0.7)' },
               '& .MuiDataGrid-row:hover': { bgcolor: '#FAF7F2' },
               '& .MuiDataGrid-cell': {
-                borderColor: '#EDE5D8',
+                borderColor: '#E5E7EB',
                 display: 'flex',
                 alignItems: 'center',
               },
-              '& .MuiDataGrid-footerContainer': { borderColor: '#EDE5D8' },
+              '& .MuiDataGrid-footerContainer': { borderColor: '#E5E7EB' },
             }}
           />
         )}

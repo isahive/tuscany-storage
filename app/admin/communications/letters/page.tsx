@@ -77,7 +77,7 @@ const STATUS_LABELS: Record<TenantStatus, string> = {
 // ── Shared styles ────────────────────────────────────────────────────────────
 
 const sectionHeaderSx = {
-  bgcolor: '#1C0F06',
+  bgcolor: '#2C3826',
   color: 'white',
   px: 2.5,
   py: 1.5,
@@ -279,9 +279,9 @@ export default function LettersPage() {
         <Typography
           variant="h5"
           sx={{
-            fontFamily: '"Playfair Display", serif',
+            fontFamily: 'var(--font-outfit), system-ui, sans-serif',
             fontWeight: 700,
-            color: '#1C0F06',
+            color: '#2C3826',
             flex: 1,
           }}
         >
@@ -307,7 +307,7 @@ export default function LettersPage() {
             sx={{
               height: 6,
               borderRadius: 3,
-              bgcolor: '#EDE5D8',
+              bgcolor: '#E5E7EB',
               '& .MuiLinearProgress-bar': { bgcolor: '#B8914A' },
             }}
           />
@@ -321,7 +321,7 @@ export default function LettersPage() {
       )}
 
       {/* Filters row */}
-      <Card sx={{ border: '1px solid #EDE5D8', boxShadow: 'none', borderRadius: 2, mb: 3 }}>
+      <Card sx={{ border: '1px solid #E5E7EB', boxShadow: 'none', borderRadius: 2, mb: 3 }}>
         <CardContent sx={{ p: 2.5, '&:last-child': { pb: 2.5 } }}>
           <Box
             sx={{
@@ -394,7 +394,7 @@ export default function LettersPage() {
       </Card>
 
       {/* Customer table */}
-      <Card sx={{ border: '1px solid #EDE5D8', boxShadow: 'none', borderRadius: 2 }}>
+      <Card sx={{ border: '1px solid #E5E7EB', boxShadow: 'none', borderRadius: 2 }}>
         <Box sx={sectionHeaderSx}>
           <Box
             sx={{

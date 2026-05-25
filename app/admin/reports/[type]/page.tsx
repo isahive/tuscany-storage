@@ -820,7 +820,7 @@ export default function ReportViewPage() {
         </IconButton>
         <Typography
           variant="h5"
-          sx={{ fontWeight: 700, color: '#B8914A', fontFamily: '"Playfair Display", serif', flex: 1 }}
+          sx={{ fontWeight: 700, color: '#B8914A', fontFamily: 'var(--font-outfit), system-ui, sans-serif', flex: 1 }}
         >
           {config.title}
         </Typography>
@@ -830,7 +830,7 @@ export default function ReportViewPage() {
           startIcon={<PictureAsPdfIcon />}
           onClick={handleExportPdf}
           disabled={exporting || rows.length === 0}
-          sx={{ bgcolor: '#1C0F06', '&:hover': { bgcolor: '#3D2B1F' } }}
+          sx={{ bgcolor: '#2C3826', '&:hover': { bgcolor: '#3D2B1F' } }}
         >
           {exporting ? 'Generating...' : 'Export PDF'}
         </Button>
@@ -869,7 +869,7 @@ export default function ReportViewPage() {
               <Chip
                 key={k}
                 label={`${label}: ${fmtSummary(k, v)}`}
-                sx={{ fontWeight: 600, bgcolor: '#F5F0E8', color: '#1C0F06' }}
+                sx={{ fontWeight: 600, bgcolor: '#F5F0E8', color: '#2C3826' }}
               />
             )
           })}
@@ -884,7 +884,7 @@ export default function ReportViewPage() {
           <Typography variant="body1" sx={{ color: 'text.secondary' }}>No data for this report</Typography>
         </Box>
       ) : (
-        <Card sx={{ border: '1px solid #EDE5D8', boxShadow: 'none' }}>
+        <Card sx={{ border: '1px solid #E5E7EB', boxShadow: 'none' }}>
           <TableContainer sx={{ maxHeight: 'calc(100vh - 280px)' }}>
             <Table size="small" stickyHeader>
               <TableHead>
@@ -893,7 +893,7 @@ export default function ReportViewPage() {
                     <TableCell
                       key={col.key}
                       align={col.align || 'left'}
-                      sx={{ fontWeight: 700, fontSize: '0.8rem', color: 'text.secondary', bgcolor: '#F5F0E8', borderColor: '#EDE5D8' }}
+                      sx={{ fontWeight: 700, fontSize: '0.8rem', color: 'text.secondary', bgcolor: '#F5F0E8', borderColor: '#E5E7EB' }}
                     >
                       {col.label}
                     </TableCell>
@@ -902,7 +902,7 @@ export default function ReportViewPage() {
               </TableHead>
               <TableBody>
                 {rows.map((row, i) => (
-                  <TableRow key={i} sx={{ '&:hover': { bgcolor: '#FAF7F2' }, '& td': { borderColor: '#EDE5D8' } }}>
+                  <TableRow key={i} sx={{ '&:hover': { bgcolor: '#FAF7F2' }, '& td': { borderColor: '#E5E7EB' } }}>
                     {config.columns.map((col) => {
                       const val = row[col.key]
                       const isStatus = col.key === 'status' && typeof val === 'string'
@@ -930,7 +930,7 @@ export default function ReportViewPage() {
           </TableContainer>
 
           {/* Row count footer */}
-          <Box sx={{ px: 2, py: 1, borderTop: '1px solid #EDE5D8', bgcolor: '#FDFBF7' }}>
+          <Box sx={{ px: 2, py: 1, borderTop: '1px solid #E5E7EB', bgcolor: '#FDFBF7' }}>
             <Typography variant="caption" sx={{ color: 'text.secondary' }}>
               {rows.length} record{rows.length !== 1 ? 's' : ''}
             </Typography>

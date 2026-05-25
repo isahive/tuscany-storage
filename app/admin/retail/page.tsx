@@ -317,7 +317,7 @@ export default function RetailSalesPage() {
     <Box>
       <Typography
         variant="h5"
-        sx={{ fontWeight: 700, color: '#1C0F06', fontFamily: '"Playfair Display", serif', mb: 1 }}
+        sx={{ fontWeight: 700, color: '#2C3826', fontFamily: 'var(--font-outfit), system-ui, sans-serif', mb: 1 }}
       >
         Retail Sale
       </Typography>
@@ -354,7 +354,7 @@ export default function RetailSalesPage() {
                 <TableHead>
                   <TableRow sx={{
                     '& th': {
-                      bgcolor: '#1C0F06', color: 'white', fontWeight: 600, fontSize: '0.8rem',
+                      bgcolor: '#2C3826', color: 'white', fontWeight: 600, fontSize: '0.8rem',
                     },
                   }}>
                     <TableCell>Name</TableCell>
@@ -370,7 +370,7 @@ export default function RetailSalesPage() {
                   {products.map((p) => (
                     <TableRow key={p._id} sx={{
                       '&:hover': { bgcolor: '#FAF7F2' },
-                      '& td': { borderColor: '#EDE5D8' },
+                      '& td': { borderColor: '#E5E7EB' },
                     }}>
                       <TableCell>
                         <Typography variant="body2" sx={{ fontWeight: 600 }}>{p.name}</Typography>

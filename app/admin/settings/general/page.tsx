@@ -59,7 +59,7 @@ const DEFAULTS: FormState = {
 function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
     <Box sx={{ mb: 3 }}>
-      <Typography variant="body2" sx={{ fontWeight: 600, color: '#1C0F06', mb: 0.5 }}>
+      <Typography variant="body2" sx={{ fontWeight: 600, color: '#2C3826', mb: 0.5 }}>
         {label}
       </Typography>
       {children}
@@ -139,7 +139,7 @@ export default function GeneralSettingsPage() {
   }
 
   const selectSx = {
-    '& .MuiOutlinedInput-notchedOutline': { borderColor: '#EDE5D8' },
+    '& .MuiOutlinedInput-notchedOutline': { borderColor: '#E5E7EB' },
     '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#B8914A' },
     '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#B8914A' },
   }
@@ -156,7 +156,7 @@ export default function GeneralSettingsPage() {
         >
           Setup
         </Button>
-        <Typography variant="h5" sx={{ fontFamily: '"Playfair Display", serif', fontWeight: 700, color: '#1C0F06', flex: 1 }}>
+        <Typography variant="h5" sx={{ fontFamily: 'var(--font-outfit), system-ui, sans-serif', fontWeight: 700, color: '#2C3826', flex: 1 }}>
           General Settings
         </Typography>
         <Button
@@ -172,7 +172,7 @@ export default function GeneralSettingsPage() {
 
       {error && <Alert severity="error" onClose={() => setError(null)} sx={{ mb: 2.5, borderRadius: 2 }}>{error}</Alert>}
 
-      <Box sx={{ maxWidth: 640, bgcolor: 'white', border: '1px solid #EDE5D8', borderRadius: 2, p: 3 }}>
+      <Box sx={{ maxWidth: 640, bgcolor: 'white', border: '1px solid #E5E7EB', borderRadius: 2, p: 3 }}>
 
         {/* Locale */}
         <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#B8914A', textTransform: 'uppercase', letterSpacing: '0.06em', mb: 2 }}>
@@ -205,7 +205,7 @@ export default function GeneralSettingsPage() {
           </Select>
         </Field>
 
-        <Divider sx={{ my: 3, borderColor: '#EDE5D8' }} />
+        <Divider sx={{ my: 3, borderColor: '#E5E7EB' }} />
 
         {/* Display formats */}
         <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#B8914A', textTransform: 'uppercase', letterSpacing: '0.06em', mb: 2 }}>
@@ -217,7 +217,7 @@ export default function GeneralSettingsPage() {
             fullWidth size="small" value={form.phoneFormat}
             onChange={(e) => set('phoneFormat', e.target.value)}
             placeholder="(555) 555-5555"
-            sx={{ '& .MuiOutlinedInput-root': { '& fieldset': { borderColor: '#EDE5D8' }, '&:hover fieldset': { borderColor: '#B8914A' }, '&.Mui-focused fieldset': { borderColor: '#B8914A' } } }}
+            sx={{ '& .MuiOutlinedInput-root': { '& fieldset': { borderColor: '#E5E7EB' }, '&:hover fieldset': { borderColor: '#B8914A' }, '&.Mui-focused fieldset': { borderColor: '#B8914A' } } }}
           />
         </Field>
 

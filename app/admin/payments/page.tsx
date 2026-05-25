@@ -95,7 +95,7 @@ function RevenueChart({ data }: { data: { month: string; amount: number }[] }) {
   return (
     <Card>
       <CardContent sx={{ p: 0 }}>
-        <Box sx={{ px: 3, py: 2, borderBottom: '1px solid #EDE5D8' }}>
+        <Box sx={{ px: 3, py: 2, borderBottom: '1px solid #E5E7EB' }}>
           <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
             Monthly Revenue
           </Typography>
@@ -498,12 +498,12 @@ export default function AdminPaymentsPage() {
       {/* Filters */}
       <Card sx={{ mb: 4 }}>
         <CardContent sx={{ p: 0 }}>
-          <Box sx={{ px: 3, py: 2, borderBottom: '1px solid #EDE5D8' }}>
+          <Box sx={{ px: 3, py: 2, borderBottom: '1px solid #E5E7EB' }}>
             <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
               All Payments
             </Typography>
           </Box>
-          <Box sx={{ px: 3, py: 2, display: 'flex', flexWrap: 'wrap', gap: 2, borderBottom: '1px solid #EDE5D8' }}>
+          <Box sx={{ px: 3, py: 2, display: 'flex', flexWrap: 'wrap', gap: 2, borderBottom: '1px solid #E5E7EB' }}>
             <TextField
               select
               label="Status"
@@ -585,13 +585,13 @@ export default function AdminPaymentsPage() {
                 border: 'none',
                 '& .MuiDataGrid-columnHeaders': {
                   bgcolor: '#FAF7F2',
-                  borderBottom: '1px solid #EDE5D8',
+                  borderBottom: '1px solid #E5E7EB',
                 },
                 '& .MuiDataGrid-cell': {
-                  borderBottom: '1px solid #EDE5D8',
+                  borderBottom: '1px solid #E5E7EB',
                 },
                 '& .MuiDataGrid-footerContainer': {
-                  borderTop: '1px solid #EDE5D8',
+                  borderTop: '1px solid #E5E7EB',
                 },
                 '& .MuiDataGrid-row:hover': {
                   bgcolor: '#FAF7F2',
@@ -605,7 +605,7 @@ export default function AdminPaymentsPage() {
       {/* Failed payments section */}
       <Card>
         <CardContent sx={{ p: 0 }}>
-          <Box sx={{ px: 3, py: 2, borderBottom: '1px solid #EDE5D8', display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Box sx={{ px: 3, py: 2, borderBottom: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', gap: 1 }}>
             <ErrorOutlineIcon sx={{ color: '#991B1B', fontSize: 20 }} />
             <Box>
               <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
@@ -631,7 +631,7 @@ export default function AdminPaymentsPage() {
                   sx={{
                     px: 3,
                     py: 2,
-                    borderBottom: '1px solid #EDE5D8',
+                    borderBottom: '1px solid #E5E7EB',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
@@ -678,7 +678,7 @@ export default function AdminPaymentsPage() {
                       fontWeight: 600,
                       '&:hover': { bgcolor: '#A07A3A' },
                       '&.Mui-disabled': {
-                        bgcolor: '#EDE5D8',
+                        bgcolor: '#E5E7EB',
                         color: '#92400E',
                       },
                     }}

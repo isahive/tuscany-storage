@@ -158,9 +158,9 @@ export default function FacilitySettingsPage() {
           <Typography
             variant="h5"
             sx={{
-              fontFamily: '"Playfair Display", serif',
+              fontFamily: 'var(--font-outfit), system-ui, sans-serif',
               fontWeight: 700,
-              color: '#1C0F06',
+              color: '#2C3826',
             }}
           >
             Facility Info

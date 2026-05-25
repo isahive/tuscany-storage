@@ -152,8 +152,8 @@ export default function TemplatesPage() {
             variant="h5"
             sx={{
               fontWeight: 700,
-              color: '#1C0F06',
-              fontFamily: '"Playfair Display", serif',
+              color: '#2C3826',
+              fontFamily: 'var(--font-outfit), system-ui, sans-serif',
               mb: 0.5,
             }}
           >
@@ -187,21 +187,21 @@ export default function TemplatesPage() {
       {/* Default Templates */}
       <Typography
         variant="subtitle1"
-        sx={{ fontWeight: 700, color: '#1C0F06', mb: 1.5, mt: 2 }}
+        sx={{ fontWeight: 700, color: '#2C3826', mb: 1.5, mt: 2 }}
       >
         Default Templates
       </Typography>
       <TableContainer
         component={Paper}
-        sx={{ border: '1px solid #EDE5D8', boxShadow: 'none', borderRadius: 2, mb: 4 }}
+        sx={{ border: '1px solid #E5E7EB', boxShadow: 'none', borderRadius: 2, mb: 4 }}
       >
         <Table>
           <TableHead>
             <TableRow sx={{ bgcolor: '#FAF7F2' }}>
-              <TableCell sx={{ fontWeight: 600, color: '#1C0F06' }}>Name</TableCell>
-              <TableCell sx={{ fontWeight: 600, color: '#1C0F06' }} align="center">Email</TableCell>
-              <TableCell sx={{ fontWeight: 600, color: '#1C0F06' }} align="center">Text</TableCell>
-              <TableCell sx={{ fontWeight: 600, color: '#1C0F06' }}>Description</TableCell>
+              <TableCell sx={{ fontWeight: 600, color: '#2C3826' }}>Name</TableCell>
+              <TableCell sx={{ fontWeight: 600, color: '#2C3826' }} align="center">Email</TableCell>
+              <TableCell sx={{ fontWeight: 600, color: '#2C3826' }} align="center">Text</TableCell>
+              <TableCell sx={{ fontWeight: 600, color: '#2C3826' }}>Description</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -233,23 +233,23 @@ export default function TemplatesPage() {
       {/* Custom Templates */}
       <Typography
         variant="subtitle1"
-        sx={{ fontWeight: 700, color: '#1C0F06', mb: 1.5 }}
+        sx={{ fontWeight: 700, color: '#2C3826', mb: 1.5 }}
       >
         Custom Templates
       </Typography>
       <TableContainer
         component={Paper}
-        sx={{ border: '1px solid #EDE5D8', boxShadow: 'none', borderRadius: 2 }}
+        sx={{ border: '1px solid #E5E7EB', boxShadow: 'none', borderRadius: 2 }}
       >
         <Table>
           <TableHead>
             <TableRow sx={{ bgcolor: '#FAF7F2' }}>
-              <TableCell sx={{ fontWeight: 600, color: '#1C0F06' }}>Name</TableCell>
-              <TableCell sx={{ fontWeight: 600, color: '#1C0F06' }}>Rule</TableCell>
-              <TableCell sx={{ fontWeight: 600, color: '#1C0F06' }} align="center">Days Past Due</TableCell>
-              <TableCell sx={{ fontWeight: 600, color: '#1C0F06' }} align="center">Email</TableCell>
-              <TableCell sx={{ fontWeight: 600, color: '#1C0F06' }} align="center">Text</TableCell>
-              <TableCell sx={{ fontWeight: 600, color: '#1C0F06' }} align="center">Print</TableCell>
+              <TableCell sx={{ fontWeight: 600, color: '#2C3826' }}>Name</TableCell>
+              <TableCell sx={{ fontWeight: 600, color: '#2C3826' }}>Rule</TableCell>
+              <TableCell sx={{ fontWeight: 600, color: '#2C3826' }} align="center">Days Past Due</TableCell>
+              <TableCell sx={{ fontWeight: 600, color: '#2C3826' }} align="center">Email</TableCell>
+              <TableCell sx={{ fontWeight: 600, color: '#2C3826' }} align="center">Text</TableCell>
+              <TableCell sx={{ fontWeight: 600, color: '#2C3826' }} align="center">Print</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -284,7 +284,7 @@ export default function TemplatesPage() {
                             bgcolor: '#FAF7F2',
                             color: '#B8914A',
                             fontWeight: 600,
-                            border: '1px solid #EDE5D8',
+                            border: '1px solid #E5E7EB',
                             cursor: 'pointer',
                             '&:hover': {
                               bgcolor: '#F1EEE8',

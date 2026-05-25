@@ -191,7 +191,7 @@ export default function TransactionDetailsPage() {
         {/* Header strip — title + Refund/Receipt buttons (top-right) */}
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 3, py: 2, borderBottom: '1px solid #E5E7EB', flexWrap: 'wrap', gap: 1 }}>
           <Box>
-            <Typography variant="h5" sx={{ fontWeight: 700, color: '#C2410C', fontFamily: '"Playfair Display", serif' }}>
+            <Typography variant="h5" sx={{ fontWeight: 700, color: '#C2410C', fontFamily: 'var(--font-outfit), system-ui, sans-serif' }}>
               Transaction Details
             </Typography>
             <Breadcrumbs sx={{ mt: 0.5, fontSize: '0.8rem' }}>
@@ -310,7 +310,7 @@ function DetailRow({
           {value}
         </MuiLink>
       ) : (
-        <Typography variant="body2" sx={{ color: '#1C0F06', whiteSpace: multiline ? 'pre-wrap' : 'normal' }}>
+        <Typography variant="body2" sx={{ color: '#2C3826', whiteSpace: multiline ? 'pre-wrap' : 'normal' }}>
           {value || '—'}
         </Typography>
       )}

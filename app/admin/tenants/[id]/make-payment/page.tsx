@@ -121,7 +121,7 @@ export default function MakePaymentPage() {
         >
           {step === 2 ? 'Back to Items' : 'Back'}
         </Button>
-        <Typography variant="h5" sx={{ fontWeight: 700, fontFamily: '"Playfair Display", serif', flex: 1 }}>
+        <Typography variant="h5" sx={{ fontWeight: 700, fontFamily: 'var(--font-outfit), system-ui, sans-serif', flex: 1 }}>
           {step === 1 ? `Make a Payment for ${tenantName}` : 'Make a Payment Summary'}
         </Typography>
       </Box>

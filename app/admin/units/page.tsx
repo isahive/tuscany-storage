@@ -161,7 +161,7 @@ export default function UnitsPage() {
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3, flexWrap: 'wrap' }}>
         <Typography
           variant="h5"
-          sx={{ fontFamily: '"Playfair Display", serif', color: '#1C0F06', fontWeight: 700, flexGrow: 1 }}
+          sx={{ fontFamily: 'var(--font-outfit), system-ui, sans-serif', color: '#2C3826', fontWeight: 700, flexGrow: 1 }}
         >
           Units
         </Typography>
@@ -170,7 +170,7 @@ export default function UnitsPage() {
           size="small"
           startIcon={<ViewListIcon />}
           onClick={() => router.push('/admin/units/list')}
-          sx={{ borderColor: '#EDE5D8' }}
+          sx={{ borderColor: '#E5E7EB' }}
         >
           List View
         </Button>
@@ -179,7 +179,7 @@ export default function UnitsPage() {
           size="small"
           startIcon={<VisibilityIcon />}
           onClick={() => router.push('/admin/units/site-view')}
-          sx={{ borderColor: '#EDE5D8' }}
+          sx={{ borderColor: '#E5E7EB' }}
         >
           Site View
         </Button>
@@ -243,7 +243,7 @@ export default function UnitsPage() {
             <Box key={label} sx={{ mb: 4 }}>
               <Typography
                 variant="h6"
-                sx={{ fontWeight: 700, color: '#1C0F06', mb: 1.5 }}
+                sx={{ fontWeight: 700, color: '#2C3826', mb: 1.5 }}
               >
                 {label}
               </Typography>
@@ -275,8 +275,8 @@ export default function UnitsPage() {
 
           {/* Legend — mirrors the live "Legend" footer 1:1. */}
           {units.length > 0 && (
-            <Box sx={{ mt: 5, pt: 3, borderTop: '1px solid #EDE5D8' }}>
-              <Typography variant="h6" sx={{ fontWeight: 700, color: '#1C0F06', mb: 1.5 }}>
+            <Box sx={{ mt: 5, pt: 3, borderTop: '1px solid #E5E7EB' }}>
+              <Typography variant="h6" sx={{ fontWeight: 700, color: '#2C3826', mb: 1.5 }}>
                 Legend
               </Typography>
               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>

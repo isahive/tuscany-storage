@@ -112,7 +112,7 @@ function MoveOutReceiptInner() {
     <Box>
       <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 2, flexWrap: 'wrap', gap: 2 }}>
         <Box>
-          <Typography variant="h5" sx={{ fontFamily: '"Playfair Display", serif', fontWeight: 700, color: '#9A3412', mb: 1 }}>
+          <Typography variant="h5" sx={{ fontFamily: 'var(--font-outfit), system-ui, sans-serif', fontWeight: 700, color: '#9A3412', mb: 1 }}>
             Unit {data.unitNumber} Move Out Receipt
           </Typography>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'text.secondary', fontSize: 14 }}>
@@ -197,7 +197,7 @@ function MoveOutReceiptInner() {
             <strong>Subject:</strong> {data.template.subject}
           </Box>
           <Box
-            sx={{ px: 3, py: 3, fontSize: 14, lineHeight: 1.7, color: '#1C0F06', '& p': { mt: 0, mb: 1.5 } }}
+            sx={{ px: 3, py: 3, fontSize: 14, lineHeight: 1.7, color: '#2C3826', '& p': { mt: 0, mb: 1.5 } }}
             dangerouslySetInnerHTML={{ __html: data.template.emailHtml }}
           />
         </Box>
@@ -208,7 +208,7 @@ function MoveOutReceiptInner() {
           <Box sx={{ borderBottom: '1px solid #E5E7EB', bgcolor: '#F3F4F6', px: 2, py: 1.5 }}>
             <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Text Message</Typography>
           </Box>
-          <Box sx={{ px: 3, py: 2.5, fontSize: 14, lineHeight: 1.6, color: '#1C0F06', whiteSpace: 'pre-line' }}>
+          <Box sx={{ px: 3, py: 2.5, fontSize: 14, lineHeight: 1.6, color: '#2C3826', whiteSpace: 'pre-line' }}>
             {data.template.smsBody}
           </Box>
         </Box>

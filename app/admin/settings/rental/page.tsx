@@ -114,7 +114,7 @@ function SettingSwitch({
             }}
           />
         }
-        label={<Typography variant="body2" sx={{ fontWeight: 500, color: '#1C0F06' }}>{label}</Typography>}
+        label={<Typography variant="body2" sx={{ fontWeight: 500, color: '#2C3826' }}>{label}</Typography>}
       />
       {hint && (
         <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', ml: 4.5, mt: -0.5 }}>
@@ -130,7 +130,7 @@ function NumberField({ label, hint, value, onChange, min = 0, max }: {
 }) {
   return (
     <Box sx={{ mb: 2.5 }}>
-      <Typography variant="body2" sx={{ fontWeight: 600, color: '#1C0F06', mb: 0.5 }}>{label}</Typography>
+      <Typography variant="body2" sx={{ fontWeight: 600, color: '#2C3826', mb: 0.5 }}>{label}</Typography>
       <TextField
         type="number"
         size="small"
@@ -145,7 +145,7 @@ function NumberField({ label, hint, value, onChange, min = 0, max }: {
         sx={{
           width: 120,
           '& .MuiOutlinedInput-root': {
-            '& fieldset': { borderColor: '#EDE5D8' },
+            '& fieldset': { borderColor: '#E5E7EB' },
             '&:hover fieldset': { borderColor: '#B8914A' },
             '&.Mui-focused fieldset': { borderColor: '#B8914A' },
           },
@@ -169,7 +169,7 @@ function RadioGroupField<T extends string>({
 }) {
   return (
     <Box sx={{ mb: 2.5 }}>
-      <Typography variant="body2" sx={{ fontWeight: 600, color: '#1C0F06', mb: 0.5 }}>{label}</Typography>
+      <Typography variant="body2" sx={{ fontWeight: 600, color: '#2C3826', mb: 0.5 }}>{label}</Typography>
       {hint && (
         <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 0.5 }}>{hint}</Typography>
       )}
@@ -182,12 +182,12 @@ function RadioGroupField<T extends string>({
                 <Radio
                   size="small"
                   sx={{
-                    color: '#EDE5D8',
+                    color: '#E5E7EB',
                     '&.Mui-checked': { color: '#B8914A' },
                   }}
                 />
               }
-              label={<Typography variant="body2" sx={{ fontWeight: 500, color: '#1C0F06' }}>{opt.label}</Typography>}
+              label={<Typography variant="body2" sx={{ fontWeight: 500, color: '#2C3826' }}>{opt.label}</Typography>}
             />
             {opt.hint && (
               <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', ml: 4, mt: -0.5 }}>
@@ -304,7 +304,7 @@ export default function RentalSettingsPage() {
         >
           Setup
         </Button>
-        <Typography variant="h5" sx={{ fontFamily: '"Playfair Display", serif', fontWeight: 700, color: '#1C0F06', flex: 1 }}>
+        <Typography variant="h5" sx={{ fontFamily: 'var(--font-outfit), system-ui, sans-serif', fontWeight: 700, color: '#2C3826', flex: 1 }}>
           Rental Settings
         </Typography>
         <Button
@@ -320,7 +320,7 @@ export default function RentalSettingsPage() {
 
       {error && <Alert severity="error" onClose={() => setError(null)} sx={{ mb: 2.5, borderRadius: 2 }}>{error}</Alert>}
 
-      <Box sx={{ maxWidth: 680, bgcolor: 'white', border: '1px solid #EDE5D8', borderRadius: 2, p: 3 }}>
+      <Box sx={{ maxWidth: 680, bgcolor: 'white', border: '1px solid #E5E7EB', borderRadius: 2, p: 3 }}>
 
         {/* Billing Cycle */}
         <SectionHeading>Billing Cycle</SectionHeading>
@@ -345,7 +345,7 @@ export default function RentalSettingsPage() {
           />
         )}
 
-        <Divider sx={{ my: 3, borderColor: '#EDE5D8' }} />
+        <Divider sx={{ my: 3, borderColor: '#E5E7EB' }} />
 
         {/* Billing */}
         <SectionHeading>Billing Period</SectionHeading>
@@ -361,7 +361,7 @@ export default function RentalSettingsPage() {
           onChange={(v) => setNum('daysRequiredBeforeBillingDay', v)}
         />
 
-        <Divider sx={{ my: 3, borderColor: '#EDE5D8' }} />
+        <Divider sx={{ my: 3, borderColor: '#E5E7EB' }} />
 
         {/* Proration */}
         <SectionHeading>Proration</SectionHeading>
@@ -388,7 +388,7 @@ export default function RentalSettingsPage() {
           ]}
         />
 
-        <Divider sx={{ my: 3, borderColor: '#EDE5D8' }} />
+        <Divider sx={{ my: 3, borderColor: '#E5E7EB' }} />
 
         {/* Rental options */}
         <SectionHeading>Rental Options</SectionHeading>
@@ -418,7 +418,7 @@ export default function RentalSettingsPage() {
           onChange={(v) => setBool('defaultProratingForManagerRentals', v)}
         />
 
-        <Divider sx={{ my: 3, borderColor: '#EDE5D8' }} />
+        <Divider sx={{ my: 3, borderColor: '#E5E7EB' }} />
 
         {/* Reservations */}
         <SectionHeading>Reservations</SectionHeading>
@@ -432,7 +432,7 @@ export default function RentalSettingsPage() {
               onChange={(v) => setNum('reservationLimitDays', v)}
             />
             <Box sx={{ mb: 2.5 }}>
-              <Typography variant="body2" sx={{ fontWeight: 600, color: '#1C0F06', mb: 0.5 }}>
+              <Typography variant="body2" sx={{ fontWeight: 600, color: '#2C3826', mb: 0.5 }}>
                 Reservation fee per Unit Type
               </Typography>
               <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 1 }}>
@@ -472,7 +472,7 @@ export default function RentalSettingsPage() {
           </>
         )}
 
-        <Divider sx={{ my: 3, borderColor: '#EDE5D8' }} />
+        <Divider sx={{ my: 3, borderColor: '#E5E7EB' }} />
 
         {/* Customer permissions */}
         <SectionHeading>Customer Permissions</SectionHeading>
@@ -484,7 +484,7 @@ export default function RentalSettingsPage() {
           onChange={(v) => setBool('customersCanScheduleMoveOuts', v)}
         />
 
-        <Divider sx={{ my: 3, borderColor: '#EDE5D8' }} />
+        <Divider sx={{ my: 3, borderColor: '#E5E7EB' }} />
 
         {/* New renter instructions */}
         <SectionHeading>New Renter Instructions</SectionHeading>
@@ -500,14 +500,14 @@ export default function RentalSettingsPage() {
           sx={{
             mb: 1,
             '& .MuiOutlinedInput-root': {
-              '& fieldset': { borderColor: '#EDE5D8' },
+              '& fieldset': { borderColor: '#E5E7EB' },
               '&:hover fieldset': { borderColor: '#B8914A' },
               '&.Mui-focused fieldset': { borderColor: '#B8914A' },
             },
           }}
         />
 
-        <Divider sx={{ my: 3, borderColor: '#EDE5D8' }} />
+        <Divider sx={{ my: 3, borderColor: '#E5E7EB' }} />
 
         {/* Lockout approval */}
         <SectionHeading>Lockout Approval</SectionHeading>

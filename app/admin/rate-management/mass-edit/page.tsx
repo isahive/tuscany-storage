@@ -151,7 +151,7 @@ export default function MassEditPage() {
           sx={{ color: 'text.secondary', textTransform: 'none', fontWeight: 500, '&:hover': { color: '#B8914A', bgcolor: 'transparent' }, px: 0, minWidth: 0 }}>
           Rate Management
         </Button>
-        <Typography variant="h5" sx={{ fontFamily: '"Playfair Display", serif', fontWeight: 700, color: '#1C0F06', flex: 1 }}>
+        <Typography variant="h5" sx={{ fontFamily: 'var(--font-outfit), system-ui, sans-serif', fontWeight: 700, color: '#2C3826', flex: 1 }}>
           Mass Edit Rental Prices
         </Typography>
       </Box>
@@ -164,7 +164,7 @@ export default function MassEditPage() {
         {' '}as rule-driven Rate Management changes.
       </Alert>
 
-      <Card sx={{ border: '1px solid #EDE5D8', boxShadow: 'none', borderRadius: 2, mb: 3 }}>
+      <Card sx={{ border: '1px solid #E5E7EB', boxShadow: 'none', borderRadius: 2, mb: 3 }}>
         <CardContent sx={{ p: 3 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2, flexWrap: 'wrap' }}>
             <Typography variant="body2" color="text.secondary">Filter by unit type</Typography>
@@ -253,7 +253,7 @@ export default function MassEditPage() {
         </CardContent>
       </Card>
 
-      <Card sx={{ border: '1px solid #EDE5D8', boxShadow: 'none', borderRadius: 2 }}>
+      <Card sx={{ border: '1px solid #E5E7EB', boxShadow: 'none', borderRadius: 2 }}>
         <CardContent sx={{ p: 3, display: 'flex', alignItems: 'center', gap: 3, flexWrap: 'wrap' }}>
           <Typography variant="subtitle1" fontWeight={700}>Notifications</Typography>
           <FormControlLabel control={<Checkbox checked={channels.email} onChange={(e) => setChannels((c) => ({ ...c, email: e.target.checked }))} />} label="Email" />

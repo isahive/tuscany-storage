@@ -77,7 +77,7 @@ const STATUS_LABELS: Record<TenantStatus, string> = {
 // ── Shared styles ────────────────────────────────────────────────────────────
 
 const sectionHeaderSx = {
-  bgcolor: '#1C0F06',
+  bgcolor: '#2C3826',
   color: 'white',
   px: 2.5,
   py: 1.5,
@@ -88,7 +88,7 @@ const sectionHeaderSx = {
 
 const inputSx = {
   '& .MuiOutlinedInput-root': {
-    '& fieldset': { borderColor: '#EDE5D8' },
+    '& fieldset': { borderColor: '#E5E7EB' },
     '&:hover fieldset': { borderColor: '#B8914A' },
     '&.Mui-focused fieldset': { borderColor: '#B8914A' },
   },
@@ -296,9 +296,9 @@ export default function SendEmailPage() {
         <Typography
           variant="h5"
           sx={{
-            fontFamily: '"Playfair Display", serif',
+            fontFamily: 'var(--font-outfit), system-ui, sans-serif',
             fontWeight: 700,
-            color: '#1C0F06',
+            color: '#2C3826',
             flex: 1,
           }}
         >
@@ -324,7 +324,7 @@ export default function SendEmailPage() {
             sx={{
               height: 6,
               borderRadius: 3,
-              bgcolor: '#EDE5D8',
+              bgcolor: '#E5E7EB',
               '& .MuiLinearProgress-bar': { bgcolor: '#B8914A' },
             }}
           />
@@ -340,7 +340,7 @@ export default function SendEmailPage() {
       <Box sx={{ display: 'flex', gap: 3, flexDirection: { xs: 'column', md: 'row' } }}>
         {/* Left column: Customer selection */}
         <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Card sx={{ border: '1px solid #EDE5D8', boxShadow: 'none', borderRadius: 2 }}>
+          <Card sx={{ border: '1px solid #E5E7EB', boxShadow: 'none', borderRadius: 2 }}>
             <Box sx={sectionHeaderSx}>Filter &amp; Select Customers</Box>
             <CardContent sx={{ p: 2.5 }}>
               {/* Filter */}
@@ -399,7 +399,7 @@ export default function SendEmailPage() {
                 sx={{
                   maxHeight: 360,
                   overflow: 'auto',
-                  border: '1px solid #EDE5D8',
+                  border: '1px solid #E5E7EB',
                   borderRadius: 1,
                 }}
               >
@@ -487,7 +487,7 @@ export default function SendEmailPage() {
 
         {/* Right column: Email composition */}
         <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Card sx={{ border: '1px solid #EDE5D8', boxShadow: 'none', borderRadius: 2 }}>
+          <Card sx={{ border: '1px solid #E5E7EB', boxShadow: 'none', borderRadius: 2 }}>
             <Box sx={sectionHeaderSx}>Compose Email</Box>
             <CardContent sx={{ p: 2.5 }}>
               {/* Template selector */}

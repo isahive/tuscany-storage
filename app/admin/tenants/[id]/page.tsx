@@ -179,7 +179,7 @@ function InfoRow({ label, value, icon, href }: {
           {value}
         </MuiLink>
       ) : (
-        <Typography variant="body2" sx={{ color: '#1C0F06' }}>
+        <Typography variant="body2" sx={{ color: '#2C3826' }}>
           {value || '—'}
         </Typography>
       )}
@@ -296,7 +296,7 @@ export default function TenantDetailPage() {
           <ArrowBackIcon />
         </IconButton>
         <Box sx={{ flex: 1 }}>
-          <Typography variant="h5" sx={{ fontWeight: 700, color: '#1C0F06', fontFamily: '"Playfair Display", serif' }}>
+          <Typography variant="h5" sx={{ fontWeight: 700, color: '#2C3826', fontFamily: 'var(--font-outfit), system-ui, sans-serif' }}>
             {fullName}
           </Typography>
           <Box sx={{ display: 'flex', gap: 1, mt: 0.5, alignItems: 'center' }}>
@@ -358,7 +358,7 @@ export default function TenantDetailPage() {
                 </Box>
               ) : (
                 <Avatar
-                  sx={{ width: 120, height: 120, mx: 'auto', mb: 1, bgcolor: '#EDE5D8', color: '#1C0F06', fontSize: 40, fontWeight: 700 }}
+                  sx={{ width: 120, height: 120, mx: 'auto', mb: 1, bgcolor: '#E5E7EB', color: '#2C3826', fontSize: 40, fontWeight: 700 }}
                 >
                   {tenant.firstName[0]}{tenant.lastName[0]}
                 </Avatar>

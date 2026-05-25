@@ -263,7 +263,7 @@ export default function PrintBatchesPage() {
           value={tab}
           onChange={(_, v) => setTab(v)}
           sx={{
-            borderBottom: '1px solid #EDE5D8',
+            borderBottom: '1px solid #E5E7EB',
             '& .MuiTab-root': { textTransform: 'none', fontWeight: 600 },
             '& .Mui-selected': { color: '#5C3A1E' },
             '& .MuiTabs-indicator': { backgroundColor: '#5C3A1E' },
@@ -277,7 +277,7 @@ export default function PrintBatchesPage() {
         {tab === 0 && (
           <CardContent sx={{ p: 0 }}>
             {/* Toolbar */}
-            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap', p: 2, borderBottom: '1px solid #EDE5D8' }}>
+            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap', p: 2, borderBottom: '1px solid #E5E7EB' }}>
               <FormControl size="small" sx={{ minWidth: 180 }}>
                 <InputLabel>Document Type</InputLabel>
                 <Select
@@ -320,7 +320,7 @@ export default function PrintBatchesPage() {
               <TableContainer>
                 <Table size="small">
                   <TableHead>
-                    <TableRow sx={{ bgcolor: '#1C0F06' }}>
+                    <TableRow sx={{ bgcolor: '#2C3826' }}>
                       <TableCell padding="checkbox" sx={{ color: 'white' }}>
                         <Checkbox
                           checked={selected.size === filteredQueue.length && filteredQueue.length > 0}
@@ -345,7 +345,7 @@ export default function PrintBatchesPage() {
                         sx={{
                           cursor: 'pointer',
                           '&:hover': { bgcolor: '#FAF7F2' },
-                          '& .MuiTableCell-root': { borderColor: '#EDE5D8' },
+                          '& .MuiTableCell-root': { borderColor: '#E5E7EB' },
                         }}
                       >
                         <TableCell padding="checkbox">
@@ -393,7 +393,7 @@ export default function PrintBatchesPage() {
 
             {/* Create Batch button */}
             {filteredQueue.length > 0 && (
-              <Box sx={{ display: 'flex', justifyContent: 'flex-end', p: 2, borderTop: '1px solid #EDE5D8' }}>
+              <Box sx={{ display: 'flex', justifyContent: 'flex-end', p: 2, borderTop: '1px solid #E5E7EB' }}>
                 <Button
                   variant="contained"
                   startIcon={<PrintIcon />}
@@ -429,7 +429,7 @@ export default function PrintBatchesPage() {
               <TableContainer>
                 <Table size="small">
                   <TableHead>
-                    <TableRow sx={{ bgcolor: '#1C0F06' }}>
+                    <TableRow sx={{ bgcolor: '#2C3826' }}>
                       <TableCell sx={{ color: 'white', fontWeight: 600 }}>Batch #</TableCell>
                       <TableCell sx={{ color: 'white', fontWeight: 600 }}>Created Date</TableCell>
                       <TableCell sx={{ color: 'white', fontWeight: 600 }} align="center">Documents</TableCell>
@@ -445,7 +445,7 @@ export default function PrintBatchesPage() {
                         hover
                         sx={{
                           '&:hover': { bgcolor: '#FAF7F2' },
-                          '& .MuiTableCell-root': { borderColor: '#EDE5D8' },
+                          '& .MuiTableCell-root': { borderColor: '#E5E7EB' },
                         }}
                       >
                         <TableCell>

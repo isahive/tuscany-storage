@@ -120,7 +120,7 @@ export default function AddCreditPage() {
         >
           Back
         </Button>
-        <Typography variant="h5" sx={{ fontWeight: 700, fontFamily: '"Playfair Display", serif' }}>
+        <Typography variant="h5" sx={{ fontWeight: 700, fontFamily: 'var(--font-outfit), system-ui, sans-serif' }}>
           Add Credit — {fullName}
         </Typography>
       </Box>

@@ -9,6 +9,7 @@ export interface IWaitingListDocument extends Document {
   preferredType?: string
   desiredMoveInDate?: Date
   notes?: string
+  smsOptIn?: boolean
   status: WaitingListStatus
   notifiedAt?: Date
   notifiedUnitId?: Types.ObjectId
@@ -25,6 +26,7 @@ const WaitingListSchema = new Schema<IWaitingListDocument>(
     preferredType: { type: String },
     desiredMoveInDate: { type: Date },
     notes: { type: String },
+    smsOptIn: { type: Boolean, default: false },
     status: {
       type: String,
       enum: ['waiting', 'notified', 'converted', 'expired'],

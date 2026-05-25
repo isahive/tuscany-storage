@@ -75,7 +75,7 @@ function FieldTypeChip({ type }: { type?: FieldType }) {
         fontWeight: 600,
         fontSize: '0.7rem',
         height: 20,
-        border: '1px solid #EDE5D8',
+        border: '1px solid #E5E7EB',
       }}
     />
   )
@@ -163,7 +163,7 @@ function EditFieldDialog({ open, onClose, field, onSave }: {
             sx={{ mb: 2 }}
           />
 
-          <Divider sx={{ my: 1.5, borderColor: '#EDE5D8' }} />
+          <Divider sx={{ my: 1.5, borderColor: '#E5E7EB' }} />
 
           <FormControlLabel
             control={<Checkbox checked={form.showOnSignup} onChange={(e) => setForm({ ...form, showOnSignup: e.target.checked })} />}
@@ -177,7 +177,7 @@ function EditFieldDialog({ open, onClose, field, onSave }: {
               />
             </Box>
           )}
-          <Divider sx={{ my: 1.5, borderColor: '#EDE5D8' }} />
+          <Divider sx={{ my: 1.5, borderColor: '#E5E7EB' }} />
           <FormControlLabel
             control={<Checkbox checked={form.showOnWaitingList} onChange={(e) => setForm({ ...form, showOnWaitingList: e.target.checked })} />}
             label="Show on waiting list"
@@ -321,7 +321,7 @@ export default function FormFieldSettingsPage() {
         </IconButton>
         <Typography
           variant="h5"
-          sx={{ fontWeight: 700, color: '#B8914A', fontFamily: '"Playfair Display", serif' }}
+          sx={{ fontWeight: 700, color: '#B8914A', fontFamily: 'var(--font-outfit), system-ui, sans-serif' }}
         >
           Form Field Settings for Customers
         </Typography>
@@ -340,7 +340,7 @@ export default function FormFieldSettingsPage() {
         Defaults
       </Typography>
 
-      <Card sx={{ mb: 4, border: '1px solid #EDE5D8' }}>
+      <Card sx={{ mb: 4, border: '1px solid #E5E7EB' }}>
         <TableContainer>
           <Table size="small">
             <TableHead>
@@ -356,7 +356,7 @@ export default function FormFieldSettingsPage() {
             </TableHead>
             <TableBody>
               {defaultFields.map((f) => (
-                <TableRow key={f.key} sx={{ '&:hover': { bgcolor: '#FAF7F2' }, '& td': { borderColor: '#EDE5D8' } }}>
+                <TableRow key={f.key} sx={{ '&:hover': { bgcolor: '#FAF7F2' }, '& td': { borderColor: '#E5E7EB' } }}>
                   <TableCell>
                     <Typography variant="body2" sx={{ fontWeight: 500 }}>{f.label}</Typography>
                     {f.helpText && (
@@ -391,7 +391,7 @@ export default function FormFieldSettingsPage() {
         Drag and drop to reorder
       </Typography>
 
-      <Card sx={{ mb: 3, border: '1px solid #EDE5D8' }}>
+      <Card sx={{ mb: 3, border: '1px solid #E5E7EB' }}>
         <TableContainer>
           <Table size="small">
             <TableHead>
@@ -416,7 +416,7 @@ export default function FormFieldSettingsPage() {
                 </TableRow>
               ) : (
                 customFields.map((f) => (
-                  <TableRow key={f.key} sx={{ '&:hover': { bgcolor: '#FAF7F2' }, '& td': { borderColor: '#EDE5D8' } }}>
+                  <TableRow key={f.key} sx={{ '&:hover': { bgcolor: '#FAF7F2' }, '& td': { borderColor: '#E5E7EB' } }}>
                     <TableCell>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                         <DragIndicatorIcon sx={{ fontSize: 18, color: 'text.disabled', cursor: 'grab' }} />
@@ -463,9 +463,9 @@ export default function FormFieldSettingsPage() {
       </Button>
 
       {/* ── Create Custom Field ──────────────────────────────────────── */}
-      <Card sx={{ maxWidth: 560, mb: 4, border: '1px solid #EDE5D8' }}>
+      <Card sx={{ maxWidth: 560, mb: 4, border: '1px solid #E5E7EB' }}>
         <CardContent sx={{ p: 3 }}>
-          <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 2, bgcolor: '#1C0F06', color: 'white', mx: -3, mt: -3, px: 3, py: 1.2, borderRadius: '4px 4px 0 0' }}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 2, bgcolor: '#2C3826', color: 'white', mx: -3, mt: -3, px: 3, py: 1.2, borderRadius: '4px 4px 0 0' }}>
             Create Custom Field
           </Typography>
 

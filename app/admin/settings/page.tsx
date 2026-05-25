@@ -102,8 +102,8 @@ export default function SettingsPage() {
         variant="h5"
         sx={{
           fontWeight: 700,
-          color: '#1C0F06',
-          fontFamily: '"Playfair Display", serif',
+          color: '#2C3826',
+          fontFamily: 'var(--font-outfit), system-ui, sans-serif',
           mb: 3,
         }}
       >
@@ -119,7 +119,7 @@ export default function SettingsPage() {
               tabIndex={0}
               role="link"
               sx={{
-                border: '1px solid #EDE5D8',
+                border: '1px solid #E5E7EB',
                 boxShadow: 'none',
                 borderRadius: 2,
                 cursor: 'pointer',
@@ -157,7 +157,7 @@ export default function SettingsPage() {
                 {/* Title */}
                 <Typography
                   variant="subtitle1"
-                  sx={{ fontWeight: 700, color: '#1C0F06', mb: 0.5 }}
+                  sx={{ fontWeight: 700, color: '#2C3826', mb: 0.5 }}
                 >
                   {card.title}
                 </Typography>

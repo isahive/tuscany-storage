@@ -119,8 +119,8 @@ export default function MailingLabelsPage() {
         variant="h5"
         sx={{
           fontWeight: 700,
-          color: '#1C0F06',
-          fontFamily: '"Playfair Display", serif',
+          color: '#2C3826',
+          fontFamily: 'var(--font-outfit), system-ui, sans-serif',
           mb: 0.5,
         }}
       >
@@ -133,13 +133,13 @@ export default function MailingLabelsPage() {
       <Alert
         severity="info"
         icon={<InfoOutlinedIcon fontSize="small" />}
-        sx={{ mb: 3, bgcolor: '#FAF7F2', border: '1px solid #EDE5D8', '& .MuiAlert-icon': { color: '#6B5B3E' } }}
+        sx={{ mb: 3, bgcolor: '#FAF7F2', border: '1px solid #E5E7EB', '& .MuiAlert-icon': { color: '#6B5B3E' } }}
       >
         Use Page Scaling &quot;None&quot; when printing. In Chrome, disable &quot;fit to page&quot;.
       </Alert>
 
       {/* Filters */}
-      <Card sx={{ mb: 3, border: '1px solid #EDE5D8', boxShadow: 'none' }}>
+      <Card sx={{ mb: 3, border: '1px solid #E5E7EB', boxShadow: 'none' }}>
         <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
           <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
             <FormControl size="small" sx={{ minWidth: 200 }}>
@@ -191,7 +191,7 @@ export default function MailingLabelsPage() {
                     onClick={() => hasAddress && toggleTenant(tenant.id)}
                     sx={{
                       border: '1px solid',
-                      borderColor: isSelected ? 'primary.main' : '#EDE5D8',
+                      borderColor: isSelected ? 'primary.main' : '#E5E7EB',
                       boxShadow: 'none',
                       borderRadius: 2,
                       cursor: hasAddress ? 'pointer' : 'default',
@@ -214,7 +214,7 @@ export default function MailingLabelsPage() {
                           onChange={() => hasAddress && toggleTenant(tenant.id)}
                         />
                         <Box sx={{ minWidth: 0 }}>
-                          <Typography variant="body2" sx={{ fontWeight: 600, color: '#1C0F06' }}>
+                          <Typography variant="body2" sx={{ fontWeight: 600, color: '#2C3826' }}>
                             {tenant.firstName} {tenant.lastName}
                           </Typography>
                           {tenant.address ? (

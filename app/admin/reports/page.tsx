@@ -105,7 +105,7 @@ export default function ReportsPage() {
         sx={{
           fontWeight: 700,
           color: '#B8914A',
-          fontFamily: '"Playfair Display", serif',
+          fontFamily: 'var(--font-outfit), system-ui, sans-serif',
           mb: 0.5,
         }}
       >
@@ -127,7 +127,7 @@ export default function ReportsPage() {
           <Card
             key={cat.title}
             sx={{
-              border: '1px solid #EDE5D8',
+              border: '1px solid #E5E7EB',
               boxShadow: 'none',
               borderRadius: 2,
             }}
@@ -143,7 +143,7 @@ export default function ReportsPage() {
               >
                 <Typography
                   variant="subtitle1"
-                  sx={{ fontWeight: 700, color: '#1C0F06' }}
+                  sx={{ fontWeight: 700, color: '#2C3826' }}
                 >
                   {cat.title}
                 </Typography>

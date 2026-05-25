@@ -494,7 +494,7 @@ export default function EditUnitPage() {
                   <Grid item xs={12} sm={4}>
                     <Box
                       sx={{
-                        border: '1px solid #EDE5D8',
+                        border: '1px solid #E5E7EB',
                         borderRadius: 1,
                         px: 2,
                         py: 1.75,
@@ -586,7 +586,7 @@ export default function EditUnitPage() {
                           fontWeight: selected ? 600 : 400,
                           bgcolor: selected ? 'primary.main' : 'transparent',
                           color: selected ? 'secondary.main' : 'text.primary',
-                          borderColor: selected ? 'primary.main' : '#EDE5D8',
+                          borderColor: selected ? 'primary.main' : '#E5E7EB',
                           '&:hover': {
                             bgcolor: selected ? 'primary.dark' : 'rgba(184,145,74,0.08)',
                           },
@@ -615,7 +615,7 @@ export default function EditUnitPage() {
                 variant="outlined"
                 onClick={() => router.push('/admin/units')}
                 disabled={submitting}
-                sx={{ borderColor: '#EDE5D8', color: 'text.secondary' }}
+                sx={{ borderColor: '#E5E7EB', color: 'text.secondary' }}
               >
                 Cancel
               </Button>
@@ -677,7 +677,7 @@ export default function EditUnitPage() {
             variant="outlined"
             onClick={() => setDeleteDialogOpen(false)}
             disabled={deleting}
-            sx={{ borderColor: '#EDE5D8', color: 'text.secondary' }}
+            sx={{ borderColor: '#E5E7EB', color: 'text.secondary' }}
           >
             Cancel
           </Button>

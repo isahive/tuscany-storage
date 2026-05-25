@@ -176,7 +176,7 @@ export default function RateManagementSummaryPage() {
   return (
     <Box>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2, flexWrap: 'wrap' }}>
-        <Typography variant="h5" sx={{ fontFamily: '"Playfair Display", serif', fontWeight: 700, color: '#1C0F06', flex: 1 }}>
+        <Typography variant="h5" sx={{ fontFamily: 'var(--font-outfit), system-ui, sans-serif', fontWeight: 700, color: '#2C3826', flex: 1 }}>
           Rate Management
         </Typography>
         <Button component={Link} href="/admin/rate-management/mass-edit"
@@ -203,7 +203,7 @@ export default function RateManagementSummaryPage() {
       </Alert>
 
       {/* Unit Type Price Changes */}
-      <Card sx={{ border: '1px solid #EDE5D8', boxShadow: 'none', borderRadius: 2, mb: 3 }}>
+      <Card sx={{ border: '1px solid #E5E7EB', boxShadow: 'none', borderRadius: 2, mb: 3 }}>
         <CardContent sx={{ p: 3 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
             <TrendingUpIcon sx={{ color: '#B8914A' }} />
@@ -267,7 +267,7 @@ export default function RateManagementSummaryPage() {
       </Card>
 
       {/* Rental Price Changes */}
-      <Card sx={{ border: '1px solid #EDE5D8', boxShadow: 'none', borderRadius: 2, mb: 3 }}>
+      <Card sx={{ border: '1px solid #E5E7EB', boxShadow: 'none', borderRadius: 2, mb: 3 }}>
         <CardContent sx={{ p: 3 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
             <TrendingUpIcon sx={{ color: '#B8914A' }} />
@@ -345,7 +345,7 @@ export default function RateManagementSummaryPage() {
       </Card>
 
       {/* Submit */}
-      <Card sx={{ border: '1px solid #EDE5D8', boxShadow: 'none', borderRadius: 2, mb: 3 }}>
+      <Card sx={{ border: '1px solid #E5E7EB', boxShadow: 'none', borderRadius: 2, mb: 3 }}>
         <CardContent sx={{ p: 3, display: 'flex', alignItems: 'center', gap: 3, flexWrap: 'wrap' }}>
           <Typography variant="subtitle1" fontWeight={700}>Notifications</Typography>
           <FormControlLabel control={<Checkbox checked={channels.email} onChange={(e) => setChannels((c) => ({ ...c, email: e.target.checked }))} />} label="Email" />

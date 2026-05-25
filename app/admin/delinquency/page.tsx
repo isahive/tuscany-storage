@@ -624,14 +624,14 @@ export default function DelinquencyPage() {
                 p: 1.5,
                 borderRadius: 1,
                 bgcolor: '#FAF7F2',
-                border: '1px solid #EDE5D8',
+                border: '1px solid #E5E7EB',
                 display: 'flex',
                 alignItems: 'center',
                 gap: 1.5,
                 flexWrap: 'wrap',
               }}
             >
-              <Typography variant="body2" sx={{ fontWeight: 600, color: '#1C0F06', mr: 1 }}>
+              <Typography variant="body2" sx={{ fontWeight: 600, color: '#2C3826', mr: 1 }}>
                 {selectedCount} selected
               </Typography>
               <Button
@@ -696,7 +696,7 @@ export default function DelinquencyPage() {
           sx={{
             border: 'none',
             '& .MuiDataGrid-columnHeader': {
-              bgcolor: '#1C0F06',
+              bgcolor: '#2C3826',
               color: 'white',
               fontWeight: 600,
             },
@@ -716,8 +716,8 @@ export default function DelinquencyPage() {
               bgcolor: 'rgba(184,145,74,0.08)',
               '&:hover': { bgcolor: 'rgba(184,145,74,0.12)' },
             },
-            '& .MuiDataGrid-cell': { borderColor: '#EDE5D8' },
-            '& .MuiDataGrid-footerContainer': { borderColor: '#EDE5D8' },
+            '& .MuiDataGrid-cell': { borderColor: '#E5E7EB' },
+            '& .MuiDataGrid-footerContainer': { borderColor: '#E5E7EB' },
           }}
         />
       </Card>

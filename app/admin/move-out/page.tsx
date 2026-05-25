@@ -124,8 +124,8 @@ function DetailDrawer({ row, open, onClose, onDecision, onFinalize }: DetailDraw
       onClose={onClose}
       PaperProps={{ sx: { width: { xs: '100%', sm: 480 }, bgcolor: '#FFFFFF' } }}
     >
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 3, py: 2, borderBottom: '1px solid #EDE5D8', bgcolor: '#FAF7F2' }}>
-        <Typography variant="subtitle1" fontWeight={700} sx={{ fontFamily: '"Playfair Display", serif' }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 3, py: 2, borderBottom: '1px solid #E5E7EB', bgcolor: '#FAF7F2' }}>
+        <Typography variant="subtitle1" fontWeight={700} sx={{ fontFamily: 'var(--font-outfit), system-ui, sans-serif' }}>
           Move-Out Request
         </Typography>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -203,7 +203,7 @@ function DetailDrawer({ row, open, onClose, onDecision, onFinalize }: DetailDraw
           <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 1 }}>
             {row.photoUrls.map((url, i) => (
               <Box key={url} component="a" href={url} target="_blank" rel="noopener noreferrer" sx={{ display: 'block', borderRadius: 1, overflow: 'hidden' }}>
-                <Box component="img" src={url} alt={`Unit photo ${i + 1}`} sx={{ width: '100%', aspectRatio: '4/3', objectFit: 'cover', display: 'block', border: '1px solid #EDE5D8', borderRadius: 1 }} />
+                <Box component="img" src={url} alt={`Unit photo ${i + 1}`} sx={{ width: '100%', aspectRatio: '4/3', objectFit: 'cover', display: 'block', border: '1px solid #E5E7EB', borderRadius: 1 }} />
               </Box>
             ))}
           </Box>
@@ -230,7 +230,7 @@ function DetailDrawer({ row, open, onClose, onDecision, onFinalize }: DetailDraw
       </Box>
 
       {isPending && (
-        <Box sx={{ px: 3, py: 2, borderTop: '1px solid #EDE5D8', display: 'flex', gap: 1.5, bgcolor: '#FAF7F2' }}>
+        <Box sx={{ px: 3, py: 2, borderTop: '1px solid #E5E7EB', display: 'flex', gap: 1.5, bgcolor: '#FAF7F2' }}>
           <Button variant="contained" fullWidth disabled={submitting} startIcon={submitting ? <CircularProgress size={16} color="inherit" /> : <CheckCircleIcon />} onClick={() => handleDecision('approved')} sx={{ bgcolor: '#065F46', '&:hover': { bgcolor: '#054d38' } }}>
             {submitting ? 'Saving…' : 'Approve'}
           </Button>
@@ -241,7 +241,7 @@ function DetailDrawer({ row, open, onClose, onDecision, onFinalize }: DetailDraw
       )}
 
       {canFinalize && (
-        <Box sx={{ px: 3, py: 2, borderTop: '1px solid #EDE5D8', bgcolor: '#FAF7F2' }}>
+        <Box sx={{ px: 3, py: 2, borderTop: '1px solid #E5E7EB', bgcolor: '#FAF7F2' }}>
           <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.5 }}>
             Approved — ready to finalize. This ends the lease, frees the unit, stops autopay, and sends the move-out receipt.
           </Typography>
@@ -251,7 +251,7 @@ function DetailDrawer({ row, open, onClose, onDecision, onFinalize }: DetailDraw
             disabled={submitting}
             startIcon={submitting ? <CircularProgress size={16} color="inherit" /> : <GavelIcon />}
             onClick={handleFinalize}
-            sx={{ bgcolor: '#1C0F06', '&:hover': { bgcolor: '#000000' } }}
+            sx={{ bgcolor: '#2C3826', '&:hover': { bgcolor: '#000000' } }}
           >
             {submitting ? 'Finalizing…' : 'Finalize Move-Out'}
           </Button>
@@ -259,7 +259,7 @@ function DetailDrawer({ row, open, onClose, onDecision, onFinalize }: DetailDraw
       )}
 
       {row.leaseEnded && (
-        <Box sx={{ px: 3, py: 2, borderTop: '1px solid #EDE5D8', bgcolor: '#FAF7F2' }}>
+        <Box sx={{ px: 3, py: 2, borderTop: '1px solid #E5E7EB', bgcolor: '#FAF7F2' }}>
           <Typography variant="caption" color="text.secondary">
             Lease has been ended. This request is fully closed.
           </Typography>
@@ -267,7 +267,7 @@ function DetailDrawer({ row, open, onClose, onDecision, onFinalize }: DetailDraw
       )}
 
       {!isPending && !canFinalize && !row.leaseEnded && (
-        <Box sx={{ px: 3, py: 2, borderTop: '1px solid #EDE5D8', bgcolor: '#FAF7F2' }}>
+        <Box sx={{ px: 3, py: 2, borderTop: '1px solid #E5E7EB', bgcolor: '#FAF7F2' }}>
           <Typography variant="caption" color="text.secondary">
             This request has already been <strong>{row.status}</strong>.
           </Typography>
@@ -410,7 +410,7 @@ export default function AdminMoveOutPage() {
     <Box>
       <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', mb: 3 }}>
         <Box>
-          <Typography variant="h5" sx={{ fontFamily: '"Playfair Display", serif', color: 'secondary.main', fontWeight: 700 }}>
+          <Typography variant="h5" sx={{ fontFamily: 'var(--font-outfit), system-ui, sans-serif', color: 'secondary.main', fontWeight: 700 }}>
             Move-Out Requests
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
@@ -427,7 +427,7 @@ export default function AdminMoveOutPage() {
 
       {loadError && <Alert severity="error" sx={{ mb: 2 }}>{loadError}</Alert>}
 
-      <Card sx={{ border: '1px solid #EDE5D8', boxShadow: 'none' }}>
+      <Card sx={{ border: '1px solid #E5E7EB', boxShadow: 'none' }}>
         <DataGrid
           rows={rows}
           columns={columns}
@@ -442,12 +442,12 @@ export default function AdminMoveOutPage() {
           sx={{
             border: 'none',
             bgcolor: '#FFFFFF',
-            '& .MuiDataGrid-columnHeader': { bgcolor: '#1C0F06', color: '#FFFFFF', fontWeight: 600 },
+            '& .MuiDataGrid-columnHeader': { bgcolor: '#2C3826', color: '#FFFFFF', fontWeight: 600 },
             '& .MuiDataGrid-sortIcon': { color: 'rgba(255,255,255,0.7)' },
             '& .MuiDataGrid-menuIconButton': { color: 'rgba(255,255,255,0.7)' },
             '& .MuiDataGrid-row:hover': { bgcolor: '#FAF7F2' },
-            '& .MuiDataGrid-cell': { borderColor: '#EDE5D8', display: 'flex', alignItems: 'center' },
-            '& .MuiDataGrid-footerContainer': { borderColor: '#EDE5D8' },
+            '& .MuiDataGrid-cell': { borderColor: '#E5E7EB', display: 'flex', alignItems: 'center' },
+            '& .MuiDataGrid-footerContainer': { borderColor: '#E5E7EB' },
           }}
         />
       </Card>

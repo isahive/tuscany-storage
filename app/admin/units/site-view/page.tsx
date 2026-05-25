@@ -99,7 +99,7 @@ export default function UnitSiteViewPage() {
           sx={{ color: 'text.secondary', textTransform: 'none', fontWeight: 500, '&:hover': { color: '#B8914A', bgcolor: 'transparent' }, px: 0, minWidth: 0 }}>
           Units
         </Button>
-        <Typography variant="h5" sx={{ fontFamily: '"Playfair Display", serif', fontWeight: 700, color: '#1C0F06', flex: 1 }}>
+        <Typography variant="h5" sx={{ fontFamily: 'var(--font-outfit), system-ui, sans-serif', fontWeight: 700, color: '#2C3826', flex: 1 }}>
           Site View
         </Typography>
         {unplacedCount > 0 && (
@@ -114,7 +114,7 @@ export default function UnitSiteViewPage() {
           size="small"
           component={Link}
           href="/admin/units/site-map"
-          sx={{ borderColor: '#EDE5D8', textTransform: 'none' }}
+          sx={{ borderColor: '#E5E7EB', textTransform: 'none' }}
         >
           Edit Layout
         </Button>
@@ -122,11 +122,11 @@ export default function UnitSiteViewPage() {
 
       {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>{error}</Alert>}
 
-      <Card sx={{ border: '1px solid #EDE5D8', boxShadow: 'none', borderRadius: 2, overflow: 'hidden' }}>
+      <Card sx={{ border: '1px solid #E5E7EB', boxShadow: 'none', borderRadius: 2, overflow: 'hidden' }}>
         <Tabs
           value={floor}
           onChange={(_, v) => setFloor(v)}
-          sx={{ borderBottom: '1px solid #EDE5D8', px: 2 }}
+          sx={{ borderBottom: '1px solid #E5E7EB', px: 2 }}
         >
           {FLOORS.map((f) => (
             <Tab key={f} label={`Floor ${f}`} value={f} sx={{ textTransform: 'none', fontWeight: 600 }} />
@@ -134,7 +134,7 @@ export default function UnitSiteViewPage() {
         </Tabs>
 
         {/* Compact legend so admins know which color is what when scanning the map. */}
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, p: 2, borderBottom: '1px solid #EDE5D8' }}>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, p: 2, borderBottom: '1px solid #E5E7EB' }}>
           {(['available', 'rented', 'reserved', 'late', 'locked_out', 'pre_lien', 'lien', 'auction', 'moving_out'] as UnitDisplayStatus[]).map((s) => {
             const c = DISPLAY_STATUS_COLORS[s]
             return (

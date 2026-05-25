@@ -138,13 +138,13 @@ export default function BatchDetailPage() {
           sx={{ color: 'text.secondary', textTransform: 'none', fontWeight: 500, '&:hover': { color: '#B8914A', bgcolor: 'transparent' }, px: 0, minWidth: 0 }}>
           Batches
         </Button>
-        <Typography variant="h5" sx={{ fontFamily: '"Playfair Display", serif', fontWeight: 700, color: '#1C0F06', flex: 1 }}>
+        <Typography variant="h5" sx={{ fontFamily: 'var(--font-outfit), system-ui, sans-serif', fontWeight: 700, color: '#2C3826', flex: 1 }}>
           Batch · {fmt(batch.createdAt)}
         </Typography>
         <Chip label={batch.status.replace('_', ' ')} sx={{ textTransform: 'capitalize' }} />
       </Box>
 
-      <Card sx={{ border: '1px solid #EDE5D8', boxShadow: 'none', borderRadius: 2, mb: 3 }}>
+      <Card sx={{ border: '1px solid #E5E7EB', boxShadow: 'none', borderRadius: 2, mb: 3 }}>
         <CardContent sx={{ p: 3 }}>
           <Typography variant="body2" color="text.secondary">Created by</Typography>
           <Typography sx={{ mb: 1 }}>{batch.createdBy}</Typography>
@@ -154,7 +154,7 @@ export default function BatchDetailPage() {
       </Card>
 
       {batch.unitTypeChanges.length > 0 && (
-        <Card sx={{ border: '1px solid #EDE5D8', boxShadow: 'none', borderRadius: 2, mb: 3 }}>
+        <Card sx={{ border: '1px solid #E5E7EB', boxShadow: 'none', borderRadius: 2, mb: 3 }}>
           <CardContent sx={{ p: 3 }}>
             <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 2 }}>Unit Type Price Changes</Typography>
             <TableContainer>
@@ -188,7 +188,7 @@ export default function BatchDetailPage() {
       )}
 
       {batch.rentalChanges.length > 0 && (
-        <Card sx={{ border: '1px solid #EDE5D8', boxShadow: 'none', borderRadius: 2, mb: 3 }}>
+        <Card sx={{ border: '1px solid #E5E7EB', boxShadow: 'none', borderRadius: 2, mb: 3 }}>
           <CardContent sx={{ p: 3 }}>
             <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 2 }}>Scheduled Rental Price Changes</Typography>
             <TableContainer>

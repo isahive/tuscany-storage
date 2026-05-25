@@ -214,7 +214,7 @@ export default function AdminDashboard() {
         <Grid item xs={12} lg={7}>
           <Card>
             <CardContent sx={{ p: 0 }}>
-              <Box sx={{ px: 3, py: 2, borderBottom: '1px solid #EDE5D8' }}>
+              <Box sx={{ px: 3, py: 2, borderBottom: '1px solid #E5E7EB' }}>
                 <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
                   Delinquency Breakdown
                 </Typography>
@@ -277,7 +277,7 @@ export default function AdminDashboard() {
         <Grid item xs={12} lg={5}>
           <Card>
             <CardContent sx={{ p: 0 }}>
-              <Box sx={{ px: 3, py: 2, borderBottom: '1px solid #EDE5D8' }}>
+              <Box sx={{ px: 3, py: 2, borderBottom: '1px solid #E5E7EB' }}>
                 <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
                   Upcoming Move-Outs
                 </Typography>

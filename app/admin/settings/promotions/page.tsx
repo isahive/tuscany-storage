@@ -102,7 +102,7 @@ const METHOD_CONFIG: Record<Method, { label: string; icon: React.ReactNode; colo
   automatic:  { label: 'Automatic', icon: <AutoAwesomeIcon sx={{ fontSize: 16 }} />, color: '#065F46', bg: '#D1FAE5', desc: 'Automatically applied to qualifying rentals.' },
 }
 
-const inputSx = { '& .MuiOutlinedInput-root': { '& fieldset': { borderColor: '#EDE5D8' }, '&:hover fieldset': { borderColor: '#B8914A' }, '&.Mui-focused fieldset': { borderColor: '#B8914A' } } }
+const inputSx = { '& .MuiOutlinedInput-root': { '& fieldset': { borderColor: '#E5E7EB' }, '&:hover fieldset': { borderColor: '#B8914A' }, '&.Mui-focused fieldset': { borderColor: '#B8914A' } } }
 
 const fmtDate = (d: string) => {
   try { return new Date(d).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' }) }
@@ -281,7 +281,7 @@ export default function PromotionsPage() {
           sx={{ color: 'text.secondary', textTransform: 'none', fontWeight: 500, '&:hover': { color: '#B8914A', bgcolor: 'transparent' }, px: 0, minWidth: 0 }}>
           Setup
         </Button>
-        <Typography variant="h5" sx={{ fontFamily: '"Playfair Display", serif', fontWeight: 700, color: '#1C0F06', flex: 1 }}>
+        <Typography variant="h5" sx={{ fontFamily: 'var(--font-outfit), system-ui, sans-serif', fontWeight: 700, color: '#2C3826', flex: 1 }}>
           Promotions
         </Typography>
         <Button variant="contained" startIcon={<AddIcon />} onClick={openNew}
@@ -299,10 +299,10 @@ export default function PromotionsPage() {
 
       {/* Active Promotions */}
       {activePromos.length === 0 && retiredPromos.length === 0 ? (
-        <Card sx={{ border: '1px solid #EDE5D8', boxShadow: 'none', borderRadius: 2 }}>
+        <Card sx={{ border: '1px solid #E5E7EB', boxShadow: 'none', borderRadius: 2 }}>
           <CardContent sx={{ p: 6, textAlign: 'center' }}>
             <LocalOfferIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 2 }} />
-            <Typography variant="h6" sx={{ fontFamily: '"Playfair Display", serif', mb: 1 }}>No Promotions Yet</Typography>
+            <Typography variant="h6" sx={{ fontFamily: 'var(--font-outfit), system-ui, sans-serif', mb: 1 }}>No Promotions Yet</Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>Create your first promotion to start offering discounts to tenants.</Typography>
             <Button variant="contained" startIcon={<AddIcon />} onClick={openNew}
               sx={{ bgcolor: '#B8914A', '&:hover': { bgcolor: '#9A7A3E' }, textTransform: 'none', fontWeight: 600 }}>
@@ -327,7 +327,7 @@ export default function PromotionsPage() {
 
       {/* ── Create / Edit Dialog ──────────────────────────────────────────── */}
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm" fullWidth scroll="paper">
-        <DialogTitle sx={{ fontFamily: '"Playfair Display", serif', fontWeight: 700 }}>
+        <DialogTitle sx={{ fontFamily: 'var(--font-outfit), system-ui, sans-serif', fontWeight: 700 }}>
           {editingId ? 'Edit Promotion' : 'New Promotion'}
         </DialogTitle>
         <DialogContent sx={{ pt: '16px !important' }}>
@@ -341,7 +341,7 @@ export default function PromotionsPage() {
               placeholder="e.g. 5% off each month — visible to manager and customer"
               sx={inputSx} />
 
-            <Divider sx={{ borderColor: '#EDE5D8' }} />
+            <Divider sx={{ borderColor: '#E5E7EB' }} />
 
             {/* Availability */}
             <Box>
@@ -365,7 +365,7 @@ export default function PromotionsPage() {
                 label={<Typography variant="caption">No end date</Typography>} />
             </Box>
 
-            <Divider sx={{ borderColor: '#EDE5D8' }} />
+            <Divider sx={{ borderColor: '#E5E7EB' }} />
 
             {/* Method */}
             <Box>
@@ -388,7 +388,7 @@ export default function PromotionsPage() {
               )}
             </Box>
 
-            <Divider sx={{ borderColor: '#EDE5D8' }} />
+            <Divider sx={{ borderColor: '#E5E7EB' }} />
 
             {/* Unit Types */}
             <Box>
@@ -407,7 +407,7 @@ export default function PromotionsPage() {
                         cursor: 'pointer', fontWeight: 500,
                         bgcolor: form.unitTypes.includes(size) ? '#B8914A' : 'transparent',
                         color: form.unitTypes.includes(size) ? 'white' : 'text.primary',
-                        border: `1px solid ${form.unitTypes.includes(size) ? '#B8914A' : '#EDE5D8'}`,
+                        border: `1px solid ${form.unitTypes.includes(size) ? '#B8914A' : '#E5E7EB'}`,
                         '&:hover': { bgcolor: form.unitTypes.includes(size) ? '#9A7A3E' : '#f5f0e8' },
                       }} />
                   ))}
@@ -418,7 +418,7 @@ export default function PromotionsPage() {
               )}
             </Box>
 
-            <Divider sx={{ borderColor: '#EDE5D8' }} />
+            <Divider sx={{ borderColor: '#E5E7EB' }} />
 
             {/* Discount */}
             <Box>
@@ -431,7 +431,7 @@ export default function PromotionsPage() {
                       cursor: 'pointer', fontWeight: 500,
                       bgcolor: form.discountType === dt ? '#B8914A' : 'transparent',
                       color: form.discountType === dt ? 'white' : 'text.primary',
-                      border: `1px solid ${form.discountType === dt ? '#B8914A' : '#EDE5D8'}`,
+                      border: `1px solid ${form.discountType === dt ? '#B8914A' : '#E5E7EB'}`,
                       '&:hover': { bgcolor: form.discountType === dt ? '#9A7A3E' : '#f5f0e8' },
                     }} />
                 ))}
@@ -454,7 +454,7 @@ export default function PromotionsPage() {
               />
             </Box>
 
-            <Divider sx={{ borderColor: '#EDE5D8' }} />
+            <Divider sx={{ borderColor: '#E5E7EB' }} />
 
             {/* Timing */}
             <Box>
@@ -511,7 +511,7 @@ export default function PromotionsPage() {
 
       {/* Delete / Retire Dialog */}
       <Dialog open={!!deleteTarget} onClose={() => setDeleteTarget(null)} maxWidth="xs" fullWidth>
-        <DialogTitle sx={{ fontFamily: '"Playfair Display", serif' }}>
+        <DialogTitle sx={{ fontFamily: 'var(--font-outfit), system-ui, sans-serif' }}>
           {deleteTarget && deleteTarget.appliedCount > 0 ? 'Retire Promotion?' : 'Delete Promotion?'}
         </DialogTitle>
         <DialogContent>
@@ -556,13 +556,13 @@ function PromoCard({ promo, onEdit, onDelete, retired }: { promo: Promotion; onE
     : `$${(promo.discountValue / 100).toFixed(2)}`
 
   return (
-    <Card sx={{ border: '1px solid #EDE5D8', boxShadow: 'none', borderRadius: 2, opacity: retired ? 0.6 : 1 }}>
+    <Card sx={{ border: '1px solid #E5E7EB', boxShadow: 'none', borderRadius: 2, opacity: retired ? 0.6 : 1 }}>
       <CardContent sx={{ p: 3, '&:last-child': { pb: 3 } }}>
         {/* Top row: name + actions */}
         <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 2 }}>
           <Box>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-              <Typography variant="subtitle1" fontWeight={700} sx={{ color: '#1C0F06' }}>{promo.name}</Typography>
+              <Typography variant="subtitle1" fontWeight={700} sx={{ color: '#2C3826' }}>{promo.name}</Typography>
               {retired && <Chip label="Retired" size="small" sx={{ bgcolor: '#F3F4F6', color: '#6B7280', fontWeight: 500, fontSize: '0.7rem' }} />}
               {/* Storable parity: orange "Expired" tag when endDate is past
                   and noExpiration is false. Shows even when retired. */}
@@ -627,7 +627,7 @@ function PromoCard({ promo, onEdit, onDelete, retired }: { promo: Promotion; onE
         </Box>
 
         {promo.method === 'promo_code' && promo.promoCode && (
-          <Box sx={{ mt: 2, pt: 1.5, borderTop: '1px solid #EDE5D8', display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Box sx={{ mt: 2, pt: 1.5, borderTop: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', gap: 1 }}>
             <Typography variant="caption" color="text.secondary">Promo Code:</Typography>
             <Chip label={promo.promoCode} size="small"
               sx={{ fontFamily: 'monospace', fontWeight: 700, bgcolor: '#EDE9FE', color: '#7C3AED', letterSpacing: '0.05em' }} />

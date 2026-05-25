@@ -230,7 +230,7 @@ export default function PrintBatchDetailPage() {
         <TableContainer>
           <Table size="small">
             <TableHead>
-              <TableRow sx={{ bgcolor: '#1C0F06' }}>
+              <TableRow sx={{ bgcolor: '#2C3826' }}>
                 <TableCell sx={{ color: 'white', fontWeight: 600 }}>Customer</TableCell>
                 <TableCell sx={{ color: 'white', fontWeight: 600 }}>Unit</TableCell>
                 <TableCell sx={{ color: 'white', fontWeight: 600 }}>Document Type</TableCell>
@@ -246,7 +246,7 @@ export default function PrintBatchDetailPage() {
                     hover
                     sx={{
                       '&:hover': { bgcolor: '#FAF7F2' },
-                      '& .MuiTableCell-root': { borderColor: '#EDE5D8' },
+                      '& .MuiTableCell-root': { borderColor: '#E5E7EB' },
                     }}
                   >
                     <TableCell>
@@ -286,7 +286,7 @@ export default function PrintBatchDetailPage() {
 
         {/* Mark as Printed */}
         {batch.status === 'created' && (
-          <Box sx={{ display: 'flex', justifyContent: 'flex-end', p: 2, borderTop: '1px solid #EDE5D8' }}>
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', p: 2, borderTop: '1px solid #E5E7EB' }}>
             <Button
               variant="contained"
               startIcon={marking ? undefined : <CheckCircleIcon />}

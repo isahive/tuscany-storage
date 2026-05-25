@@ -57,7 +57,7 @@ const EMPTY_FORM: FormState = {
   displayOrder: '0',
 }
 
-const inputSx = { '& .MuiOutlinedInput-root': { '& fieldset': { borderColor: '#EDE5D8' }, '&:hover fieldset': { borderColor: '#B8914A' }, '&.Mui-focused fieldset': { borderColor: '#B8914A' } } }
+const inputSx = { '& .MuiOutlinedInput-root': { '& fieldset': { borderColor: '#E5E7EB' }, '&:hover fieldset': { borderColor: '#B8914A' }, '&.Mui-focused fieldset': { borderColor: '#B8914A' } } }
 
 const fmtMoney = (cents: number) =>
   `$${(cents / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
@@ -192,7 +192,7 @@ export default function ProtectionPlansPage() {
           sx={{ color: 'text.secondary', textTransform: 'none', fontWeight: 500, '&:hover': { color: '#B8914A', bgcolor: 'transparent' }, px: 0, minWidth: 0 }}>
           Setup
         </Button>
-        <Typography variant="h5" sx={{ fontFamily: '"Playfair Display", serif', fontWeight: 700, color: '#1C0F06', flex: 1 }}>
+        <Typography variant="h5" sx={{ fontFamily: 'var(--font-outfit), system-ui, sans-serif', fontWeight: 700, color: '#2C3826', flex: 1 }}>
           Protection Plans
         </Typography>
         <Button variant="contained" startIcon={<AddIcon />} onClick={openNew}
@@ -210,10 +210,10 @@ export default function ProtectionPlansPage() {
 
       {/* Active Plans */}
       {activePlans.length === 0 && retiredPlans.length === 0 ? (
-        <Card sx={{ border: '1px solid #EDE5D8', boxShadow: 'none', borderRadius: 2 }}>
+        <Card sx={{ border: '1px solid #E5E7EB', boxShadow: 'none', borderRadius: 2 }}>
           <CardContent sx={{ p: 6, textAlign: 'center' }}>
             <ShieldOutlinedIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 2 }} />
-            <Typography variant="h6" sx={{ fontFamily: '"Playfair Display", serif', mb: 1 }}>No Protection Plans Yet</Typography>
+            <Typography variant="h6" sx={{ fontFamily: 'var(--font-outfit), system-ui, sans-serif', mb: 1 }}>No Protection Plans Yet</Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>Create your first protection plan to start offering coverage tiers to tenants.</Typography>
             <Button variant="contained" startIcon={<AddIcon />} onClick={openNew}
               sx={{ bgcolor: '#B8914A', '&:hover': { bgcolor: '#9A7A3E' }, textTransform: 'none', fontWeight: 600 }}>
@@ -238,7 +238,7 @@ export default function ProtectionPlansPage() {
 
       {/* ── Create / Edit Dialog ──────────────────────────────────────────── */}
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm" fullWidth scroll="paper">
-        <DialogTitle sx={{ fontFamily: '"Playfair Display", serif', fontWeight: 700 }}>
+        <DialogTitle sx={{ fontFamily: 'var(--font-outfit), system-ui, sans-serif', fontWeight: 700 }}>
           {editingId ? 'Edit Protection Plan' : 'New Protection Plan'}
         </DialogTitle>
         <DialogContent sx={{ pt: '16px !important' }}>
@@ -292,7 +292,7 @@ export default function ProtectionPlansPage() {
 
       {/* Delete / Retire Dialog */}
       <Dialog open={!!deleteTarget} onClose={() => setDeleteTarget(null)} maxWidth="xs" fullWidth>
-        <DialogTitle sx={{ fontFamily: '"Playfair Display", serif' }}>
+        <DialogTitle sx={{ fontFamily: 'var(--font-outfit), system-ui, sans-serif' }}>
           {deleteTarget && deleteTarget.appliedCount > 0 ? 'Retire Protection Plan?' : 'Delete Protection Plan?'}
         </DialogTitle>
         <DialogContent>
@@ -332,7 +332,7 @@ export default function ProtectionPlansPage() {
 
 function PlanCard({ plan, onEdit, onDelete, retired }: { plan: ProtectionPlan; onEdit: () => void; onDelete?: () => void; retired?: boolean }) {
   return (
-    <Card sx={{ border: '1px solid #EDE5D8', boxShadow: 'none', borderRadius: 2, opacity: retired ? 0.6 : 1 }}>
+    <Card sx={{ border: '1px solid #E5E7EB', boxShadow: 'none', borderRadius: 2, opacity: retired ? 0.6 : 1 }}>
       <CardContent sx={{ p: 3, '&:last-child': { pb: 3 } }}>
         {/* Top row: name + actions */}
         <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 2 }}>
@@ -342,7 +342,7 @@ function PlanCard({ plan, onEdit, onDelete, retired }: { plan: ProtectionPlan; o
             </Box>
             <Box>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.25 }}>
-                <Typography variant="subtitle1" fontWeight={700} sx={{ color: '#1C0F06' }}>{plan.name}</Typography>
+                <Typography variant="subtitle1" fontWeight={700} sx={{ color: '#2C3826' }}>{plan.name}</Typography>
                 {retired && <Chip label="Retired" size="small" sx={{ bgcolor: '#F3F4F6', color: '#6B7280', fontWeight: 500, fontSize: '0.7rem' }} />}
               </Box>
               {plan.description && (
@@ -367,7 +367,7 @@ function PlanCard({ plan, onEdit, onDelete, retired }: { plan: ProtectionPlan; o
         {/* Info grid */}
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
           <InfoItem label="Coverage">
-            <Typography variant="body2" fontWeight={700} sx={{ color: '#1C0F06', fontSize: '1rem' }}>{fmtMoney(plan.coverageAmount)}</Typography>
+            <Typography variant="body2" fontWeight={700} sx={{ color: '#2C3826', fontSize: '1rem' }}>{fmtMoney(plan.coverageAmount)}</Typography>
           </InfoItem>
           <InfoItem label="Monthly Price">
             <Typography variant="body2" fontWeight={700} sx={{ color: '#065F46', fontSize: '1rem' }}>{fmtMoney(plan.monthlyPrice)}</Typography>

@@ -258,7 +258,7 @@ interface SummaryCardProps {
 
 function SummaryCard({ title, count, icon, bgColor, textColor }: SummaryCardProps) {
   return (
-    <Card sx={{ border: '1px solid #EDE5D8', boxShadow: 'none' }}>
+    <Card sx={{ border: '1px solid #E5E7EB', boxShadow: 'none' }}>
       <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <Box>
@@ -532,7 +532,7 @@ export default function WaitingListPage() {
       </Grid>
 
       {/* Filters */}
-      <Card sx={{ mb: 2, border: '1px solid #EDE5D8', boxShadow: 'none' }}>
+      <Card sx={{ mb: 2, border: '1px solid #E5E7EB', boxShadow: 'none' }}>
         <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
           <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
             <TextField
@@ -568,7 +568,7 @@ export default function WaitingListPage() {
       </Card>
 
       {/* DataGrid */}
-      <Card sx={{ border: '1px solid #EDE5D8', boxShadow: 'none' }}>
+      <Card sx={{ border: '1px solid #E5E7EB', boxShadow: 'none' }}>
         <DataGrid
           rows={filtered}
           columns={columns}
@@ -580,7 +580,7 @@ export default function WaitingListPage() {
             border: 'none',
             bgcolor: '#FFFFFF',
             '& .MuiDataGrid-columnHeader': {
-              bgcolor: '#1C0F06',
+              bgcolor: '#2C3826',
               color: '#FFFFFF',
               fontWeight: 600,
             },
@@ -589,11 +589,11 @@ export default function WaitingListPage() {
             '& .MuiDataGrid-menuIconButton': { color: 'rgba(255,255,255,0.7)' },
             '& .MuiDataGrid-row:hover': { bgcolor: '#FAF7F2' },
             '& .MuiDataGrid-cell': {
-              borderColor: '#EDE5D8',
+              borderColor: '#E5E7EB',
               display: 'flex',
               alignItems: 'center',
             },
-            '& .MuiDataGrid-footerContainer': { borderColor: '#EDE5D8' },
+            '& .MuiDataGrid-footerContainer': { borderColor: '#E5E7EB' },
             '& .MuiDataGrid-columnSeparator': { color: 'rgba(255,255,255,0.2)' },
           }}
         />

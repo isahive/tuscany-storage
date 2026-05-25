@@ -135,7 +135,7 @@ export default function UnitListViewPage() {
           sx={{ color: 'text.secondary', textTransform: 'none', fontWeight: 500, '&:hover': { color: '#B8914A', bgcolor: 'transparent' }, px: 0, minWidth: 0 }}>
           Units
         </Button>
-        <Typography variant="h5" sx={{ fontFamily: '"Playfair Display", serif', fontWeight: 700, color: '#1C0F06', flex: 1 }}>
+        <Typography variant="h5" sx={{ fontFamily: 'var(--font-outfit), system-ui, sans-serif', fontWeight: 700, color: '#2C3826', flex: 1 }}>
           Unit List View
         </Typography>
         <Button size="small" startIcon={<PrintIcon />}
@@ -150,9 +150,9 @@ export default function UnitListViewPage() {
         </Button>
       </Box>
 
-      <Card sx={{ border: '1px solid #EDE5D8', boxShadow: 'none', borderRadius: 2 }}>
+      <Card sx={{ border: '1px solid #E5E7EB', boxShadow: 'none', borderRadius: 2 }}>
         <CardContent sx={{ p: 0 }}>
-          <Box className="no-print" sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 2, borderBottom: '1px solid #EDE5D8' }}>
+          <Box className="no-print" sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 2, borderBottom: '1px solid #E5E7EB' }}>
             <Typography variant="body2" color="text.secondary">Filter by status</Typography>
             <Select
               size="small"

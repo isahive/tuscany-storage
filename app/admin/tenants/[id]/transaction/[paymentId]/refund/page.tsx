@@ -207,7 +207,7 @@ export default function RefundPaymentPage() {
 
       <Card>
         <Box sx={{ px: 3, py: 2, borderBottom: '1px solid #E5E7EB' }}>
-          <Typography variant="h5" sx={{ fontWeight: 700, color: '#C2410C', fontFamily: '"Playfair Display", serif' }}>
+          <Typography variant="h5" sx={{ fontWeight: 700, color: '#C2410C', fontFamily: 'var(--font-outfit), system-ui, sans-serif' }}>
             {titleText}
           </Typography>
           <Breadcrumbs sx={{ mt: 0.5, fontSize: '0.8rem' }}>

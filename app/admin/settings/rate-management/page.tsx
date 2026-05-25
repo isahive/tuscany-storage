@@ -58,7 +58,7 @@ interface RentalRule {
 
 const inputSx = {
   '& .MuiOutlinedInput-root': {
-    '& fieldset': { borderColor: '#EDE5D8' },
+    '& fieldset': { borderColor: '#E5E7EB' },
     '&:hover fieldset': { borderColor: '#B8914A' },
     '&.Mui-focused fieldset': { borderColor: '#B8914A' },
   },
@@ -182,7 +182,7 @@ export default function RateManagementSettingsPage() {
           sx={{ color: 'text.secondary', textTransform: 'none', fontWeight: 500, '&:hover': { color: '#B8914A', bgcolor: 'transparent' }, px: 0, minWidth: 0 }}>
           Setup
         </Button>
-        <Typography variant="h5" sx={{ fontFamily: '"Playfair Display", serif', fontWeight: 700, color: '#1C0F06', flex: 1 }}>
+        <Typography variant="h5" sx={{ fontFamily: 'var(--font-outfit), system-ui, sans-serif', fontWeight: 700, color: '#2C3826', flex: 1 }}>
           Rate Management
         </Typography>
         <Button
@@ -204,7 +204,7 @@ export default function RateManagementSettingsPage() {
       {error && <Alert severity="error" onClose={() => setError(null)} sx={{ mb: 2, borderRadius: 2 }}>{error}</Alert>}
 
       {/* Enable + reminder */}
-      <Card sx={{ border: '1px solid #EDE5D8', boxShadow: 'none', borderRadius: 2, mb: 3 }}>
+      <Card sx={{ border: '1px solid #E5E7EB', boxShadow: 'none', borderRadius: 2, mb: 3 }}>
         <CardContent sx={{ p: 3 }}>
           <FormControlLabel
             control={
@@ -232,7 +232,7 @@ export default function RateManagementSettingsPage() {
       </Card>
 
       {/* Unit Type Price Change Rules */}
-      <Card sx={{ border: '1px solid #EDE5D8', boxShadow: 'none', borderRadius: 2, mb: 3 }}>
+      <Card sx={{ border: '1px solid #E5E7EB', boxShadow: 'none', borderRadius: 2, mb: 3 }}>
         <CardContent sx={{ p: 3 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
             <Typography variant="subtitle1" fontWeight={700}>Unit Type Price Change Rules (Street rates)</Typography>
@@ -330,7 +330,7 @@ export default function RateManagementSettingsPage() {
       </Card>
 
       {/* Rental Price Change Rules */}
-      <Card sx={{ border: '1px solid #EDE5D8', boxShadow: 'none', borderRadius: 2, mb: 3 }}>
+      <Card sx={{ border: '1px solid #E5E7EB', boxShadow: 'none', borderRadius: 2, mb: 3 }}>
         <CardContent sx={{ p: 3 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
             <Typography variant="subtitle1" fontWeight={700}>Rental Price Change Rules (Existing tenants)</Typography>

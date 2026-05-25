@@ -127,7 +127,7 @@ export default function MassVoidPage() {
         >
           Back to Customer
         </Button>
-        <Typography variant="h5" sx={{ fontWeight: 700, fontFamily: '"Playfair Display", serif', flex: 1 }}>
+        <Typography variant="h5" sx={{ fontWeight: 700, fontFamily: 'var(--font-outfit), system-ui, sans-serif', flex: 1 }}>
           Mass Void Unpaid Line Items — {tenantName}
         </Typography>
       </Box>

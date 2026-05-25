@@ -102,7 +102,7 @@ export default function RecurringFeesPage() {
         </Button>
         <Typography
           variant="h5"
-          sx={{ fontWeight: 700, color: '#1C0F06', fontFamily: '"Playfair Display", serif', flex: 1 }}
+          sx={{ fontWeight: 700, color: '#2C3826', fontFamily: 'var(--font-outfit), system-ui, sans-serif', flex: 1 }}
         >
           Recurring Fees{tenantName ? ` — ${tenantName}` : ''}
         </Typography>

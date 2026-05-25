@@ -236,7 +236,7 @@ function TBtn({
 }
 
 function TDivider() {
-  return <Divider orientation="vertical" flexItem sx={{ mx: 0.5, borderColor: '#EDE5D8' }} />
+  return <Divider orientation="vertical" flexItem sx={{ mx: 0.5, borderColor: '#E5E7EB' }} />
 }
 
 // ── Main page ─────────────────────────────────────────────────────────────────
@@ -399,7 +399,7 @@ export default function AgreementTemplatePage() {
         </Button>
         <Typography
           variant="h5"
-          sx={{ fontFamily: '"Playfair Display", serif', fontWeight: 700, color: '#1C0F06', flex: 1 }}
+          sx={{ fontFamily: 'var(--font-outfit), system-ui, sans-serif', fontWeight: 700, color: '#2C3826', flex: 1 }}
         >
           Storage Agreement
         </Typography>
@@ -430,7 +430,7 @@ export default function AgreementTemplatePage() {
       {/* Editor shell */}
       <Box
         sx={{
-          border: '1px solid #EDE5D8',
+          border: '1px solid #E5E7EB',
           borderRadius: 2,
           overflow: 'hidden',
           bgcolor: 'white',
@@ -443,7 +443,7 @@ export default function AgreementTemplatePage() {
             top: 64,
             zIndex: 10,
             bgcolor: '#FAF7F2',
-            borderBottom: '1px solid #EDE5D8',
+            borderBottom: '1px solid #E5E7EB',
           }}
         >
           {/* Formatting row */}
@@ -470,7 +470,7 @@ export default function AgreementTemplatePage() {
                 height: 30,
                 fontSize: '0.8rem',
                 mr: 0.5,
-                '& .MuiOutlinedInput-notchedOutline': { borderColor: '#EDE5D8' },
+                '& .MuiOutlinedInput-notchedOutline': { borderColor: '#E5E7EB' },
                 '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#B8914A' },
                 '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#B8914A' },
               }}
@@ -585,12 +585,12 @@ export default function AgreementTemplatePage() {
                     onClick={() => insertPlaceholder(token)}
                     title={`[[${token}]]`}
                     sx={{
-                      fontFamily: '"DM Sans", sans-serif',
+                      fontFamily: 'var(--font-inter), system-ui, sans-serif',
                       fontSize: '0.7rem',
                       height: 22,
                       bgcolor: 'white',
-                      border: '1px solid #EDE5D8',
-                      color: '#1C0F06',
+                      border: '1px solid #E5E7EB',
+                      color: '#2C3826',
                       cursor: 'pointer',
                       '&:hover': { bgcolor: '#B8914A', color: 'white', borderColor: '#B8914A' },
                       '& .MuiChip-label': { px: 0.75 },

@@ -28,7 +28,7 @@ interface UnitItem {
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
   return (
-    <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5, color: '#1C0F06' }}>
+    <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5, color: '#2C3826' }}>
       {children}
     </Typography>
   )

@@ -85,7 +85,7 @@ const EMPTY_EVENT: Omit<LateLienEvent, 'id'> = {
 
 // ── Styles ───────────────────────────────────────────────────────────────────
 
-const inputSx = { '& .MuiOutlinedInput-root': { '& fieldset': { borderColor: '#EDE5D8' }, '&:hover fieldset': { borderColor: '#B8914A' }, '&.Mui-focused fieldset': { borderColor: '#B8914A' } } }
+const inputSx = { '& .MuiOutlinedInput-root': { '& fieldset': { borderColor: '#E5E7EB' }, '&:hover fieldset': { borderColor: '#B8914A' }, '&.Mui-focused fieldset': { borderColor: '#B8914A' } } }
 const thSx = { fontWeight: 600, color: 'text.secondary', fontSize: '0.75rem', textTransform: 'uppercase' as const, letterSpacing: '0.05em' }
 
 // ── Default events ───────────────────────────────────────────────────────────
@@ -280,7 +280,7 @@ export default function LateLienSettingsPage() {
         >
           Setup
         </Button>
-        <Typography variant="h5" sx={{ fontFamily: '"Playfair Display", serif', fontWeight: 700, color: '#1C0F06', flex: 1 }}>
+        <Typography variant="h5" sx={{ fontFamily: 'var(--font-outfit), system-ui, sans-serif', fontWeight: 700, color: '#2C3826', flex: 1 }}>
           Late / Lien Settings
         </Typography>
         <Button
@@ -303,7 +303,7 @@ export default function LateLienSettingsPage() {
 
       {/* Auction grace period — Storable parity. Number of days between the
           auction event firing and the actual sale of belongings. */}
-      <Card sx={{ border: '1px solid #EDE5D8', boxShadow: 'none', borderRadius: 2, mb: 3 }}>
+      <Card sx={{ border: '1px solid #E5E7EB', boxShadow: 'none', borderRadius: 2, mb: 3 }}>
         <CardContent sx={{ p: 3, display: 'flex', alignItems: 'flex-start', gap: 3, flexWrap: 'wrap' }}>
           <Box sx={{ flex: '1 1 300px' }}>
             <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 0.5 }}>
@@ -332,7 +332,7 @@ export default function LateLienSettingsPage() {
       {/* Automatic Auction Dates — Storable parity. Sits on the Locked Out
           rule. Stamps lease.auctionDate at lockout time using either an
           offset or a pinned calendar date. */}
-      <Card sx={{ border: '1px solid #EDE5D8', boxShadow: 'none', borderRadius: 2, mb: 3 }}>
+      <Card sx={{ border: '1px solid #E5E7EB', boxShadow: 'none', borderRadius: 2, mb: 3 }}>
         <CardContent sx={{ p: 3 }}>
           <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 0.5 }}>
             Auction Date (when lockout fires)
@@ -382,7 +382,7 @@ export default function LateLienSettingsPage() {
       </Card>
 
       {/* Timeline Table */}
-      <Card sx={{ border: '1px solid #EDE5D8', boxShadow: 'none', borderRadius: 2 }}>
+      <Card sx={{ border: '1px solid #E5E7EB', boxShadow: 'none', borderRadius: 2 }}>
         <CardContent sx={{ p: 3 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -425,7 +425,7 @@ export default function LateLienSettingsPage() {
 
                       {/* Days */}
                       <TableCell align="center">
-                        <Typography variant="body2" fontWeight={700} sx={{ fontSize: '1.1rem', color: '#1C0F06' }}>
+                        <Typography variant="body2" fontWeight={700} sx={{ fontSize: '1.1rem', color: '#2C3826' }}>
                           {evt.daysPastDue}
                         </Typography>
                       </TableCell>
@@ -519,7 +519,7 @@ export default function LateLienSettingsPage() {
 
       {/* ── Add/Edit Dialog ─────────────────────────────────────────────────── */}
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ fontFamily: '"Playfair Display", serif', fontWeight: 700 }}>
+        <DialogTitle sx={{ fontFamily: 'var(--font-outfit), system-ui, sans-serif', fontWeight: 700 }}>
           {editingId ? 'Edit Event' : 'Add Escalation Event'}
         </DialogTitle>
         <DialogContent sx={{ pt: '16px !important' }}>
@@ -547,7 +547,7 @@ export default function LateLienSettingsPage() {
               />
             </Box>
 
-            <Divider sx={{ borderColor: '#EDE5D8' }} />
+            <Divider sx={{ borderColor: '#E5E7EB' }} />
 
             {/* Notifications */}
             <Box>
@@ -576,7 +576,7 @@ export default function LateLienSettingsPage() {
               />
             </Box>
 
-            <Divider sx={{ borderColor: '#EDE5D8' }} />
+            <Divider sx={{ borderColor: '#E5E7EB' }} />
 
             {/* Fees */}
             <Box>
@@ -629,7 +629,7 @@ export default function LateLienSettingsPage() {
               )}
             </Box>
 
-            <Divider sx={{ borderColor: '#EDE5D8' }} />
+            <Divider sx={{ borderColor: '#E5E7EB' }} />
 
             {/* Actions */}
             <Box>
@@ -658,7 +658,7 @@ export default function LateLienSettingsPage() {
 
       {/* Delete confirmation */}
       <Dialog open={!!deleteId} onClose={() => setDeleteId(null)} maxWidth="xs" fullWidth>
-        <DialogTitle sx={{ fontFamily: '"Playfair Display", serif' }}>Delete Event?</DialogTitle>
+        <DialogTitle sx={{ fontFamily: 'var(--font-outfit), system-ui, sans-serif' }}>Delete Event?</DialogTitle>
         <DialogContent>
           <Typography variant="body2" color="text.secondary">
             This escalation event will be removed from the timeline.

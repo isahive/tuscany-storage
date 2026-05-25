@@ -79,7 +79,7 @@ const DEFAULT_GATE_GROUPS = [
 
 // ── Shared input style ───────────────────────────────────────────────────────
 
-const inputSx = { '& .MuiOutlinedInput-root': { '& fieldset': { borderColor: '#EDE5D8' }, '&:hover fieldset': { borderColor: '#B8914A' }, '&.Mui-focused fieldset': { borderColor: '#B8914A' } } }
+const inputSx = { '& .MuiOutlinedInput-root': { '& fieldset': { borderColor: '#E5E7EB' }, '&:hover fieldset': { borderColor: '#B8914A' }, '&.Mui-focused fieldset': { borderColor: '#B8914A' } } }
 const switchSx = { '& .MuiSwitch-switchBase.Mui-checked': { color: '#B8914A' }, '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': { bgcolor: '#B8914A' } }
 
 // ── Page ─────────────────────────────────────────────────────────────────────
@@ -171,7 +171,7 @@ export default function GateSettingsPage() {
         >
           Setup
         </Button>
-        <Typography variant="h5" sx={{ fontFamily: '"Playfair Display", serif', fontWeight: 700, color: '#1C0F06', flex: 1 }}>
+        <Typography variant="h5" sx={{ fontFamily: 'var(--font-outfit), system-ui, sans-serif', fontWeight: 700, color: '#2C3826', flex: 1 }}>
           Gate Settings
         </Typography>
         <Button
@@ -202,7 +202,7 @@ export default function GateSettingsPage() {
       <Grid container spacing={3}>
         {/* ── Gate Integration Card ───────────────────────────────── */}
         <Grid item xs={12} md={6}>
-          <Card sx={{ border: '1px solid #EDE5D8', boxShadow: 'none', borderRadius: 2, height: '100%' }}>
+          <Card sx={{ border: '1px solid #E5E7EB', boxShadow: 'none', borderRadius: 2, height: '100%' }}>
             <CardContent sx={{ p: 3 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
                 <SensorsIcon sx={{ color: '#B8914A' }} />
@@ -269,7 +269,7 @@ export default function GateSettingsPage() {
 
         {/* ── Access Code Settings Card ───────────────────────────── */}
         <Grid item xs={12} md={6}>
-          <Card sx={{ border: '1px solid #EDE5D8', boxShadow: 'none', borderRadius: 2, height: '100%' }}>
+          <Card sx={{ border: '1px solid #E5E7EB', boxShadow: 'none', borderRadius: 2, height: '100%' }}>
             <CardContent sx={{ p: 3 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
                 <KeyIcon sx={{ color: '#B8914A' }} />
@@ -287,7 +287,7 @@ export default function GateSettingsPage() {
               </Box>
 
               {form.gateAutoAssign && (
-                <Box sx={{ ml: 1, mb: 2, pl: 2, borderLeft: '2px solid #EDE5D8' }}>
+                <Box sx={{ ml: 1, mb: 2, pl: 2, borderLeft: '2px solid #E5E7EB' }}>
                   <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
                     Code generation method
                   </Typography>
@@ -303,7 +303,7 @@ export default function GateSettingsPage() {
                           fontWeight: 500, cursor: 'pointer',
                           bgcolor: form.gateAutoAssignMethod === opt.value ? '#B8914A' : 'transparent',
                           color: form.gateAutoAssignMethod === opt.value ? 'white' : 'text.primary',
-                          border: `1px solid ${form.gateAutoAssignMethod === opt.value ? '#B8914A' : '#EDE5D8'}`,
+                          border: `1px solid ${form.gateAutoAssignMethod === opt.value ? '#B8914A' : '#E5E7EB'}`,
                           '&:hover': { bgcolor: form.gateAutoAssignMethod === opt.value ? '#9A7A3E' : '#f5f0e8' },
                         }}
                       />
@@ -324,7 +324,7 @@ export default function GateSettingsPage() {
                 <option value="6">6 digits</option>
               </TextField>
 
-              <Divider sx={{ my: 2, borderColor: '#EDE5D8' }} />
+              <Divider sx={{ my: 2, borderColor: '#E5E7EB' }} />
 
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
                 <Box>
@@ -336,7 +336,7 @@ export default function GateSettingsPage() {
                 <Switch checked={form.gateAutoLockout} onChange={(e) => set('gateAutoLockout', e.target.checked)} sx={switchSx} />
               </Box>
 
-              <Divider sx={{ my: 2, borderColor: '#EDE5D8' }} />
+              <Divider sx={{ my: 2, borderColor: '#E5E7EB' }} />
 
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <Box>
@@ -366,7 +366,7 @@ export default function GateSettingsPage() {
 
         {/* ── Gates Table ─────────────────────────────────────────── */}
         <Grid item xs={12}>
-          <Card sx={{ border: '1px solid #EDE5D8', boxShadow: 'none', borderRadius: 2 }}>
+          <Card sx={{ border: '1px solid #E5E7EB', boxShadow: 'none', borderRadius: 2 }}>
             <CardContent sx={{ p: 3 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -424,7 +424,7 @@ export default function GateSettingsPage() {
 
         {/* ── Gate Groups Table ───────────────────────────────────── */}
         <Grid item xs={12}>
-          <Card sx={{ border: '1px solid #EDE5D8', boxShadow: 'none', borderRadius: 2 }}>
+          <Card sx={{ border: '1px solid #E5E7EB', boxShadow: 'none', borderRadius: 2 }}>
             <CardContent sx={{ p: 3 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
