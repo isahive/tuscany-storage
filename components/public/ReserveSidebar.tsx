@@ -169,7 +169,7 @@ export default function ReserveSidebar({
           <div className="flex-1 min-w-0">
             <div className="flex items-baseline justify-between gap-2">
               <p className="font-serif text-lg font-bold text-brown">{unit.size}</p>
-              <p className="text-sm font-semibold text-brown whitespace-nowrap">{fmt(unit.price)}/mo</p>
+              <p className="text-sm font-semibold text-brown whitespace-nowrap">{fmt(unit.price)}</p>
             </div>
             <p className="text-xs text-muted mt-0.5">Unit {unit.unitNumber}</p>
           </div>

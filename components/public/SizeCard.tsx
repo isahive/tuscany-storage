@@ -83,7 +83,6 @@ export default function SizeCard({
           <span className="text-2xl font-bold text-olive">
             {formatMoney(currentPriceCents)}
           </span>
-          <span className="text-gray-700">/ month</span>
         </div>
       </div>
 

@@ -142,7 +142,6 @@ export default function UnitDetailPage() {
             <div className="bg-white rounded-lg border border-mid p-6 mb-6">
               <div className="flex items-baseline gap-1 mb-1">
                 <span className="text-3xl font-bold text-brown">{formatMoney(unit.price)}</span>
-                <span className="text-muted">/month</span>
               </div>
               <p className="text-sm text-muted mb-4">No long-term commitment. Month-to-month.</p>
               {isAvailable ? (

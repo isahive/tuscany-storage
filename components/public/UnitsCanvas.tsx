@@ -18,11 +18,15 @@ type Props = {
   cellPx?: number
 }
 
-const STATUS_STYLES: Record<string, { bg: string; border: string; color: string; label: string }> = {
+type StatusStyle = { bg: string; border: string; color: string; label: string }
+
+const PUBLIC_STATUS_STYLES: Record<'available' | 'unavailable', StatusStyle> = {
   available:   { bg: '#D1FAE5', border: '#6EE7B7', color: '#065F46', label: 'Available' },
-  occupied:    { bg: '#E5E7EB', border: '#9CA3AF', color: '#374151', label: 'Occupied' },
-  reserved:    { bg: '#FEF3C7', border: '#FCD34D', color: '#92400E', label: 'Reserved' },
-  maintenance: { bg: '#FEE2E2', border: '#FCA5A5', color: '#991B1B', label: 'Maintenance' },
+  unavailable: { bg: '#E5E7EB', border: '#9CA3AF', color: '#374151', label: 'Unavailable' },
+}
+
+function styleFor(status: string): StatusStyle {
+  return status === 'available' ? PUBLIC_STATUS_STYLES.available : PUBLIC_STATUS_STYLES.unavailable
 }
 
 export default function UnitsCanvas({ units, cellPx = 28 }: Props) {
@@ -51,7 +55,7 @@ export default function UnitsCanvas({ units, cellPx = 28 }: Props) {
     <div className="overflow-x-auto rounded border border-gray-200 bg-white p-4">
       {/* Legend */}
       <div className="mb-4 flex flex-wrap items-center gap-3 text-xs text-gray-700">
-        {Object.entries(STATUS_STYLES).map(([key, s]) => (
+        {Object.entries(PUBLIC_STATUS_STYLES).map(([key, s]) => (
           <div key={key} className="flex items-center gap-1.5">
             <span
               className="inline-block h-3 w-3 rounded"
@@ -72,7 +76,7 @@ export default function UnitsCanvas({ units, cellPx = 28 }: Props) {
         {units.map((u) => {
           const w = effW(u)
           const d = effD(u)
-          const s = STATUS_STYLES[u.status] ?? STATUS_STYLES.occupied
+          const s = styleFor(u.status)
           return (
             <div
               key={u.id}

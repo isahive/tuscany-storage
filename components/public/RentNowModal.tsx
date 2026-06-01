@@ -128,9 +128,6 @@ export default function RentNowModal({
                 {formatMoney(currentPriceCents)}
               </span>
             </div>
-            <span className="mt-1 text-sm font-semibold text-gray-700">
-              {formatMoney(currentPriceCents)} / month
-            </span>
           </label>
 
           {/* Promo banner */}
