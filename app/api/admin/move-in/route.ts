@@ -10,6 +10,7 @@ import Unit from '@/models/Unit'
 import Lease from '@/models/Lease'
 import Payment from '@/models/Payment'
 import AccessLog from '@/models/AccessLog'
+import { syncTenantToPdkSafe } from '@/lib/pdkSync'
 
 const moveInSchema = z.object({
   tenantId: z.string().min(1),
@@ -103,6 +104,8 @@ export async function POST(req: NextRequest) {
       source: 'admin',
       notes: 'Gate code assigned during move-in',
     })
+
+    await syncTenantToPdkSafe(tenant._id as any)
 
     // Step 7: Log move-in notification (dev mode)
     if (process.env.NODE_ENV === 'development') {

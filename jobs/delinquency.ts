@@ -9,6 +9,7 @@ import PrintBatch from '@/models/PrintBatch'
 import { getSettings } from '@/lib/getSettings'
 import { sendTemplatedNotification } from '@/lib/sendNotification'
 import { revokeAccess, grantAccess } from '@/lib/gateController'
+import { syncTenantToPdkSafe } from '@/lib/pdkSync'
 import { computeAuctionDate } from '@/lib/auctionDate'
 import LockoutEvent from '@/models/LockoutEvent'
 import {
@@ -172,6 +173,7 @@ export async function runDelinquency(): Promise<DelinquencyResult[]> {
           await Tenant.findByIdAndUpdate(tenant._id, { status: 'active' })
           if (wasLockedOut) {
             await grantAccess(tenant, settings, 'payment_received')
+            await syncTenantToPdkSafe(tenant._id)
             // Storable Lock Out Report: record the auto-unlock and gate it
             // behind the lockoutRequireApprovalAuto setting.
             const approveNow = shouldAutoApprove({
@@ -300,6 +302,7 @@ export async function runDelinquency(): Promise<DelinquencyResult[]> {
 
         // Hit the external gate controller (no-op when not configured).
         await revokeAccess(tenant, settings, `delinquency:${daysSinceBilling}d`)
+        await syncTenantToPdkSafe(tenant._id)
 
         // Log access revocation
         await AccessLog.create({

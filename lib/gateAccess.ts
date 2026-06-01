@@ -1,6 +1,7 @@
 import { Types } from 'mongoose'
 import Tenant from '@/models/Tenant'
 import AccessLog from '@/models/AccessLog'
+import { syncTenantToPdkSafe } from '@/lib/pdkSync'
 
 export type GateRevokeReason = 'move_out' | 'auction' | 'lease_ended' | 'manual'
 
@@ -30,4 +31,6 @@ export async function revokeGateAccess(
     source: 'system',
     notes: `Gate access revoked (reason: ${reason}).`,
   })
+
+  await syncTenantToPdkSafe(tenantId)
 }

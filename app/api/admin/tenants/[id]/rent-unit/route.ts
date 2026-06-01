@@ -13,6 +13,7 @@ import Promotion from '@/models/Promotion'
 import ProtectionPlan from '@/models/ProtectionPlan'
 import Product from '@/models/Product'
 import AccessLog from '@/models/AccessLog'
+import { syncTenantToPdkSafe } from '@/lib/pdkSync'
 
 interface RouteContext {
   params: Promise<{ id: string }>
@@ -202,6 +203,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
         source: 'admin',
         notes: 'Gate code assigned during rent-unit flow',
       })
+      await syncTenantToPdkSafe(tenant._id as any)
     }
 
     // ── Build line items ──

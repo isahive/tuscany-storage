@@ -10,6 +10,7 @@ import Notification from '@/models/Notification'
 import Settings from '@/models/Settings'
 import LockoutEvent from '@/models/LockoutEvent'
 import { revokeGateAccess } from '@/lib/gateAccess'
+import { syncTenantToPdkSafe } from '@/lib/pdkSync'
 import { computeAuctionDate } from '@/lib/auctionDate'
 import { shouldAutoApprove } from '@/lib/lockout'
 
@@ -159,6 +160,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
         tenant.lockoutNote = undefined
         tenant.lockedOutAt = undefined
         await tenant.save()
+        await syncTenantToPdkSafe(tenant._id as any)
         await AccessLog.create({
           tenantId: tenant._id,
           eventType: 'code_changed',
@@ -197,6 +199,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
         const previousCode = tenant.gateCode
         tenant.gateCode = parsed.data.accessCode
         await tenant.save()
+        await syncTenantToPdkSafe(tenant._id as any)
         await AccessLog.create({
           tenantId: tenant._id,
           eventType: 'code_changed',

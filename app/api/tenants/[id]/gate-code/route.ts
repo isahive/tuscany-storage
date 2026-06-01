@@ -5,6 +5,7 @@ import { connectDB } from '@/lib/db'
 import { generateGateCode } from '@/lib/utils'
 import Tenant from '@/models/Tenant'
 import AccessLog from '@/models/AccessLog'
+import { syncTenantToPdkSafe } from '@/lib/pdkSync'
 
 interface RouteContext {
   params: Promise<{ id: string }>
@@ -45,6 +46,8 @@ export async function POST(_req: NextRequest, context: RouteContext) {
       source: session.user.role === 'admin' ? 'admin' : 'app',
       notes: 'Gate code regenerated',
     })
+
+    await syncTenantToPdkSafe(tenant._id as any)
 
     // Log SMS in dev mode
     if (process.env.NODE_ENV === 'development') {

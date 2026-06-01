@@ -26,6 +26,21 @@ services:
         sync: false
       - key: CRON_SECRET
         generateValue: true
+      # PDK gate access control — set in dashboard (values come from PDK)
+      - key: PDK_CLIENT_ID
+        sync: false
+      - key: PDK_CLIENT_SECRET
+        sync: false
+      - key: PDK_SYSTEM_ID
+        sync: false
+      - key: PDK_ORG_ID
+        sync: false
+      # Full https URL of the deployed webhook endpoint, ending in /api/webhooks/pdk
+      - key: PDK_WEBHOOK_URL
+        sync: false
+      # HMAC SHA-1 secret PDK uses to sign webhook deliveries
+      - key: PDK_WEBHOOK_SECRET
+        sync: false
 
   # ── Daily recurring-billing cron at 08:00 UTC (03:00 ET) ──────────────────
   # Calls the in-app endpoint with the shared secret so it reuses the same

@@ -62,6 +62,14 @@ export interface ITenantDocument extends Document {
   /** Timestamp the tenant's gate access was last revoked. Powers the
    *  "Locked out on …" line shown on the unit detail page. */
   lockedOutAt?: Date
+  /** Holder ID in PDK once the tenant has been provisioned in the access-
+   *  control system. Set by `lib/pdkSync.ts`; consumed by the reconcile
+   *  cron and webhook handler to map gate events back to the tenant. */
+  pdkHolderId?: string
+  /** Last time this tenant's gate state was successfully pushed to PDK.
+   *  Reconcile uses this to detect tenants that have drifted (e.g. PIN
+   *  changed locally but the PDK PATCH failed silently). */
+  pdkSyncedAt?: Date
   stripeCustomerId?: string
   defaultPaymentMethodId?: string
   /** Stripe `fingerprint` of the default payment method. Cached so the
@@ -145,6 +153,8 @@ const TenantSchema = new Schema<ITenantDocument>(
     automaticLockoutEnabled: { type: Boolean, default: true },
     automaticLockoutDays: { type: Number, default: 9, min: 0 },
     lockedOutAt: { type: Date },
+    pdkHolderId: { type: String, index: true },
+    pdkSyncedAt: { type: Date },
     stripeCustomerId: { type: String },
     defaultPaymentMethodId: { type: String },
     cardFingerprint: { type: String },
