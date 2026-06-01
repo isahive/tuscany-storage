@@ -9,9 +9,15 @@ const adapterMocks = vi.hoisted(() => ({
   updateHolderPin: vi.fn(),
   setHolderEnabled: vi.fn(),
   deleteHolder: vi.fn(),
+  addHolderToGroup: vi.fn(),
 }))
 
 vi.mock('@/lib/gateAdapters/pdk', () => adapterMocks)
+// Don't trigger the facility-hours sync (which would itself hit groups/rules
+// adapter mocks). It's exercised in its own test file.
+vi.mock('@/lib/pdkFacilityHours', () => ({
+  syncFacilityHoursToPdkSafe: vi.fn(async () => undefined),
+}))
 
 import { reconcilePdkHolders } from '@/jobs/pdk-reconcile'
 import Tenant from '@/models/Tenant'

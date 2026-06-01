@@ -18,11 +18,13 @@
 import type { Types } from 'mongoose'
 import Tenant from '@/models/Tenant'
 import type { ITenantDocument } from '@/models/Tenant'
+import Settings from '@/models/Settings'
 import {
   createHolder,
   updateHolderPin,
   setHolderEnabled,
   deleteHolder,
+  addHolderToGroup,
 } from '@/lib/gateAdapters/pdk'
 
 type TenantId = Types.ObjectId | string
@@ -68,6 +70,15 @@ export async function syncTenantToPdk(tenantId: TenantId): Promise<SyncResult> {
     tenant.pdkHolderId = created.id
     tenant.pdkSyncedAt = new Date()
     await tenant.save()
+
+    // A holder with no Group membership has no effective access (PDK rules
+    // are group-scoped). Join the configured tenant group if one exists —
+    // that's where the entry/exit hour rules live.
+    const settings = await Settings.findOne({}).select('pdkTenantGroupId').lean<{ pdkTenantGroupId?: string } | null>()
+    if (settings?.pdkTenantGroupId) {
+      await addHolderToGroup(created.id, settings.pdkTenantGroupId)
+    }
+
     return { action: 'created', pdkHolderId: created.id }
   }
 

@@ -12,6 +12,17 @@ export interface ISettingsDocument extends Document {
   accessHoursStart: string
   accessHoursEnd: string
 
+  // ── PDK gate-access wiring ────────────────────────────────────────────────
+  // The Group every tenant Holder is added to. Created once via
+  // syncFacilityHoursToPdk; the same group carries the entry/exit rules.
+  pdkTenantGroupId?: string
+  /** Devices where access is gated by accessHoursStart/End (the outside readers). */
+  pdkEntryDeviceIds?: string[]
+  /** Devices that should always allow exit (inside readers). Combined with the
+   *  device's `rex: true` flag on the hardware side, this prevents tenants from
+   *  getting locked inside the facility after hours. */
+  pdkExitDeviceIds?: string[]
+
   // ── Locale ────────────────────────────────────────────────────────────────
   locale: string         // 'en-US'
   currency: string       // 'USD'
@@ -211,6 +222,11 @@ const SettingsSchema = new Schema<ISettingsDocument>(
     facilityEmail:   { type: String, default: '' },
     accessHoursStart: { type: String, default: '05:00' },
     accessHoursEnd:   { type: String, default: '22:00' },
+
+    // PDK gate-access wiring (managed via /admin/settings/gate)
+    pdkTenantGroupId:  { type: String },
+    pdkEntryDeviceIds: { type: [String], default: [] },
+    pdkExitDeviceIds:  { type: [String], default: [] },
 
     // Locale
     locale:          { type: String, default: 'en-US' },

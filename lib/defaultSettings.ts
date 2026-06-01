@@ -9,6 +9,11 @@ export const DEFAULT_SETTINGS = {
   facilityEmail: 'Tuscanystorage@gmail.com',
   accessHoursStart: '05:00',
   accessHoursEnd: '22:00',
+  // PDK gate-access wiring — populated via /admin/settings/gate after the
+  // integrator selects which devices are entry vs exit.
+  pdkTenantGroupId: '',
+  pdkEntryDeviceIds: [] as string[],
+  pdkExitDeviceIds: [] as string[],
   // Locale
   locale: 'en-US',
   currency: 'USD',

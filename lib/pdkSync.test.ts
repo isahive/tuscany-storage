@@ -8,21 +8,20 @@ const adapterMocks = vi.hoisted(() => ({
   updateHolderPin: vi.fn(),
   setHolderEnabled: vi.fn(),
   deleteHolder: vi.fn(),
+  addHolderToGroup: vi.fn(),
 }))
 
 vi.mock('@/lib/gateAdapters/pdk', () => adapterMocks)
 
 import { syncTenantToPdk, unlinkTenantFromPdk, syncTenantToPdkSafe, pdkConfigured } from './pdkSync'
+import Settings from '@/models/Settings'
 
 beforeAll(async () => { await startTestDb() })
 afterAll(async () => { await stopTestDb() })
 
 beforeEach(async () => {
   await clearTestDb()
-  adapterMocks.createHolder.mockReset()
-  adapterMocks.updateHolderPin.mockReset()
-  adapterMocks.setHolderEnabled.mockReset()
-  adapterMocks.deleteHolder.mockReset()
+  for (const m of Object.values(adapterMocks)) m.mockReset()
 })
 
 describe('syncTenantToPdk (first time)', () => {
@@ -47,6 +46,29 @@ describe('syncTenantToPdk (first time)', () => {
     const reloaded = await Tenant.findById(t._id)
     expect(reloaded!.pdkHolderId).toBe('pdk-h-1')
     expect(reloaded!.pdkSyncedAt).toBeInstanceOf(Date)
+  })
+
+  it('adds the new holder to pdkTenantGroupId when one is configured', async () => {
+    await Settings.create({
+      facilityName: 'X', accessHoursStart: '05:00', accessHoursEnd: '22:00',
+      pdkTenantGroupId: 'g-tenants',
+    })
+    const t = await makeTenant({ gateCode: '1234', status: 'active' })
+    adapterMocks.createHolder.mockResolvedValueOnce({ id: 'pdk-h-grouped' })
+
+    await syncTenantToPdk(t._id as any)
+    expect(adapterMocks.addHolderToGroup).toHaveBeenCalledWith('pdk-h-grouped', 'g-tenants')
+  })
+
+  it('skips group-add when no pdkTenantGroupId is configured', async () => {
+    await Settings.create({
+      facilityName: 'X', accessHoursStart: '05:00', accessHoursEnd: '22:00',
+    })
+    const t = await makeTenant({ gateCode: '1234', status: 'active' })
+    adapterMocks.createHolder.mockResolvedValueOnce({ id: 'pdk-h-no-group' })
+
+    await syncTenantToPdk(t._id as any)
+    expect(adapterMocks.addHolderToGroup).not.toHaveBeenCalled()
   })
 
   it('omits pin from createHolder when tenant has no gateCode', async () => {

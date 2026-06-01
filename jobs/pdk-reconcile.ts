@@ -19,6 +19,7 @@ import Tenant from '@/models/Tenant'
 import type { ITenantDocument } from '@/models/Tenant'
 import { getHolder } from '@/lib/gateAdapters/pdk'
 import { syncTenantToPdk } from '@/lib/pdkSync'
+import { syncFacilityHoursToPdkSafe } from '@/lib/pdkFacilityHours'
 
 export interface ReconcileSummary {
   scanned: number
@@ -40,6 +41,11 @@ export async function reconcilePdkHolders(): Promise<ReconcileSummary> {
   const summary: ReconcileSummary = {
     scanned: 0, provisioned: 0, patched: 0, inSync: 0, failed: 0, errors: [],
   }
+
+  // First, ensure the group + entry/exit rules are aligned with current
+  // Settings. If this fails the tenant pass still runs — drift in holders is
+  // worse than drift in schedules, since tenants need access regardless.
+  await syncFacilityHoursToPdkSafe()
 
   const tenants = await Tenant.find({
     archived: { $ne: true },

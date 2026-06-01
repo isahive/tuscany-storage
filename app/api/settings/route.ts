@@ -5,6 +5,7 @@ import { authOptions } from '@/lib/auth'
 import { connectDB } from '@/lib/db'
 import Settings from '@/models/Settings'
 import { DEFAULT_SETTINGS } from '@/lib/defaultSettings'
+import { syncFacilityHoursToPdkSafe } from '@/lib/pdkFacilityHours'
 
 type LateLienStatus = 'late' | 'locked_out' | 'pre_lien' | 'lien' | 'auction'
 
@@ -22,6 +23,10 @@ const updateSettingsSchema = z
     facilityEmail: z.string(),
     accessHoursStart: z.string(),
     accessHoursEnd: z.string(),
+    // PDK gate-access wiring
+    pdkTenantGroupId: z.string(),
+    pdkEntryDeviceIds: z.array(z.string()),
+    pdkExitDeviceIds: z.array(z.string()),
     // Locale
     locale: z.string(),
     currency: z.string(),
@@ -262,11 +267,32 @@ export async function PUT(req: NextRequest) {
 
     await connectDB()
 
+    // Capture the pre-save state so we know whether to re-push the access-
+    // hours/devices config to PDK. Pushing on every settings PUT would work
+    // but burns API calls unnecessarily.
+    const before = await Settings.findOne({}).select(
+      'accessHoursStart accessHoursEnd pdkEntryDeviceIds pdkExitDeviceIds',
+    ).lean<{
+      accessHoursStart?: string
+      accessHoursEnd?: string
+      pdkEntryDeviceIds?: string[]
+      pdkExitDeviceIds?: string[]
+    } | null>()
+
     const updatedSettings = await Settings.findOneAndUpdate(
       {},
       { $set: parsed.data },
       { upsert: true, new: true, setDefaultsOnInsert: true },
     )
+
+    const gateConfigChanged =
+      before?.accessHoursStart !== updatedSettings.accessHoursStart
+      || before?.accessHoursEnd !== updatedSettings.accessHoursEnd
+      || JSON.stringify(before?.pdkEntryDeviceIds ?? []) !== JSON.stringify(updatedSettings.pdkEntryDeviceIds ?? [])
+      || JSON.stringify(before?.pdkExitDeviceIds ?? []) !== JSON.stringify(updatedSettings.pdkExitDeviceIds ?? [])
+    if (gateConfigChanged) {
+      await syncFacilityHoursToPdkSafe()
+    }
 
     return NextResponse.json({ success: true, data: updatedSettings })
   } catch (error) {

@@ -4,8 +4,10 @@ import { useState, useCallback, useEffect } from 'react'
 import Link from 'next/link'
 import {
   Alert,
+  Autocomplete,
   Box,
   Button,
+  Chip,
   Grid,
   Skeleton,
   Snackbar,
@@ -27,6 +29,14 @@ interface FacilityFormValues {
   facilityZip: string
   accessHoursStart: string
   accessHoursEnd: string
+  pdkEntryDeviceIds: string[]
+  pdkExitDeviceIds: string[]
+}
+
+interface PdkDeviceOption {
+  id: string
+  name: string
+  type: string | null
 }
 
 const EMPTY_FORM: FacilityFormValues = {
@@ -39,6 +49,8 @@ const EMPTY_FORM: FacilityFormValues = {
   facilityZip: '',
   accessHoursStart: '',
   accessHoursEnd: '',
+  pdkEntryDeviceIds: [],
+  pdkExitDeviceIds: [],
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
@@ -51,6 +63,9 @@ export default function FacilitySettingsPage() {
   const [fetchError, setFetchError] = useState<string | null>(null)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [snackbarOpen, setSnackbarOpen] = useState(false)
+  // PDK device list — null = not loaded yet, [] = PDK not configured. Failure
+  // to load is non-fatal: the form still renders, just without the picker.
+  const [pdkDevices, setPdkDevices] = useState<PdkDeviceOption[] | null>(null)
 
   const isDirty = JSON.stringify(form) !== JSON.stringify(saved)
 
@@ -74,6 +89,8 @@ export default function FacilitySettingsPage() {
         facilityZip: d.facilityZip ?? '',
         accessHoursStart: d.accessHoursStart ?? '',
         accessHoursEnd: d.accessHoursEnd ?? '',
+        pdkEntryDeviceIds: Array.isArray(d.pdkEntryDeviceIds) ? d.pdkEntryDeviceIds : [],
+        pdkExitDeviceIds: Array.isArray(d.pdkExitDeviceIds) ? d.pdkExitDeviceIds : [],
       }
       setForm(values)
       setSaved(values)
@@ -87,6 +104,21 @@ export default function FacilitySettingsPage() {
   useEffect(() => {
     fetchSettings()
   }, [fetchSettings])
+
+  // Load PDK devices once. Independent of fetchSettings — admins should be
+  // able to fix typo'd settings even if PDK is briefly unreachable.
+  useEffect(() => {
+    let cancelled = false
+    fetch('/api/admin/pdk/devices')
+      .then((r) => r.json())
+      .then((json) => {
+        if (cancelled) return
+        if (json?.success && Array.isArray(json.data)) setPdkDevices(json.data)
+        else setPdkDevices([])
+      })
+      .catch(() => { if (!cancelled) setPdkDevices([]) })
+    return () => { cancelled = true }
+  }, [])
 
   // ── Save ───────────────────────────────────────────────────────────────────
 
@@ -310,6 +342,73 @@ export default function FacilitySettingsPage() {
             />
           )}
         </Grid>
+
+        {/* PDK device mapping — only shown when PDK is configured server-side.
+            The hours above only enforce against the devices tagged "entry"
+            here. Devices tagged "exit" stay open 24/7 so tenants can leave
+            after hours. */}
+        {pdkDevices && pdkDevices.length > 0 && (
+          <>
+            <Grid item xs={12}>
+              <Typography
+                variant="subtitle2"
+                sx={{ color: '#6B6B6B', mt: 1 }}
+              >
+                Gate hardware (PDK)
+              </Typography>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <Autocomplete
+                multiple
+                size="small"
+                options={pdkDevices}
+                getOptionLabel={(o) => o.name}
+                value={pdkDevices.filter((d) => form.pdkEntryDeviceIds.includes(d.id))}
+                onChange={(_, val) =>
+                  setForm((prev) => ({ ...prev, pdkEntryDeviceIds: val.map((v) => v.id) }))
+                }
+                renderTags={(value, getTagProps) =>
+                  value.map((option, index) => {
+                    const tagProps = getTagProps({ index })
+                    return <Chip {...tagProps} key={option.id} label={option.name} size="small" />
+                  })
+                }
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Entry readers (enforce hours)"
+                    helperText="Outside readers — denied outside access hours."
+                  />
+                )}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <Autocomplete
+                multiple
+                size="small"
+                options={pdkDevices}
+                getOptionLabel={(o) => o.name}
+                value={pdkDevices.filter((d) => form.pdkExitDeviceIds.includes(d.id))}
+                onChange={(_, val) =>
+                  setForm((prev) => ({ ...prev, pdkExitDeviceIds: val.map((v) => v.id) }))
+                }
+                renderTags={(value, getTagProps) =>
+                  value.map((option, index) => {
+                    const tagProps = getTagProps({ index })
+                    return <Chip {...tagProps} key={option.id} label={option.name} size="small" />
+                  })
+                }
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Exit readers (24/7)"
+                    helperText="Inside readers — allowed any time so tenants can leave."
+                  />
+                )}
+              />
+            </Grid>
+          </>
+        )}
       </Grid>
 
       {/* Success snackbar */}
