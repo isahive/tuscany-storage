@@ -3,6 +3,7 @@ import crypto from 'crypto'
 import { startTestDb, stopTestDb, clearTestDb } from '@/tests/helpers/db'
 import { makeTenant } from '@/tests/helpers/factories'
 import AccessLog from '@/models/AccessLog'
+import VisitorAccess from '@/models/VisitorAccess'
 
 vi.mock('@/lib/db', () => ({ connectDB: vi.fn(async () => undefined) }))
 
@@ -171,6 +172,72 @@ describe('POST /api/webhooks/pdk', () => {
         warn.mockRestore()
       },
     )
+  })
+
+  describe('visitor pass attribution', () => {
+    it('writes an entry AccessLog with visitorAccessId when holder maps to a visitor pass', async () => {
+      const visitor = await VisitorAccess.create({
+        name: 'Probe Visitor', purpose: 'HVAC',
+        validFrom: new Date(Date.now() - 60_000),
+        validUntil: new Date(Date.now() + 60 * 60_000),
+        pin: '707070',
+        status: 'active',
+        pdkHolderId: 'pdk-h-vis-1',
+        createdBy: 'admin',
+      })
+      const res = await pdkWebhook(unsignedReq({
+        type: 'device.request.allowed',
+        data: { holderId: 'pdk-h-vis-1', deviceId: 'd1' },
+      }))
+      expect(res.status).toBe(200)
+      const logs = await AccessLog.find({ visitorAccessId: visitor._id })
+      expect(logs).toHaveLength(1)
+      expect(logs[0].eventType).toBe('entry')
+      expect(logs[0].tenantId).toBeUndefined()
+    })
+
+    it('prefers tenant attribution when holderId could theoretically match both', async () => {
+      // PDK guarantees unique holderIds, but defense-in-depth: if a stale
+      // visitor record ever shared a holderId with a tenant, tenant wins.
+      const tenant = await makeTenant({ pdkHolderId: 'pdk-shared' })
+      await VisitorAccess.create({
+        name: 'Stale', purpose: 'p',
+        validFrom: new Date(Date.now() - 60_000),
+        validUntil: new Date(Date.now() + 60 * 60_000),
+        pin: '808080',
+        status: 'active',
+        pdkHolderId: 'pdk-shared',
+        createdBy: 'admin',
+      })
+      await pdkWebhook(unsignedReq({
+        type: 'device.request.allowed',
+        data: { holderId: 'pdk-shared' },
+      }))
+      const logs = await AccessLog.find({})
+      expect(logs).toHaveLength(1)
+      expect(String(logs[0].tenantId)).toBe(String(tenant._id))
+      expect(logs[0].visitorAccessId).toBeUndefined()
+    })
+
+    it('writes a denied log for visitor pass when keypad rejects them', async () => {
+      const visitor = await VisitorAccess.create({
+        name: 'Bad Visitor', purpose: 'p',
+        validFrom: new Date(Date.now() - 60_000),
+        validUntil: new Date(Date.now() + 60 * 60_000),
+        pin: '909090',
+        status: 'active',
+        pdkHolderId: 'pdk-h-vis-2',
+        createdBy: 'admin',
+      })
+      await pdkWebhook(unsignedReq({
+        type: 'device.request.denied',
+        data: { holderId: 'pdk-h-vis-2', reason: 'out of schedule' },
+      }))
+      const logs = await AccessLog.find({ visitorAccessId: visitor._id })
+      expect(logs).toHaveLength(1)
+      expect(logs[0].eventType).toBe('denied')
+      expect(logs[0].notes).toBe('out of schedule')
+    })
   })
 
   describe('unhandled events', () => {

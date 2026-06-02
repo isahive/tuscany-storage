@@ -71,6 +71,22 @@ services:
     envVars:
       - fromGroup: tuscany-cron-shared
 
+  # ── Visitor access sweep — every 2 minutes ────────────────────────────────
+  # Security-critical: PDK Holders have no native expiration field, so this
+  # cron IS the enforcement layer for visitor PIN windows. The 2-minute
+  # interval bounds the worst-case post-expiration access window for a
+  # leaked PIN. DO NOT increase this interval without an explicit risk
+  # acceptance.
+  - type: cron
+    name: tuscany-visitor-access
+    runtime: node
+    region: ohio
+    schedule: "*/2 * * * *"
+    buildCommand: npm install
+    startCommand: node scripts/run-cron-job.js visitorAccessExpiration
+    envVars:
+      - fromGroup: tuscany-cron-shared
+
   # ── Delinquency escalation — daily 06:00 UTC ──────────────────────────────
   # Late fees, lockouts, lien/auction escalation. THE most important cron —
   # without this, non-paying tenants stay unbothered.

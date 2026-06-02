@@ -16,6 +16,11 @@ export interface ISettingsDocument extends Document {
   // The Group every tenant Holder is added to. Created once via
   // syncFacilityHoursToPdk; the same group carries the entry/exit rules.
   pdkTenantGroupId?: string
+  /** Group every VisitorAccess Holder joins. Distinct from the tenant group
+   *  so visitor activity is auditable separately in PDK reports + so we can
+   *  toggle all visitor access via a single group flip if needed. Created on
+   *  first visitor pass via syncVisitorGroupToPdk. */
+  pdkVisitorGroupId?: string
   /** Devices where access is gated by accessHoursStart/End (the outside readers). */
   pdkEntryDeviceIds?: string[]
   /** Devices that should always allow exit (inside readers). Combined with the
@@ -212,6 +217,7 @@ const SettingsSchema = new Schema<ISettingsDocument>(
 
     // PDK gate-access wiring (managed via /admin/settings/gate)
     pdkTenantGroupId:  { type: String },
+    pdkVisitorGroupId: { type: String },
     pdkEntryDeviceIds: { type: [String], default: [] },
     pdkExitDeviceIds:  { type: [String], default: [] },
 

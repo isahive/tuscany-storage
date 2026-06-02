@@ -8,6 +8,7 @@ import { runRateExecution } from '@/jobs/rate-execution'
 import { runInvoiceGeneration } from '@/jobs/invoices'
 import { runLockoutReportEmail } from '@/jobs/lockout-report-email'
 import { reconcilePdkHolders } from '@/jobs/pdk-reconcile'
+import { runVisitorAccessExpiration } from '@/jobs/visitor-access-expiration'
 
 const JOBS = {
   generateInvoices: {
@@ -54,6 +55,11 @@ const JOBS = {
     fn: reconcilePdkHolders,
     schedule: '0 3 * * *',
     description: 'Reconcile Tuscany tenants with PDK holders + facility-hour rules',
+  },
+  visitorAccessExpiration: {
+    fn: runVisitorAccessExpiration,
+    schedule: '*/2 * * * *',
+    description: 'Expire visitor passes past their validUntil + activate scheduled ones',
   },
 } as const
 

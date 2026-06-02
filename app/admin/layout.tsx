@@ -34,6 +34,7 @@ import TrendingUpIcon from '@mui/icons-material/TrendingUp'
 import ListAltIcon from '@mui/icons-material/ListAlt'
 import SettingsIcon from '@mui/icons-material/Settings'
 import ExitToAppIcon from '@mui/icons-material/ExitToApp'
+import BadgeIcon from '@mui/icons-material/Badge'
 import StorefrontIcon from '@mui/icons-material/Storefront'
 import RequestQuoteIcon from '@mui/icons-material/RequestQuote'
 import AssessmentIcon from '@mui/icons-material/Assessment'
@@ -55,6 +56,7 @@ const NAV_ITEMS = [
   { label: 'Delinquency',     href: '/admin/delinquency',       icon: <WarningIcon /> },
   { label: 'Rate Management', href: '/admin/rate-management',   icon: <TrendingUpIcon /> },
   { label: 'Waiting List',    href: '/admin/waiting-list',      icon: <ListAltIcon /> },
+  { label: 'Visitor Access',  href: '/admin/visitor-access',    icon: <BadgeIcon /> },
   { label: 'Site Forms',      href: '/admin/site-forms',        icon: <InboxIcon /> },
   { label: 'Retail Sale',     href: '/admin/retail',            icon: <StorefrontIcon /> },
   { label: 'New Quote',       href: '/admin/quotes',            icon: <RequestQuoteIcon /> },

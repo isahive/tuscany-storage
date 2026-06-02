@@ -21,7 +21,28 @@ import { NextRequest, NextResponse } from 'next/server'
 import crypto from 'crypto'
 import { connectDB } from '@/lib/db'
 import Tenant from '@/models/Tenant'
+import VisitorAccess from '@/models/VisitorAccess'
 import AccessLog from '@/models/AccessLog'
+
+/**
+ * Resolve a PDK holderId to either a tenant or a currently-known visitor
+ * pass. Returns the AccessLog id fields to spread into the create call.
+ * Returns null when neither matches — caller should skip the AccessLog write.
+ */
+async function resolvePrincipal(holderId: string): Promise<
+  | { tenantId: unknown }
+  | { visitorAccessId: unknown }
+  | null
+> {
+  const tenant = await Tenant.findOne({ pdkHolderId: holderId }).select('_id').lean<{ _id: unknown } | null>()
+  if (tenant) return { tenantId: tenant._id }
+  // Visitor passes are short-lived — match on holderId regardless of status
+  // so a keypad event arriving moments after expiration still attributes
+  // to the right pass on the audit timeline.
+  const visitor = await VisitorAccess.findOne({ pdkHolderId: holderId }).select('_id').lean<{ _id: unknown } | null>()
+  if (visitor) return { visitorAccessId: visitor._id }
+  return null
+}
 
 interface PdkWebhookEvent {
   type?: string
@@ -76,13 +97,13 @@ export async function POST(req: NextRequest) {
     case 'device.request.allowed': {
       const holderId = event.data?.holderId
       if (!holderId) break
-      const tenant = await Tenant.findOne({ pdkHolderId: holderId }).select('_id')
-      if (!tenant) {
+      const principal = await resolvePrincipal(holderId)
+      if (!principal) {
         console.warn(`[PDK webhook] device.request.allowed for unmapped holder ${holderId}`)
         break
       }
       await AccessLog.create({
-        tenantId: tenant._id,
+        ...principal,
         eventType: 'entry',
         gateId: 'entrance',
         source: 'keypad',
@@ -98,10 +119,10 @@ export async function POST(req: NextRequest) {
       // without tenant attribution by skipping the create entirely. `denied`
       // events do have a holderId.
       if (!holderId) break
-      const tenant = await Tenant.findOne({ pdkHolderId: holderId }).select('_id')
-      if (!tenant) break
+      const principal = await resolvePrincipal(holderId)
+      if (!principal) break
       await AccessLog.create({
-        tenantId: tenant._id,
+        ...principal,
         eventType: 'denied',
         gateId: 'entrance',
         source: 'keypad',
