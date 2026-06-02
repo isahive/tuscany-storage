@@ -10,6 +10,7 @@ import Product from '@/models/Product'
 import MoveOutRequest from '@/models/MoveOutRequest'
 import WaitingList from '@/models/WaitingList'
 import AccessLog from '@/models/AccessLog'
+import VisitorAccess from '@/models/VisitorAccess'
 import Note from '@/models/Note'
 import Promotion from '@/models/Promotion'
 import Notification from '@/models/Notification'
@@ -454,20 +455,53 @@ export async function GET(req: NextRequest) {
       }
 
       case 'gate-activity': {
+        // AccessLog rows now carry either tenantId OR visitorAccessId (visitor
+        // passes added 2026-06-02). The Tenant populate handles the former;
+        // we fetch visitor names in a second pass so the report shows the
+        // human name for both principals rather than "Unknown" for visitors.
         const match: Record<string, unknown> = {}
-        if (hasDate) match.timestamp = dateFilter
+        if (hasDate) match.createdAt = dateFilter
         const logs = await AccessLog.find(match)
           .populate('tenantId', 'firstName lastName')
-          .sort({ timestamp: -1 })
+          .sort({ createdAt: -1 })
           .limit(500)
           .lean()
-        const rows = logs.map((l: any) => ({
-          timestamp: l.timestamp,
-          tenant: l.tenantId ? `${l.tenantId.firstName} ${l.tenantId.lastName}` : 'Unknown',
-          event: l.event,
-          source: l.source,
-          code: l.code || '',
-        }))
+
+        const visitorIds = logs
+          .map((l: any) => l.visitorAccessId)
+          .filter(Boolean)
+        const visitors = visitorIds.length
+          ? await VisitorAccess.find({ _id: { $in: visitorIds } })
+              .select('_id name purpose')
+              .lean()
+          : []
+        const visitorMap = new Map(
+          visitors.map((v: any) => [String(v._id), v]),
+        )
+
+        const rows = logs.map((l: any) => {
+          let who = 'Unknown'
+          let kind: 'Tenant' | 'Visitor' | '—' = '—'
+          if (l.tenantId) {
+            who = `${l.tenantId.firstName ?? ''} ${l.tenantId.lastName ?? ''}`.trim() || 'Unknown'
+            kind = 'Tenant'
+          } else if (l.visitorAccessId) {
+            const v = visitorMap.get(String(l.visitorAccessId))
+            if (v) {
+              who = v.purpose ? `${v.name} (${v.purpose})` : v.name
+              kind = 'Visitor'
+            }
+          }
+          return {
+            timestamp: l.createdAt,
+            who,
+            kind,
+            event: l.eventType,
+            gate: l.gateId ?? 'unknown',
+            source: l.source,
+            notes: l.notes ?? '',
+          }
+        })
         return NextResponse.json({ success: true, data: { rows, summary: { total: rows.length } } })
       }
 

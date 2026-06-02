@@ -28,7 +28,7 @@ import FilterListIcon from '@mui/icons-material/FilterList'
 interface ColDef {
   key: string
   label: string
-  format?: 'money' | 'date' | 'percent' | 'text'
+  format?: 'money' | 'date' | 'datetime' | 'percent' | 'text'
   width?: number
   align?: 'left' | 'center' | 'right'
 }
@@ -359,11 +359,13 @@ const CONFIGS: Record<string, ReportConfig> = {
     apiType: 'gate-activity',
     showDateFilter: true,
     columns: [
-      { key: 'timestamp', label: 'Time', format: 'date' },
-      { key: 'tenant', label: 'Tenant' },
+      { key: 'timestamp', label: 'Time', format: 'datetime' },
+      { key: 'who', label: 'Who' },
+      { key: 'kind', label: 'Kind' },
       { key: 'event', label: 'Event' },
+      { key: 'gate', label: 'Gate' },
       { key: 'source', label: 'Source' },
-      { key: 'code', label: 'Code' },
+      { key: 'notes', label: 'Notes' },
     ],
   },
   'unit-list': {
@@ -710,10 +712,20 @@ const fmtDate = (val: string | Date | null) => {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
+const fmtDateTime = (val: string | Date | null) => {
+  if (!val) return '—'
+  const d = new Date(val)
+  return d.toLocaleString('en-US', {
+    month: 'short', day: 'numeric', year: 'numeric',
+    hour: 'numeric', minute: '2-digit',
+  })
+}
+
 function formatCell(val: unknown, format?: string): string {
   if (val === null || val === undefined) return '—'
   if (format === 'money' && typeof val === 'number') return fmtMoney(val)
   if (format === 'date') return fmtDate(val as string)
+  if (format === 'datetime') return fmtDateTime(val as string)
   if (format === 'percent' && typeof val === 'number') return `${val}%`
   if (typeof val === 'boolean') return val ? 'Yes' : 'No'
   return String(val)
