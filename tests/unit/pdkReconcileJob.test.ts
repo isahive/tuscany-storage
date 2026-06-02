@@ -28,6 +28,11 @@ afterAll(async () => { await stopTestDb() })
 beforeEach(async () => {
   await clearTestDb()
   for (const m of Object.values(adapterMocks)) m.mockReset()
+  // Existing tests assume PDK is fully configured + sync enabled.
+  process.env.PDK_CLIENT_ID = 'c'
+  process.env.PDK_CLIENT_SECRET = 's'
+  process.env.PDK_SYSTEM_ID = 'sys'
+  process.env.PDK_SYNC_ENABLED = 'true'
 })
 
 describe('reconcilePdkHolders', () => {
@@ -166,5 +171,24 @@ describe('reconcilePdkHolders', () => {
     await reconcilePdkHolders()
     const after = await Tenant.findById(t._id)
     expect(after!.pdkHolderId).toBe('newly-created')
+  })
+
+  it('returns an empty summary without touching the adapter when PDK_SYNC_ENABLED is off (sandbox-leak guard)', async () => {
+    delete process.env.PDK_SYNC_ENABLED
+    await makeTenant({ status: 'active', gateCode: '1' })
+
+    const s = await reconcilePdkHolders()
+    expect(s).toEqual({ scanned: 0, provisioned: 0, patched: 0, inSync: 0, failed: 0, errors: [] })
+    expect(adapterMocks.createHolder).not.toHaveBeenCalled()
+    expect(adapterMocks.getHolder).not.toHaveBeenCalled()
+  })
+
+  it('returns an empty summary when PDK credentials are missing', async () => {
+    delete process.env.PDK_CLIENT_ID
+    await makeTenant({ status: 'active', gateCode: '1' })
+
+    const s = await reconcilePdkHolders()
+    expect(s.scanned).toBe(0)
+    expect(adapterMocks.createHolder).not.toHaveBeenCalled()
   })
 })

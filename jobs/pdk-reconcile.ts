@@ -18,7 +18,7 @@ import { connectDB } from '@/lib/db'
 import Tenant from '@/models/Tenant'
 import type { ITenantDocument } from '@/models/Tenant'
 import { getHolder } from '@/lib/gateAdapters/pdk'
-import { syncTenantToPdk } from '@/lib/pdkSync'
+import { syncTenantToPdk, pdkConfigured } from '@/lib/pdkSync'
 import { syncFacilityHoursToPdkSafe } from '@/lib/pdkFacilityHours'
 
 export interface ReconcileSummary {
@@ -40,6 +40,15 @@ function expectedEnabled(t: Pick<ITenantDocument, 'status' | 'lockedOutAt'>): bo
 export async function reconcilePdkHolders(): Promise<ReconcileSummary> {
   const summary: ReconcileSummary = {
     scanned: 0, provisioned: 0, patched: 0, inSync: 0, failed: 0, errors: [],
+  }
+
+  // Hard guard — never push tenant data when PDK isn't fully enabled. The
+  // kill switch (PDK_SYNC_ENABLED) lives inside pdkConfigured() so we don't
+  // accidentally stream production tenants into the shared Developer
+  // Sandbox while waiting on a real Tuscany system from PDK.
+  if (!pdkConfigured()) {
+    console.log('[pdk-reconcile] PDK_SYNC_ENABLED is not "true" or credentials missing — skipping.')
+    return summary
   }
 
   // First, ensure the group + entry/exit rules are aligned with current

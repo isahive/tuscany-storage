@@ -165,9 +165,10 @@ describe('pdkConfigured', () => {
     process.env.PDK_CLIENT_ID = 'c'
     process.env.PDK_CLIENT_SECRET = 's'
     process.env.PDK_SYSTEM_ID = 'sys'
+    process.env.PDK_SYNC_ENABLED = 'true'
   })
 
-  it('returns true when all three env vars are set', () => {
+  it('returns true when all three env vars are set AND PDK_SYNC_ENABLED=true', () => {
     expect(pdkConfigured()).toBe(true)
   })
 
@@ -176,6 +177,15 @@ describe('pdkConfigured', () => {
     expect(pdkConfigured()).toBe(false)
     process.env.PDK_CLIENT_SECRET = ORIGINAL.PDK_CLIENT_SECRET
   })
+
+  it('returns false when PDK_SYNC_ENABLED is not "true" — kill switch off (sandbox-leak guard)', () => {
+    delete process.env.PDK_SYNC_ENABLED
+    expect(pdkConfigured()).toBe(false)
+    process.env.PDK_SYNC_ENABLED = 'false'
+    expect(pdkConfigured()).toBe(false)
+    process.env.PDK_SYNC_ENABLED = '1'
+    expect(pdkConfigured()).toBe(false) // strict 'true'
+  })
 })
 
 describe('syncTenantToPdkSafe', () => {
@@ -183,6 +193,7 @@ describe('syncTenantToPdkSafe', () => {
     process.env.PDK_CLIENT_ID = 'c'
     process.env.PDK_CLIENT_SECRET = 's'
     process.env.PDK_SYSTEM_ID = 'sys'
+    process.env.PDK_SYNC_ENABLED = 'true'
   })
 
   it('skips silently and does not call the adapter when PDK is not configured', async () => {

@@ -30,6 +30,11 @@ import {
 type TenantId = Types.ObjectId | string
 
 export function pdkConfigured(): boolean {
+  // PDK_SYNC_ENABLED is a kill switch — even when credentials are set the
+  // sync stays paused unless this is explicitly 'true'. Protects us from
+  // accidentally streaming real tenant data into the shared Developer
+  // Sandbox before PDK provisions a real per-customer system.
+  if (process.env.PDK_SYNC_ENABLED !== 'true') return false
   return !!(
     process.env.PDK_CLIENT_ID
     && process.env.PDK_CLIENT_SECRET
