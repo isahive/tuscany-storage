@@ -84,13 +84,12 @@ async function main() {
     return
   }
 
-  let updated = 0
-  for (const c of changes) {
-    await Lease.updateOne({ _id: c.id }, { $set: { billingDay: c.to } })
-    updated++
-    if (updated % 25 === 0) process.stdout.write(`  ${updated}\r`)
-  }
-  console.log(`\nDone — updated ${updated} leases.`)
+  const { realignAllLeaseBillingDays } = await import('@/lib/billing/billingDay')
+  const result = await realignAllLeaseBillingDays({
+    billingCycleAnchor: anchor,
+    billingCycleCustomDay: customDay,
+  })
+  console.log(`\nDone — scanned ${result.scanned}, updated ${result.changed} leases.`)
 }
 
 main()

@@ -11,6 +11,8 @@ vi.mock('@/lib/db', () => ({ connectDB: vi.fn(async () => undefined) }))
 
 import { getServerSession } from 'next-auth'
 import Settings from '@/models/Settings'
+import Lease from '@/models/Lease'
+import { makeTenant, makeUnit, makeLease } from '@/tests/helpers/factories'
 import { GET as getSettingsRoute, PUT as putSettings } from '@/app/api/settings/route'
 import { GET as getPublicSettings } from '@/app/api/settings/public/route'
 
@@ -87,6 +89,59 @@ describe('PUT /api/settings', () => {
     })
     const res = await putSettings(req)
     expect(res.status).toBe(400)
+  })
+
+  it('realigns active leases when the billing anchor changes', async () => {
+    await Settings.create({ billingCycleAnchor: 'signup_day', billingCycleCustomDay: 1 })
+    const t1 = await makeTenant()
+    const t2 = await makeTenant()
+    const u1 = await makeUnit()
+    const u2 = await makeUnit()
+    await makeLease(t1._id, u1._id, { billingDay: 10, startDate: new Date('2026-04-10Z'), status: 'active' })
+    await makeLease(t2._id, u2._id, { billingDay: 28, startDate: new Date('2026-03-28Z'), status: 'active' })
+
+    vi.mocked(getServerSession).mockResolvedValueOnce(adminSession() as never)
+    const res = await putSettings(makeRequest('PUT', '/api/settings', {
+      billingCycleAnchor: 'first_of_month',
+    }))
+    expect(res.status).toBe(200)
+    const json = await readJson<{ leaseRealign?: { scanned: number; changed: number } }>(res)
+    expect(json.leaseRealign).toEqual({ scanned: 2, changed: 2 })
+
+    const days = (await Lease.find({}).select('billingDay').lean<{ billingDay: number }[]>()).map((l) => l.billingDay)
+    expect(days.every((d) => d === 1)).toBe(true)
+  })
+
+  it('does NOT realign leases when only unrelated settings change', async () => {
+    await Settings.create({ billingCycleAnchor: 'first_of_month', billingCycleCustomDay: 1 })
+    const t = await makeTenant()
+    const u = await makeUnit()
+    await makeLease(t._id, u._id, { billingDay: 10, startDate: new Date('2026-04-10Z'), status: 'active' })
+
+    vi.mocked(getServerSession).mockResolvedValueOnce(adminSession() as never)
+    const res = await putSettings(makeRequest('PUT', '/api/settings', { facilityName: 'Other' }))
+    const json = await readJson<{ leaseRealign?: unknown }>(res)
+    expect(json.leaseRealign).toBeUndefined()
+
+    const lease = await Lease.findOne({}).lean<{ billingDay: number }>()
+    expect(lease!.billingDay).toBe(10) // untouched
+  })
+
+  it('realigns when only billingCycleCustomDay changes (anchor=custom_day)', async () => {
+    await Settings.create({ billingCycleAnchor: 'custom_day', billingCycleCustomDay: 10 })
+    const t = await makeTenant()
+    const u = await makeUnit()
+    await makeLease(t._id, u._id, { billingDay: 10, startDate: new Date('2026-04-10Z'), status: 'active' })
+
+    vi.mocked(getServerSession).mockResolvedValueOnce(adminSession() as never)
+    const res = await putSettings(makeRequest('PUT', '/api/settings', {
+      billingCycleCustomDay: 20,
+    }))
+    const json = await readJson<{ leaseRealign?: { changed: number } }>(res)
+    expect(json.leaseRealign?.changed).toBe(1)
+
+    const lease = await Lease.findOne({}).lean<{ billingDay: number }>()
+    expect(lease!.billingDay).toBe(20)
   })
 })
 

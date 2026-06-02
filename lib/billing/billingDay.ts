@@ -17,6 +17,7 @@
  *
  * The 28 cap matches the existing Lease zod validator (`max(28)`).
  */
+import Lease from '@/models/Lease'
 
 export interface BillingAnchorSettings {
   billingCycleAnchor: 'first_of_month' | 'signup_day' | 'custom_day'
@@ -40,4 +41,38 @@ export function computeBillingDay(
     default:
       return clamp(signupDate.getUTCDate(), 1, 28)
   }
+}
+
+export interface RealignSummary {
+  scanned: number
+  changed: number
+}
+
+/**
+ * Apply the current `billingCycleAnchor` setting to every active lease,
+ * patching `billingDay` only when it differs from what the rule says.
+ * Used both by the one-shot migration script (`scripts/migrate-billing-days`)
+ * and by the Settings PUT route — when an admin flips the anchor in the UI,
+ * the change is reflected on existing leases immediately rather than
+ * silently applying only to future signups.
+ *
+ * Safe to re-run — it's a no-op when nothing differs.
+ */
+export async function realignAllLeaseBillingDays(
+  settings: BillingAnchorSettings,
+): Promise<RealignSummary> {
+  const leases = await Lease.find({ status: 'active' }).select('_id billingDay startDate')
+
+  const ops: Array<{ updateOne: { filter: { _id: unknown }; update: { $set: { billingDay: number } } } }> = []
+  for (const lease of leases) {
+    const current = (lease as any).billingDay as number
+    const target = computeBillingDay(settings, (lease as any).startDate ?? new Date())
+    if (current !== target) {
+      ops.push({ updateOne: { filter: { _id: lease._id }, update: { $set: { billingDay: target } } } })
+    }
+  }
+  if (ops.length > 0) {
+    await Lease.bulkWrite(ops)
+  }
+  return { scanned: leases.length, changed: ops.length }
 }

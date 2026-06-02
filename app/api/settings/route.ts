@@ -6,6 +6,7 @@ import { connectDB } from '@/lib/db'
 import Settings from '@/models/Settings'
 import { DEFAULT_SETTINGS } from '@/lib/defaultSettings'
 import { syncFacilityHoursToPdkSafe } from '@/lib/pdkFacilityHours'
+import { realignAllLeaseBillingDays } from '@/lib/billing/billingDay'
 
 type LateLienStatus = 'late' | 'locked_out' | 'pre_lien' | 'lien' | 'auction'
 
@@ -262,12 +263,14 @@ export async function PUT(req: NextRequest) {
     // hours/devices config to PDK. Pushing on every settings PUT would work
     // but burns API calls unnecessarily.
     const before = await Settings.findOne({}).select(
-      'accessHoursStart accessHoursEnd pdkEntryDeviceIds pdkExitDeviceIds',
+      'accessHoursStart accessHoursEnd pdkEntryDeviceIds pdkExitDeviceIds billingCycleAnchor billingCycleCustomDay',
     ).lean<{
       accessHoursStart?: string
       accessHoursEnd?: string
       pdkEntryDeviceIds?: string[]
       pdkExitDeviceIds?: string[]
+      billingCycleAnchor?: 'first_of_month' | 'signup_day' | 'custom_day'
+      billingCycleCustomDay?: number
     } | null>()
 
     const updatedSettings = await Settings.findOneAndUpdate(
@@ -285,7 +288,25 @@ export async function PUT(req: NextRequest) {
       await syncFacilityHoursToPdkSafe()
     }
 
-    return NextResponse.json({ success: true, data: updatedSettings })
+    // When the billing anchor changes, realign every active lease so the
+    // admin's choice takes effect immediately instead of only applying to
+    // future signups. Skipped silently when nothing relevant changed.
+    const billingAnchorChanged =
+      before?.billingCycleAnchor !== updatedSettings.billingCycleAnchor
+      || before?.billingCycleCustomDay !== updatedSettings.billingCycleCustomDay
+    let leaseRealign: { scanned: number; changed: number } | undefined
+    if (billingAnchorChanged) {
+      leaseRealign = await realignAllLeaseBillingDays({
+        billingCycleAnchor: updatedSettings.billingCycleAnchor,
+        billingCycleCustomDay: updatedSettings.billingCycleCustomDay,
+      })
+    }
+
+    return NextResponse.json({
+      success: true,
+      data: updatedSettings,
+      ...(leaseRealign ? { leaseRealign } : {}),
+    })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Internal server error'
     return NextResponse.json({ success: false, error: message }, { status: 500 })
