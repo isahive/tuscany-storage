@@ -6,6 +6,8 @@ import { connectDB } from '@/lib/db'
 import Tenant from '@/models/Tenant'
 import Lease from '@/models/Lease'
 import Unit from '@/models/Unit'
+import { getSettings } from '@/lib/getSettings'
+import { computeBillingDay } from '@/lib/billing/billingDay'
 
 const schema = z.object({
   unitId: z.string().min(1),
@@ -89,7 +91,8 @@ export async function POST(req: NextRequest) {
 
     // ── 2. Create the lease ──
     const today = new Date()
-    const billingDay = Math.min(today.getDate(), 28)
+    const settings = await getSettings()
+    const billingDay = computeBillingDay(settings, today)
     const lease = await Lease.create({
       tenantId: tenant._id,
       unitId: unit._id,

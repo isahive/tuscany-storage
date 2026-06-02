@@ -14,6 +14,8 @@ import ProtectionPlan from '@/models/ProtectionPlan'
 import Product from '@/models/Product'
 import AccessLog from '@/models/AccessLog'
 import { syncTenantToPdkSafe } from '@/lib/pdkSync'
+import { computeBillingDay } from '@/lib/billing/billingDay'
+import { DEFAULT_SETTINGS } from '@/lib/defaultSettings'
 
 interface RouteContext {
   params: Promise<{ id: string }>
@@ -127,7 +129,13 @@ export async function POST(req: NextRequest, context: RouteContext) {
     const protectionMonthly = protection?.monthlyPrice ?? 0
     const setupFee = parsed.data.chargeSetupFee ? (settings?.setupFeeAmount ?? 0) : 0
     const taxRate = parsed.data.taxRate
-    const billingDay = billingStart.getUTCDate() <= 28 ? billingStart.getUTCDate() : 1
+    const billingDay = computeBillingDay(
+      {
+        billingCycleAnchor: (settings?.billingCycleAnchor as any) ?? DEFAULT_SETTINGS.billingCycleAnchor,
+        billingCycleCustomDay: settings?.billingCycleCustomDay ?? DEFAULT_SETTINGS.billingCycleCustomDay,
+      },
+      billingStart,
+    )
 
     // Promo applies only to the first full-month rent line — stored as a separate
     // negative payment row below. Lease.monthlyRate stays at the un-discounted rate

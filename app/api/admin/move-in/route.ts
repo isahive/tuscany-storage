@@ -11,6 +11,8 @@ import Lease from '@/models/Lease'
 import Payment from '@/models/Payment'
 import AccessLog from '@/models/AccessLog'
 import { syncTenantToPdkSafe } from '@/lib/pdkSync'
+import { getSettings } from '@/lib/getSettings'
+import { computeBillingDay } from '@/lib/billing/billingDay'
 
 const moveInSchema = z.object({
   tenantId: z.string().min(1),
@@ -53,6 +55,7 @@ export async function POST(req: NextRequest) {
 
     // Step 2: Calculate prorated first month
     const proratedAmount = calculateProratedAmount(unit.price, startDate)
+    const settings = await getSettings()
 
     // Step 3: Create Lease
     const lease = await Lease.create({
@@ -62,7 +65,7 @@ export async function POST(req: NextRequest) {
       monthlyRate: unit.price,
       deposit: 0,
       proratedFirstMonth: proratedAmount,
-      billingDay: startDate.getDate() <= 28 ? startDate.getDate() : 1,
+      billingDay: computeBillingDay(settings, startDate),
       status: 'active',
     })
 
