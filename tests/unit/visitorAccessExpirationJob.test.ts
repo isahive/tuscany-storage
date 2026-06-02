@@ -9,6 +9,11 @@ const adapterMocks = vi.hoisted(() => ({
 }))
 vi.mock('@/lib/gateAdapters/pdk', () => adapterMocks)
 vi.mock('@/lib/pdkVisitorGroup', () => ({ ensureVisitorGroup: vi.fn() }))
+// connectDB is called inside the job to prevent the production "buffering
+// timed out" race; in tests the in-memory mongoose is already connected via
+// startTestDb, so we stub connectDB to a no-op to avoid mongoose complaining
+// about a competing openUri() against a different URI.
+vi.mock('@/lib/db', () => ({ connectDB: vi.fn(async () => undefined) }))
 
 import { runVisitorAccessExpiration } from '@/jobs/visitor-access-expiration'
 import VisitorAccess from '@/models/VisitorAccess'

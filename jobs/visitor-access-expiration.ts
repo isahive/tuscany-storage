@@ -32,6 +32,13 @@ export interface VisitorAccessExpirationSummary {
 }
 
 export async function runVisitorAccessExpiration(): Promise<VisitorAccessExpirationSummary> {
+  // Unlike pdk-reconcile (which bails on the kill switch before any query),
+  // this job always touches the DB — local-state expiration runs even when
+  // PDK is off. That means we cannot rely on the API route having warmed
+  // the mongoose connection; ensure it ourselves or queries will buffer +
+  // time out on cold cron invocations.
+  await connectDB()
+
   const now = new Date()
   // Run expiration first — if PDK is unreachable, local DB still flips state.
   const expired = await expireDueVisitorAccess(now)
@@ -41,7 +48,6 @@ export async function runVisitorAccessExpiration(): Promise<VisitorAccessExpirat
 
 async function main() {
   console.log('Visitor access sweep: starting…')
-  await connectDB()
   const summary = await runVisitorAccessExpiration()
   console.log(`Visitor access sweep: done.
   expired.scanned=${summary.expired.scanned}
