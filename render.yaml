@@ -1,53 +1,31 @@
-# Render Blueprint — declares the web service + scheduled cron jobs.
-# Apply: connect this repo in Render, choose "Blueprint" deploy, point at this file.
+# Render Blueprint — declares the scheduled cron jobs that drive the
+# Tuscany Storage backend. The web service (tuscany-storage) is provisioned
+# OUTSIDE of this Blueprint (created manually earlier) so applying this
+# blueprint does NOT spawn a duplicate Next.js service.
 #
-# Cron architecture: each scheduled task is a separate Render cron service that
-# posts to the in-app /api/cron endpoint with the shared CRON_SECRET. The web
-# service owns the DB connection logic and Mongoose models, so all jobs run
-# against the same source of truth. The legacy recurring-billing cron uses its
-# own endpoint for historical reasons and is preserved as-is.
+# Architecture: each cron job is its own Render cron service. They all POST
+# to the existing web service's /api/cron endpoint with the shared
+# CRON_SECRET, so the web service owns the DB connection logic, Mongoose
+# models, and all the business code. The cron services are just timers +
+# HTTP callers.
+#
+# Shared env group: APP_URL and CRON_SECRET are pasted ONCE into the
+# `tuscany-cron-shared` env var group and inherited by every cron. CRON_SECRET
+# must match the value set on the web service so it accepts the calls.
+
+envVarGroups:
+  - name: tuscany-cron-shared
+    envVars:
+      # Full https URL of the existing web service, e.g.
+      # https://tuscany-storage.onrender.com
+      - key: APP_URL
+        sync: false
+      # Shared secret — must equal the CRON_SECRET set on the web service.
+      # Copy that value from the web service's Environment tab and paste here.
+      - key: CRON_SECRET
+        sync: false
 
 services:
-  # ── Main Next.js web service ──────────────────────────────────────────────
-  - type: web
-    name: tuscany-storage
-    runtime: node
-    plan: starter
-    region: ohio
-    buildCommand: npm install && npm run build
-    startCommand: npm start
-    healthCheckPath: /
-    envVars:
-      - key: NODE_VERSION
-        value: 20
-      - key: MONGODB_URI
-        sync: false
-      - key: NEXTAUTH_URL
-        sync: false
-      - key: NEXTAUTH_SECRET
-        sync: false
-      - key: STRIPE_SECRET_KEY
-        sync: false
-      - key: NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
-        sync: false
-      - key: CRON_SECRET
-        generateValue: true
-      # PDK gate access control — set in dashboard (values come from PDK)
-      - key: PDK_CLIENT_ID
-        sync: false
-      - key: PDK_CLIENT_SECRET
-        sync: false
-      - key: PDK_SYSTEM_ID
-        sync: false
-      - key: PDK_ORG_ID
-        sync: false
-      # Full https URL of the deployed webhook endpoint, ending in /api/webhooks/pdk
-      - key: PDK_WEBHOOK_URL
-        sync: false
-      # HMAC SHA-1 secret PDK uses to sign webhook deliveries
-      - key: PDK_WEBHOOK_SECRET
-        sync: false
-
   # ── Legacy recurring-billing cron at 08:00 UTC (03:00 ET) ─────────────────
   # Uses its own endpoint (predates the /api/cron dispatcher).
   - type: cron
@@ -58,13 +36,7 @@ services:
     buildCommand: npm install
     startCommand: node scripts/run-recurring-billing.js
     envVars:
-      - key: APP_URL
-        sync: false       # set to https://your-render-app.onrender.com
-      - key: CRON_SECRET
-        fromService:
-          type: web
-          name: tuscany-storage
-          envVarKey: CRON_SECRET
+      - fromGroup: tuscany-cron-shared
 
   # ── Invoice generation — daily 00:00 UTC ──────────────────────────────────
   - type: cron
@@ -75,13 +47,7 @@ services:
     buildCommand: npm install
     startCommand: node scripts/run-cron-job.js generateInvoices
     envVars:
-      - key: APP_URL
-        sync: false
-      - key: CRON_SECRET
-        fromService:
-          type: web
-          name: tuscany-storage
-          envVarKey: CRON_SECRET
+      - fromGroup: tuscany-cron-shared
 
   # ── Autopay charges — daily 02:00 UTC ─────────────────────────────────────
   - type: cron
@@ -92,13 +58,7 @@ services:
     buildCommand: npm install
     startCommand: node scripts/run-cron-job.js autopay
     envVars:
-      - key: APP_URL
-        sync: false
-      - key: CRON_SECRET
-        fromService:
-          type: web
-          name: tuscany-storage
-          envVarKey: CRON_SECRET
+      - fromGroup: tuscany-cron-shared
 
   # ── PDK reconcile — daily 03:00 UTC (heals drift before delinquency runs) ─
   - type: cron
@@ -109,13 +69,7 @@ services:
     buildCommand: npm install
     startCommand: node scripts/run-cron-job.js pdkReconcile
     envVars:
-      - key: APP_URL
-        sync: false
-      - key: CRON_SECRET
-        fromService:
-          type: web
-          name: tuscany-storage
-          envVarKey: CRON_SECRET
+      - fromGroup: tuscany-cron-shared
 
   # ── Delinquency escalation — daily 06:00 UTC ──────────────────────────────
   # Late fees, lockouts, lien/auction escalation. THE most important cron —
@@ -128,13 +82,7 @@ services:
     buildCommand: npm install
     startCommand: node scripts/run-cron-job.js delinquency
     envVars:
-      - key: APP_URL
-        sync: false
-      - key: CRON_SECRET
-        fromService:
-          type: web
-          name: tuscany-storage
-          envVarKey: CRON_SECRET
+      - fromGroup: tuscany-cron-shared
 
   # ── Lockout report email — daily 07:00 UTC ────────────────────────────────
   - type: cron
@@ -145,13 +93,7 @@ services:
     buildCommand: npm install
     startCommand: node scripts/run-cron-job.js lockoutReportEmail
     envVars:
-      - key: APP_URL
-        sync: false
-      - key: CRON_SECRET
-        fromService:
-          type: web
-          name: tuscany-storage
-          envVarKey: CRON_SECRET
+      - fromGroup: tuscany-cron-shared
 
   # ── Rate management reminder — daily 08:00 UTC (fires on configured day) ──
   - type: cron
@@ -162,13 +104,7 @@ services:
     buildCommand: npm install
     startCommand: node scripts/run-cron-job.js rateManagementReminder
     envVars:
-      - key: APP_URL
-        sync: false
-      - key: CRON_SECRET
-        fromService:
-          type: web
-          name: tuscany-storage
-          envVarKey: CRON_SECRET
+      - fromGroup: tuscany-cron-shared
 
   # ── Payment reminders — daily 09:00 UTC ───────────────────────────────────
   - type: cron
@@ -179,13 +115,7 @@ services:
     buildCommand: npm install
     startCommand: node scripts/run-cron-job.js reminders
     envVars:
-      - key: APP_URL
-        sync: false
-      - key: CRON_SECRET
-        fromService:
-          type: web
-          name: tuscany-storage
-          envVarKey: CRON_SECRET
+      - fromGroup: tuscany-cron-shared
 
   # ── Rate execution — daily 05:00 UTC ──────────────────────────────────────
   - type: cron
@@ -196,13 +126,7 @@ services:
     buildCommand: npm install
     startCommand: node scripts/run-cron-job.js rateExecution
     envVars:
-      - key: APP_URL
-        sync: false
-      - key: CRON_SECRET
-        fromService:
-          type: web
-          name: tuscany-storage
-          envVarKey: CRON_SECRET
+      - fromGroup: tuscany-cron-shared
 
   # ── Rate management — monthly, 1st of month at 04:00 UTC ──────────────────
   - type: cron
@@ -213,10 +137,4 @@ services:
     buildCommand: npm install
     startCommand: node scripts/run-cron-job.js rateManagement
     envVars:
-      - key: APP_URL
-        sync: false
-      - key: CRON_SECRET
-        fromService:
-          type: web
-          name: tuscany-storage
-          envVarKey: CRON_SECRET
+      - fromGroup: tuscany-cron-shared
