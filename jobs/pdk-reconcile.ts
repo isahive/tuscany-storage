@@ -60,6 +60,11 @@ export async function reconcilePdkHolders(): Promise<ReconcileSummary> {
     archived: { $ne: true },
     onWaitingList: { $ne: true },
     isRetailWalkIn: { $ne: true },
+    // Moved-out tenants stay in PDK as disabled holders for audit, but
+    // re-pushing them on every reconcile pass burns API calls for no
+    // behavior change. The disable+clear-pin already happened at move-out
+    // time via revokeGateAccess → syncTenantToPdkSafe.
+    status: { $ne: 'moved_out' },
   })
 
   for (const tenant of tenants) {

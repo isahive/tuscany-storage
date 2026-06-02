@@ -117,10 +117,14 @@ describe('reconcilePdkHolders', () => {
     expect(s.patched).toBe(0)
   })
 
-  it('skips archived, waiting-list, and retail-walk-in tenants', async () => {
+  it('skips archived, waiting-list, retail-walk-in, and moved_out tenants', async () => {
     await makeTenant({ status: 'active', archived: true, gateCode: '1' })
     await makeTenant({ status: 'active', onWaitingList: true, gateCode: '2' })
     await makeTenant({ status: 'active', isRetailWalkIn: true, gateCode: '3' })
+    // Moved-out tenants were re-synced as disabled holders on every pass,
+    // burning API calls for no behavior change. Excluded since the
+    // disable+clear-pin already ran at move-out time.
+    await makeTenant({ status: 'moved_out', pdkHolderId: 'h-moved' })
 
     const s = await reconcilePdkHolders()
     expect(s.scanned).toBe(0)

@@ -9,6 +9,17 @@ vi.mock('next-auth', async () => {
 })
 vi.mock('@/lib/db', () => ({ connectDB: vi.fn(async () => undefined) }))
 
+const pdkHooks = vi.hoisted(() => ({
+  syncFacilityHoursToPdkSafe: vi.fn(async () => undefined),
+  ensureVisitorGroupSafe: vi.fn(async () => null),
+}))
+vi.mock('@/lib/pdkFacilityHours', () => ({
+  syncFacilityHoursToPdkSafe: pdkHooks.syncFacilityHoursToPdkSafe,
+}))
+vi.mock('@/lib/pdkVisitorGroup', () => ({
+  ensureVisitorGroupSafe: pdkHooks.ensureVisitorGroupSafe,
+}))
+
 import { getServerSession } from 'next-auth'
 import Settings from '@/models/Settings'
 import Lease from '@/models/Lease'
@@ -54,6 +65,37 @@ describe('PUT /api/settings', () => {
     const req = makeRequest('PUT', '/api/settings', { facilityName: 'X' })
     const res = await putSettings(req)
     expect(res.status).toBe(403)
+  })
+
+  it('triggers facility-hours AND visitor-group PDK sync when entry/exit devices change', async () => {
+    pdkHooks.syncFacilityHoursToPdkSafe.mockClear()
+    pdkHooks.ensureVisitorGroupSafe.mockClear()
+    await Settings.create({
+      facilityName: 'X', accessHoursStart: '05:00', accessHoursEnd: '22:00',
+      pdkEntryDeviceIds: ['d-old'], pdkExitDeviceIds: [],
+    })
+    vi.mocked(getServerSession).mockResolvedValueOnce(adminSession() as never)
+    const req = makeRequest('PUT', '/api/settings', {
+      pdkEntryDeviceIds: ['d-new'],
+    })
+    const res = await putSettings(req)
+    expect(res.status).toBe(200)
+    expect(pdkHooks.syncFacilityHoursToPdkSafe).toHaveBeenCalledTimes(1)
+    expect(pdkHooks.ensureVisitorGroupSafe).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not re-sync PDK when gate config is unchanged', async () => {
+    pdkHooks.syncFacilityHoursToPdkSafe.mockClear()
+    pdkHooks.ensureVisitorGroupSafe.mockClear()
+    await Settings.create({
+      facilityName: 'X', accessHoursStart: '05:00', accessHoursEnd: '22:00',
+      pdkEntryDeviceIds: ['d1'], pdkExitDeviceIds: [],
+    })
+    vi.mocked(getServerSession).mockResolvedValueOnce(adminSession() as never)
+    const req = makeRequest('PUT', '/api/settings', { facilityName: 'New Name' })
+    await putSettings(req)
+    expect(pdkHooks.syncFacilityHoursToPdkSafe).not.toHaveBeenCalled()
+    expect(pdkHooks.ensureVisitorGroupSafe).not.toHaveBeenCalled()
   })
 
   it('upserts settings and returns the updated doc', async () => {

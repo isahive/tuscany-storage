@@ -100,6 +100,27 @@ export async function setHolderEnabled(
   }
 }
 
+export async function updateHolderName(
+  holderId: string,
+  firstName: string,
+  lastName: string,
+): Promise<void> {
+  // PDK enforces a 35-char max on firstName (confirmed via probe). Slice
+  // defensively so an oversized local name doesn't 400 the whole sync.
+  const res = await pdkFetch(`/holders/${holderId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      firstName: firstName.slice(0, 35),
+      lastName: lastName.slice(0, 35),
+    }),
+  })
+  if (!res.ok) {
+    const body = await res.text().catch(() => '')
+    throw new Error(`PDK updateHolderName failed: ${res.status} ${body}`)
+  }
+}
+
 export async function deleteHolder(holderId: string): Promise<void> {
   const res = await pdkFetch(`/holders/${holderId}`, { method: 'DELETE' })
   // PDK returns 204 on successful delete; 404 is treated as already-gone

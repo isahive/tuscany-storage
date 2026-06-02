@@ -6,6 +6,7 @@ import { connectDB } from '@/lib/db'
 import Settings from '@/models/Settings'
 import { DEFAULT_SETTINGS } from '@/lib/defaultSettings'
 import { syncFacilityHoursToPdkSafe } from '@/lib/pdkFacilityHours'
+import { ensureVisitorGroupSafe } from '@/lib/pdkVisitorGroup'
 import { realignAllLeaseBillingDays } from '@/lib/billing/billingDay'
 
 type LateLienStatus = 'late' | 'locked_out' | 'pre_lien' | 'lien' | 'auction'
@@ -286,6 +287,11 @@ export async function PUT(req: NextRequest) {
       || JSON.stringify(before?.pdkExitDeviceIds ?? []) !== JSON.stringify(updatedSettings.pdkExitDeviceIds ?? [])
     if (gateConfigChanged) {
       await syncFacilityHoursToPdkSafe()
+      // Visitor group rules also bind to entry/exit devices. Without this
+      // call the visitor group keeps pointing at the previous device set
+      // and currently-active visitor passes silently break when keys are
+      // tried at the new readers.
+      await ensureVisitorGroupSafe()
     }
 
     // When the billing anchor changes, realign every active lease so the

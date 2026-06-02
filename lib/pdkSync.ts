@@ -23,8 +23,10 @@ import {
   createHolder,
   updateHolderPin,
   setHolderEnabled,
+  updateHolderName,
   deleteHolder,
   addHolderToGroup,
+  getHolder,
 } from '@/lib/gateAdapters/pdk'
 
 type TenantId = Types.ObjectId | string
@@ -87,11 +89,28 @@ export async function syncTenantToPdk(tenantId: TenantId): Promise<SyncResult> {
     return { action: 'created', pdkHolderId: created.id }
   }
 
-  // Existing holder — push pin and enabled state. We do two separate PATCHes
-  // because PDK builds vary on whether they accept multi-field PATCH bodies;
-  // two single-field calls is the safe lowest-common-denominator.
+  // Existing holder — push pin, enabled state, and reconcile name drift.
+  // Three separate PATCHes because PDK builds vary on whether they accept
+  // multi-field PATCH bodies; single-field calls is the safe lowest-common-
+  // denominator. Name is fetched and compared first so a static no-op tenant
+  // doesn't burn a PATCH on every reconcile pass.
   await updateHolderPin(tenant.pdkHolderId, pin)
   await setHolderEnabled(tenant.pdkHolderId, enabled)
+  try {
+    const remote = await getHolder(tenant.pdkHolderId)
+    const nameDrifted =
+      remote.firstName !== tenant.firstName.slice(0, 35)
+      || remote.lastName !== tenant.lastName.slice(0, 35)
+    if (nameDrifted) {
+      await updateHolderName(tenant.pdkHolderId, tenant.firstName, tenant.lastName)
+    }
+  } catch (err) {
+    // Name reconciliation is best-effort — a stale name doesn't break gate
+    // access, just confuses the PDK admin console. PIN + enabled already
+    // landed above, which is what actually matters.
+    const msg = err instanceof Error ? err.message : String(err)
+    console.warn(`[pdkSync] tenant ${tenant._id} name reconcile failed: ${msg}`)
+  }
   tenant.pdkSyncedAt = new Date()
   await tenant.save()
   return { action: 'updated', pdkHolderId: tenant.pdkHolderId }

@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { authOptions } from '@/lib/auth'
 import { connectDB } from '@/lib/db'
 import Tenant from '@/models/Tenant'
+import { syncTenantToPdkSafe } from '@/lib/pdkSync'
 
 interface RouteContext {
   params: Promise<{ id: string }>
@@ -126,9 +127,26 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
 
     await connectDB()
 
+    // Snapshot the pre-update name so we know whether to re-push to PDK.
+    // Pushing on every PATCH (most of which only touch address/phone) would
+    // burn API calls; pushing only on name change keeps PDK aligned without
+    // amplifying load.
+    const before = await Tenant.findById(id).select('firstName lastName').lean<{
+      firstName?: string
+      lastName?: string
+    } | null>()
+
     const tenant = await Tenant.findByIdAndUpdate(id, updateData, { new: true, runValidators: true })
     if (!tenant) {
       return NextResponse.json({ success: false, error: 'Tenant not found' }, { status: 404 })
+    }
+
+    const nameChanged =
+      before && (before.firstName !== tenant.firstName || before.lastName !== tenant.lastName)
+    if (nameChanged) {
+      // Fire-and-forget — local write already succeeded. Reconcile cron is
+      // the safety net if PDK is unreachable.
+      await syncTenantToPdkSafe(tenant._id as any)
     }
 
     return NextResponse.json({ success: true, data: tenant })

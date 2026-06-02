@@ -7,6 +7,8 @@ const adapterMocks = vi.hoisted(() => ({
   createHolder: vi.fn(),
   updateHolderPin: vi.fn(),
   setHolderEnabled: vi.fn(),
+  updateHolderName: vi.fn(),
+  getHolder: vi.fn(),
   deleteHolder: vi.fn(),
   addHolderToGroup: vi.fn(),
 }))
@@ -107,14 +109,26 @@ describe('syncTenantToPdk (first time)', () => {
 })
 
 describe('syncTenantToPdk (existing holder)', () => {
+  function mockRemoteHolder(overrides: Partial<{ firstName: string; lastName: string }> = {}) {
+    adapterMocks.getHolder.mockResolvedValueOnce({
+      id: 'remote',
+      firstName: overrides.firstName ?? 'Same',
+      lastName: overrides.lastName ?? 'Name',
+      enabled: true,
+    })
+  }
+
   it('PATCHes pin and enabled, updates pdkSyncedAt', async () => {
     const t = await makeTenant({
+      firstName: 'Same',
+      lastName: 'Name',
       gateCode: '9999',
       status: 'active',
       pdkHolderId: 'pdk-existing',
     })
     adapterMocks.updateHolderPin.mockResolvedValueOnce(undefined)
     adapterMocks.setHolderEnabled.mockResolvedValueOnce(undefined)
+    mockRemoteHolder({ firstName: 'Same', lastName: 'Name' })
 
     const res = await syncTenantToPdk(t._id as any)
     expect(res).toEqual({ action: 'updated', pdkHolderId: 'pdk-existing' })
@@ -122,6 +136,8 @@ describe('syncTenantToPdk (existing holder)', () => {
     expect(adapterMocks.createHolder).not.toHaveBeenCalled()
     expect(adapterMocks.updateHolderPin).toHaveBeenCalledWith('pdk-existing', '9999')
     expect(adapterMocks.setHolderEnabled).toHaveBeenCalledWith('pdk-existing', true)
+    // Name matches remote — no name PATCH.
+    expect(adapterMocks.updateHolderName).not.toHaveBeenCalled()
   })
 
   it('sends pin=null when gateCode is unset (clearing PIN access)', async () => {
@@ -131,6 +147,7 @@ describe('syncTenantToPdk (existing holder)', () => {
     })
     adapterMocks.updateHolderPin.mockResolvedValueOnce(undefined)
     adapterMocks.setHolderEnabled.mockResolvedValueOnce(undefined)
+    mockRemoteHolder({ firstName: t.firstName, lastName: t.lastName })
 
     await syncTenantToPdk(t._id as any)
     expect(adapterMocks.updateHolderPin).toHaveBeenCalledWith('pdk-existing-2', null)
@@ -145,9 +162,49 @@ describe('syncTenantToPdk (existing holder)', () => {
     })
     adapterMocks.updateHolderPin.mockResolvedValueOnce(undefined)
     adapterMocks.setHolderEnabled.mockResolvedValueOnce(undefined)
+    mockRemoteHolder({ firstName: t.firstName, lastName: t.lastName })
 
     await syncTenantToPdk(t._id as any)
     expect(adapterMocks.setHolderEnabled).toHaveBeenCalledWith('pdk-existing-3', false)
+  })
+
+  it('PATCHes name when local name drifted from PDK', async () => {
+    const t = await makeTenant({
+      firstName: 'Jane',
+      lastName: 'Doe',
+      gateCode: '9999',
+      status: 'active',
+      pdkHolderId: 'pdk-name-drift',
+    })
+    adapterMocks.updateHolderPin.mockResolvedValueOnce(undefined)
+    adapterMocks.setHolderEnabled.mockResolvedValueOnce(undefined)
+    adapterMocks.getHolder.mockResolvedValueOnce({
+      id: 'pdk-name-drift',
+      firstName: 'JaneOld',
+      lastName: 'Doe',
+      enabled: true,
+    })
+    adapterMocks.updateHolderName.mockResolvedValueOnce(undefined)
+
+    await syncTenantToPdk(t._id as any)
+    expect(adapterMocks.updateHolderName).toHaveBeenCalledWith('pdk-name-drift', 'Jane', 'Doe')
+  })
+
+  it('does not fail the sync when name reconcile errors (best-effort)', async () => {
+    const t = await makeTenant({
+      gateCode: '9999',
+      status: 'active',
+      pdkHolderId: 'pdk-name-fail',
+    })
+    adapterMocks.updateHolderPin.mockResolvedValueOnce(undefined)
+    adapterMocks.setHolderEnabled.mockResolvedValueOnce(undefined)
+    adapterMocks.getHolder.mockRejectedValueOnce(new Error('PDK 500'))
+
+    const res = await syncTenantToPdk(t._id as any)
+    expect(res.action).toBe('updated')
+    // pin + enabled landed even though name reconcile failed
+    expect(adapterMocks.updateHolderPin).toHaveBeenCalled()
+    expect(adapterMocks.setHolderEnabled).toHaveBeenCalled()
   })
 })
 
