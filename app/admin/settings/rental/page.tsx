@@ -7,6 +7,11 @@ import {
   Box,
   Button,
   CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
   Divider,
   FormControlLabel,
   Radio,
@@ -239,7 +244,49 @@ export default function RentalSettingsPage() {
 
   const isDirty = JSON.stringify(form) !== JSON.stringify(savedForm)
 
-  async function handleSave() {
+  // Confirmation state for billing-anchor changes — switching the anchor
+  // mass-updates billingDay on every active lease, so we surface the impact
+  // before the admin commits.
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [confirmLoading, setConfirmLoading] = useState(false)
+  const [confirmPreview, setConfirmPreview] = useState<{ scanned: number; wouldChange: number } | null>(null)
+
+  const billingAnchorChanged =
+    form.billingCycleAnchor !== savedForm.billingCycleAnchor
+    || (form.billingCycleAnchor === 'custom_day'
+      && form.billingCycleCustomDay !== savedForm.billingCycleCustomDay)
+
+  async function attemptSave() {
+    if (!billingAnchorChanged) {
+      await persistSave()
+      return
+    }
+    // Fetch impact preview before showing the confirm dialog. If the preview
+    // call fails we still let the admin save — failing closed would leave
+    // them unable to save other unrelated edits.
+    setConfirmLoading(true)
+    setConfirmPreview(null)
+    try {
+      const params = new URLSearchParams({
+        anchor: form.billingCycleAnchor,
+        customDay: String(form.billingCycleCustomDay),
+      })
+      const res = await fetch(`/api/admin/billing-day-preview?${params}`)
+      const json = await res.json()
+      if (res.ok && json?.success) {
+        setConfirmPreview(json.data as { scanned: number; wouldChange: number })
+      } else {
+        setConfirmPreview({ scanned: 0, wouldChange: 0 })
+      }
+    } catch {
+      setConfirmPreview({ scanned: 0, wouldChange: 0 })
+    } finally {
+      setConfirmLoading(false)
+      setConfirmOpen(true)
+    }
+  }
+
+  async function persistSave() {
     setSaving(true)
     setError(null)
     try {
@@ -256,6 +303,15 @@ export default function RentalSettingsPage() {
       setError(err instanceof Error ? err.message : 'Failed to save')
     } finally {
       setSaving(false)
+      setConfirmOpen(false)
+    }
+  }
+
+  function anchorLabel(a: BillingCycleAnchor): string {
+    switch (a) {
+      case 'first_of_month': return '1st of the month'
+      case 'custom_day': return `Day ${form.billingCycleCustomDay} of the month`
+      case 'signup_day': default: return 'Each tenant\u2019s signup day'
     }
   }
 
@@ -284,12 +340,12 @@ export default function RentalSettingsPage() {
         </Typography>
         <Button
           variant="contained"
-          startIcon={saving ? <CircularProgress size={16} sx={{ color: 'white' }} /> : <SaveIcon />}
-          onClick={handleSave}
-          disabled={saving || !isDirty}
+          startIcon={saving || confirmLoading ? <CircularProgress size={16} sx={{ color: 'white' }} /> : <SaveIcon />}
+          onClick={attemptSave}
+          disabled={saving || confirmLoading || !isDirty}
           sx={{ bgcolor: '#B8914A', '&:hover': { bgcolor: '#9A7A3E' }, '&.Mui-disabled': { bgcolor: '#D4B87A', color: 'white' }, textTransform: 'none', fontWeight: 600, px: 2.5 }}
         >
-          {saving ? 'Saving…' : 'Save'}
+          {saving ? 'Saving…' : confirmLoading ? 'Checking…' : 'Save'}
         </Button>
       </Box>
 
@@ -471,6 +527,63 @@ export default function RentalSettingsPage() {
           Settings saved
         </Alert>
       </Snackbar>
+
+      <Dialog
+        open={confirmOpen}
+        onClose={() => !saving && setConfirmOpen(false)}
+        aria-labelledby="confirm-billing-anchor-title"
+      >
+        <DialogTitle id="confirm-billing-anchor-title" sx={{ fontWeight: 700 }}>
+          Update billing day for existing leases?
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText sx={{ mb: 1.5 }}>
+            You are switching the billing cycle anchor to{' '}
+            <b>{anchorLabel(form.billingCycleAnchor)}</b>. This will mass-update
+            the billing day on every active lease that doesn&rsquo;t already
+            match the new rule.
+          </DialogContentText>
+          {confirmPreview && (
+            <Box sx={{ bgcolor: '#FAFAF7', border: '1px solid #E5E7EB', borderRadius: 1.5, p: 1.5, mb: 1 }}>
+              <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
+                Impact preview
+              </Typography>
+              <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                Active leases scanned: <b>{confirmPreview.scanned}</b>
+              </Typography>
+              <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                Leases that will change: <b>{confirmPreview.wouldChange}</b>
+              </Typography>
+              <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                Leases already aligned: <b>{confirmPreview.scanned - confirmPreview.wouldChange}</b>
+              </Typography>
+            </Box>
+          )}
+          <DialogContentText variant="body2" sx={{ color: 'text.secondary' }}>
+            Tenants with autopay may see their next charge shift by a few days.
+            We recommend running this just after a billing cycle finishes so no
+            invoices are mid-flight.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button
+            onClick={() => setConfirmOpen(false)}
+            disabled={saving}
+            sx={{ color: 'text.secondary', textTransform: 'none', fontWeight: 500 }}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            onClick={persistSave}
+            disabled={saving}
+            startIcon={saving ? <CircularProgress size={16} sx={{ color: 'white' }} /> : undefined}
+            sx={{ bgcolor: '#B8914A', '&:hover': { bgcolor: '#9A7A3E' }, textTransform: 'none', fontWeight: 600 }}
+          >
+            {saving ? 'Saving…' : 'Confirm & save'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   )
 }
