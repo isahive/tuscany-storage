@@ -1,0 +1,50 @@
+# Mirror every push on this repo (Shiru04/tuscany-storage) to the legacy
+# isahive/tuscany-storage repo so the old deploy keeps reflecting changes
+# until it's decommissioned.
+#
+# Requires a Personal Access Token with `repo` write scope on
+# isahive/tuscany-storage, stored as the `MIRROR_TOKEN` repo secret.
+#
+# Pushes ALL branches and tags (matches the manual `git push --all + --tags`
+# we did during the initial mirror). Force-push is NOT enabled — if the two
+# repos diverge intentionally the job will fail noisily rather than rewrite
+# history on isahive. To recover, push the missing commits to isahive
+# manually or temporarily change `--force` below.
+
+name: Mirror to isahive
+
+on:
+  push:
+    branches: ['**']
+    tags: ['**']
+
+concurrency:
+  # Avoid two mirror jobs racing each other when several pushes land back-to-
+  # back. We still want each push reflected, so we use `cancel-in-progress:
+  # false` and let them queue.
+  group: mirror-to-isahive
+  cancel-in-progress: false
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (full history)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          # We push using MIRROR_TOKEN, not the default GITHUB_TOKEN, so
+          # there's no point baking the default credential in.
+          persist-credentials: false
+
+      - name: Push all branches + tags to isahive
+        env:
+          MIRROR_TOKEN: ${{ secrets.MIRROR_TOKEN }}
+        run: |
+          if [ -z "$MIRROR_TOKEN" ]; then
+            echo "::error::MIRROR_TOKEN secret is not set. Create a PAT with 'repo' scope on isahive/tuscany-storage and add it under Settings → Secrets → Actions."
+            exit 1
+          fi
+          git remote add isahive "https://x-access-token:${MIRROR_TOKEN}@github.com/isahive/tuscany-storage.git"
+          git push isahive --all
+          git push isahive --tags
