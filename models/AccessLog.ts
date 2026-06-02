@@ -49,11 +49,14 @@ AccessLogSchema.index({ visitorAccessId: 1 })
 AccessLogSchema.index({ createdAt: -1 })
 
 AccessLogSchema.pre('validate', function () {
-  // Every row must be attributable to exactly one principal — either a
-  // tenant or a visitor pass. Prevents orphan rows from sneaking in if a
-  // future caller forgets both ids.
-  if (!this.tenantId && !this.visitorAccessId) {
-    this.invalidate('tenantId', 'AccessLog requires tenantId or visitorAccessId')
+  // Keypad events must always resolve to a principal — every PIN at the
+  // reader maps to either a tenant or a visitor pass, and an orphan row
+  // here means our webhook lost an attribution. Other sources can be
+  // principal-less by design: 'system' covers cron-driven state changes
+  // and 'app' covers admin-initiated actions like text-to-open where the
+  // actor is a whitelisted phone, not a tenant.
+  if (this.source === 'keypad' && !this.tenantId && !this.visitorAccessId) {
+    this.invalidate('tenantId', 'AccessLog (keypad) requires tenantId or visitorAccessId')
   }
 })
 

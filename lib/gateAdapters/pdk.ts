@@ -265,3 +265,111 @@ export async function deleteGroupRule(groupId: string, ruleId: string): Promise<
     throw new Error(`PDK deleteGroupRule failed: ${res.status} ${body}`)
   }
 }
+
+// ── Connections + cloud-node device control ───────────────────────────────
+// The PDK 2.0 docs (developer.pdk.io/web/2.0/rest/devices) expose remote door
+// control under /cloud-nodes/{cn}/devices/{d}/{action}. The device's own
+// connection record carries the cloud-node id, so callers that only know the
+// deviceId need a lookup step. resolveCloudNodeForDevice handles that with a
+// minimal in-process cache — the mapping is stable as long as the device
+// isn't physically moved between panels.
+
+export interface PdkConnection {
+  id: string
+  name: string
+  cloudNode?: { id: string; name?: string; serialNumber?: string }
+}
+
+export interface PdkDevice {
+  id: string
+  name: string
+  connection: string
+  type?: string
+}
+
+export async function listConnections(): Promise<PdkConnection[]> {
+  const res = await pdkFetch('/connections')
+  return readJsonOrThrow<PdkConnection[]>(res, 'listConnections')
+}
+
+export async function listDevices(): Promise<PdkDevice[]> {
+  const res = await pdkFetch('/devices')
+  return readJsonOrThrow<PdkDevice[]>(res, 'listDevices')
+}
+
+const connectionCloudNodeCache = new Map<string, string>()
+
+/** For tests. */
+export function __clearPdkConnectionCache() {
+  connectionCloudNodeCache.clear()
+}
+
+/**
+ * Map a connectionId → cloudNodeId. Cached in-process because the mapping is
+ * effectively static (a connection is bound to a single panel for life).
+ * On cache miss we fetch the full connections list once and populate every
+ * entry; cheaper than per-id GETs.
+ */
+async function resolveCloudNodeForConnection(connectionId: string): Promise<string> {
+  const hit = connectionCloudNodeCache.get(connectionId)
+  if (hit) return hit
+  const conns = await listConnections()
+  for (const c of conns) {
+    if (c.cloudNode?.id) connectionCloudNodeCache.set(c.id, c.cloudNode.id)
+  }
+  const after = connectionCloudNodeCache.get(connectionId)
+  if (!after) throw new Error(`PDK connection ${connectionId} has no cloudNode association`)
+  return after
+}
+
+const deviceConnectionCache = new Map<string, string>()
+
+async function resolveCloudNodeForDevice(deviceId: string): Promise<string> {
+  const cachedConnId = deviceConnectionCache.get(deviceId)
+  if (cachedConnId) return resolveCloudNodeForConnection(cachedConnId)
+  const devices = await listDevices()
+  for (const d of devices) deviceConnectionCache.set(d.id, d.connection)
+  const connId = deviceConnectionCache.get(deviceId)
+  if (!connId) throw new Error(`PDK device ${deviceId} not found`)
+  return resolveCloudNodeForConnection(connId)
+}
+
+/**
+ * Momentary unlock — relay clicks for `dwell` seconds (or the device's
+ * configured dwell when omitted), then auto-releases. This is the primary
+ * "open the gate remotely" action; use it for text-to-open and admin-panel
+ * "open now" buttons.
+ */
+export async function tryOpenDevice(deviceId: string, dwell?: number): Promise<void> {
+  const cn = await resolveCloudNodeForDevice(deviceId)
+  const body = dwell !== undefined ? JSON.stringify({ dwell }) : undefined
+  const res = await pdkFetch(`/cloud-nodes/${cn}/devices/${deviceId}/try-open`, {
+    method: 'POST',
+    ...(body ? { headers: { 'Content-Type': 'application/json' }, body } : {}),
+  })
+  if (!res.ok) {
+    const text = await res.text().catch(() => '')
+    throw new Error(`PDK tryOpenDevice failed: ${res.status} ${text}`)
+  }
+}
+
+/** Hold the relay open until a matching closeDevice() call. Use sparingly —
+ *  for normal "open the gate once" flows tryOpenDevice() is correct. */
+export async function openDevice(deviceId: string): Promise<void> {
+  const cn = await resolveCloudNodeForDevice(deviceId)
+  const res = await pdkFetch(`/cloud-nodes/${cn}/devices/${deviceId}/open`, { method: 'POST' })
+  if (!res.ok) {
+    const text = await res.text().catch(() => '')
+    throw new Error(`PDK openDevice failed: ${res.status} ${text}`)
+  }
+}
+
+/** Force-close a held-open device. Safe to call even if already closed. */
+export async function closeDevice(deviceId: string): Promise<void> {
+  const cn = await resolveCloudNodeForDevice(deviceId)
+  const res = await pdkFetch(`/cloud-nodes/${cn}/devices/${deviceId}/close`, { method: 'POST' })
+  if (!res.ok) {
+    const text = await res.text().catch(() => '')
+    throw new Error(`PDK closeDevice failed: ${res.status} ${text}`)
+  }
+}

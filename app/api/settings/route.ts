@@ -29,6 +29,17 @@ const updateSettingsSchema = z
     pdkTenantGroupId: z.string(),
     pdkEntryDeviceIds: z.array(z.string()),
     pdkExitDeviceIds: z.array(z.string()),
+    // Text-to-open: phones authorized to open the gate via SMS.
+    textToOpenAuthorizedPhones: z.array(z.string().trim()).transform((arr) =>
+      // Strip empties, normalize to E.164-ish: keep leading '+' and digits only.
+      arr.map((s) => {
+        const t = s.trim()
+        if (!t) return ''
+        const hasPlus = t.startsWith('+')
+        const digits = t.replace(/\D/g, '')
+        return hasPlus ? `+${digits}` : digits
+      }).filter(Boolean),
+    ),
     // Locale
     locale: z.string(),
     currency: z.string(),

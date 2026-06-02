@@ -21,6 +21,11 @@ export interface ISettingsDocument extends Document {
    *  toggle all visitor access via a single group flip if needed. Created on
    *  first visitor pass via syncVisitorGroupToPdk. */
   pdkVisitorGroupId?: string
+  /** E.164 phone numbers authorized to open the gate via SMS to the Twilio
+   *  number. Texting from any number NOT in this list returns "access denied"
+   *  silently — we never echo the list contents back. Stored normalized
+   *  (+countrycode + digits, no spaces or punctuation). */
+  textToOpenAuthorizedPhones?: string[]
   /** Devices where access is gated by accessHoursStart/End (the outside readers). */
   pdkEntryDeviceIds?: string[]
   /** Devices that should always allow exit (inside readers). Combined with the
@@ -218,6 +223,7 @@ const SettingsSchema = new Schema<ISettingsDocument>(
     // PDK gate-access wiring (managed via /admin/settings/gate)
     pdkTenantGroupId:  { type: String },
     pdkVisitorGroupId: { type: String },
+    textToOpenAuthorizedPhones: { type: [String], default: [] },
     pdkEntryDeviceIds: { type: [String], default: [] },
     pdkExitDeviceIds:  { type: [String], default: [] },
 

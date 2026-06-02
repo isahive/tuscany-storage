@@ -46,6 +46,8 @@ interface GateFormValues {
   gateAutoLockout: boolean
   gateTextToOpen: boolean
   gateTextToOpenNumber: string
+  /** Newline-separated list of E.164 phones authorized to text-to-open. */
+  textToOpenAuthorizedPhonesText: string
   gateControllerType: string
   gateNodeId: string
   gateApiEndpoint: string
@@ -59,10 +61,21 @@ const INITIAL: GateFormValues = {
   gateAutoLockout: true,
   gateTextToOpen: false,
   gateTextToOpenNumber: '',
+  textToOpenAuthorizedPhonesText: '',
   gateControllerType: '',
   gateNodeId: '',
   gateApiEndpoint: '',
   gateApiKey: '',
+}
+
+/** Split a textarea blob into E.164-ish entries. Empty lines + whitespace
+ *  stripped. We only enforce "starts with + or digit" — full E.164 validation
+ *  happens at the service layer when SMS arrives. */
+function parsePhoneList(text: string): string[] {
+  return text
+    .split(/[\r\n,]+/)
+    .map((s) => s.trim())
+    .filter(Boolean)
 }
 
 // Default gate configuration — will be replaced when gate controller is connected
@@ -107,6 +120,9 @@ export default function GateSettingsPage() {
             gateAutoLockout: d.gateAutoLockout ?? INITIAL.gateAutoLockout,
             gateTextToOpen: d.gateTextToOpen ?? INITIAL.gateTextToOpen,
             gateTextToOpenNumber: d.gateTextToOpenNumber ?? INITIAL.gateTextToOpenNumber,
+            textToOpenAuthorizedPhonesText: Array.isArray(d.textToOpenAuthorizedPhones)
+              ? d.textToOpenAuthorizedPhones.join('\n')
+              : '',
             gateControllerType: d.gateControllerType ?? INITIAL.gateControllerType,
             gateNodeId: d.gateNodeId ?? INITIAL.gateNodeId,
             gateApiEndpoint: d.gateApiEndpoint ?? INITIAL.gateApiEndpoint,
@@ -125,10 +141,17 @@ export default function GateSettingsPage() {
   const handleSave = useCallback(async () => {
     setSaving(true); setError(null)
     try {
+      // Strip the textarea field out of the payload — the API expects
+      // textToOpenAuthorizedPhones as a parsed array, not raw text.
+      const { textToOpenAuthorizedPhonesText, ...rest } = form
+      const payload = {
+        ...rest,
+        textToOpenAuthorizedPhones: parsePhoneList(textToOpenAuthorizedPhonesText),
+      }
       const res = await fetch('/api/settings', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify(payload),
       })
       const json = await res.json()
       if (!res.ok || !json.success) throw new Error(json.error ?? 'Save failed')
@@ -351,14 +374,26 @@ export default function GateSettingsPage() {
                 <Switch checked={form.gateTextToOpen} onChange={(e) => set('gateTextToOpen', e.target.checked)} sx={switchSx} />
               </Box>
               {form.gateTextToOpen && (
-                <TextField
-                  label="Text-to-Open Number"
-                  value={form.gateTextToOpenNumber}
-                  onChange={(e) => set('gateTextToOpenNumber', e.target.value)}
-                  fullWidth size="small"
-                  placeholder="(555) 555-5555"
-                  sx={{ mt: 1.5, ...inputSx }}
-                />
+                <>
+                  <TextField
+                    label="Twilio Number (receives the SMS)"
+                    value={form.gateTextToOpenNumber}
+                    onChange={(e) => set('gateTextToOpenNumber', e.target.value)}
+                    fullWidth size="small"
+                    placeholder="+15555555555"
+                    helperText="The Twilio phone number tenants/admins text to open the gate."
+                    sx={{ mt: 1.5, ...inputSx }}
+                  />
+                  <TextField
+                    label="Authorized Phone Numbers"
+                    value={form.textToOpenAuthorizedPhonesText}
+                    onChange={(e) => set('textToOpenAuthorizedPhonesText', e.target.value)}
+                    fullWidth multiline minRows={3} size="small"
+                    placeholder={'+15551234567\n+15559876543'}
+                    helperText="One phone per line (E.164 format with +country code). Only these numbers can open the gate by SMS."
+                    sx={{ mt: 1.5, ...inputSx }}
+                  />
+                </>
               )}
             </CardContent>
           </Card>
