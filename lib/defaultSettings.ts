@@ -26,7 +26,6 @@ export const DEFAULT_SETTINGS = {
   taxRate: 9.75,
   // Billing
   billingDaysBeforeDue: 7,
-  daysRequiredBeforeBillingDay: 0,
   // Billing Cycle
   billingCycleAnchor: 'first_of_month' as const,
   billingCycleCustomDay: 1,
@@ -59,14 +58,6 @@ export const DEFAULT_SETTINGS = {
   // Email branding — the wrapper falls back to /images/brand/logo.png when blank.
   // The signature/footer lives in each template's body, not here.
   emailLogoUrl: '',
-  // Rental options
-  enablePrepay: false,
-  disablePartialPaymentsForLockedOut: false,
-  saveUnpaidRentals: false,
-  autoAcknowledgeRentals: false,
-  enableAdditionalDeposits: false,
-  customerRentalProrating: false,
-  defaultProratingForManagerRentals: false,
   // Reservations
   enableReservations: false,
   reservationLimitDays: 0,

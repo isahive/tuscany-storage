@@ -78,7 +78,14 @@ export async function POST(req: NextRequest) {
     let paymentStatus: 'succeeded' | 'pending' | 'failed' = 'succeeded'
 
     if (!process.env.STRIPE_SECRET_KEY) {
-      // Dev mode — create a mock payment intent ID
+      if (process.env.NODE_ENV !== 'development') {
+        return NextResponse.json(
+          { success: false, error: 'Payment service not configured' },
+          { status: 503 },
+        )
+      }
+      // Dev only — record a mock payment intent ID so the rest of the flow
+      // continues. Prod refuses to fake a "succeeded" payment with no money.
       stripePaymentIntentId = `pi_mock_${crypto.randomBytes(12).toString('hex')}`
       console.log(`[DEV STRIPE] Mock admin charge: ${stripePaymentIntentId} $${amount} for tenant ${tenantId}`)
     } else {

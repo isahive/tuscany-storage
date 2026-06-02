@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import crypto from 'crypto'
 import { connectDB } from '@/lib/db'
 import Notification from '@/models/Notification'
 
@@ -11,16 +12,76 @@ import Notification from '@/models/Notification'
  * The `data.email_id` matches the id we persist in `Notification.resendMessageId`
  * when the email is sent (see lib/sendNotification.ts).
  *
- * Production hardening to wire before going live:
- *   - Verify the `svix-id`, `svix-timestamp`, `svix-signature` headers against
- *     RESEND_WEBHOOK_SECRET using the @svix/webhooks package.
- *   - Replay-protect by checking the timestamp window (±5 minutes).
- * For the demo we accept any payload so Jess can plug a live secret later
- * without code changes.
+ * Auth: Svix-style. Header `svix-signature` carries one or more
+ * `v1,<base64-hmac-sha256>` tokens; we recompute HMAC-SHA256 over
+ * `${svix-id}.${svix-timestamp}.${rawBody}` using the secret from
+ * RESEND_WEBHOOK_SECRET (stored as `whsec_<base64>`). We also bound the
+ * timestamp to ±5 min to prevent replays. If RESEND_WEBHOOK_SECRET is unset
+ * we skip verification (logs a warning).
  */
+const REPLAY_WINDOW_SECONDS = 5 * 60
+
+function verifySvixSignature(
+  rawBody: string,
+  svixId: string | null,
+  svixTimestamp: string | null,
+  svixSignature: string | null,
+): boolean {
+  const secret = process.env.RESEND_WEBHOOK_SECRET
+  if (!secret) {
+    console.warn('[Resend Webhook] RESEND_WEBHOOK_SECRET unset — skipping signature verification')
+    return true
+  }
+  if (!svixId || !svixTimestamp || !svixSignature) return false
+
+  // Replay protection — drop signatures outside a 5-minute window.
+  const ts = parseInt(svixTimestamp, 10)
+  if (Number.isNaN(ts)) return false
+  const nowSec = Math.floor(Date.now() / 1000)
+  if (Math.abs(nowSec - ts) > REPLAY_WINDOW_SECONDS) return false
+
+  // Svix secrets are stored as `whsec_<base64>`. Strip the prefix.
+  const secretBytes = Buffer.from(secret.replace(/^whsec_/, ''), 'base64')
+  const signedPayload = `${svixId}.${svixTimestamp}.${rawBody}`
+  const expected = crypto
+    .createHmac('sha256', secretBytes)
+    .update(signedPayload)
+    .digest('base64')
+
+  // Header may contain multiple versioned signatures: `v1,<sig> v1,<sig2>`
+  // — accept if any matches.
+  const presented = svixSignature.split(' ')
+  for (const entry of presented) {
+    const parts = entry.split(',')
+    if (parts.length !== 2 || parts[0] !== 'v1') continue
+    const a = Buffer.from(expected, 'utf8')
+    const b = Buffer.from(parts[1], 'utf8')
+    if (a.length !== b.length) continue
+    if (crypto.timingSafeEqual(a, b)) return true
+  }
+  return false
+}
+
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json()
+    const rawBody = await req.text()
+    if (
+      !verifySvixSignature(
+        rawBody,
+        req.headers.get('svix-id'),
+        req.headers.get('svix-timestamp'),
+        req.headers.get('svix-signature'),
+      )
+    ) {
+      return NextResponse.json({ success: false, error: 'invalid signature' }, { status: 401 })
+    }
+
+    let body: any
+    try {
+      body = JSON.parse(rawBody)
+    } catch {
+      return NextResponse.json({ success: false, error: 'invalid json' }, { status: 400 })
+    }
     const eventType: string | undefined = body?.type
     const emailId: string | undefined = body?.data?.email_id
 

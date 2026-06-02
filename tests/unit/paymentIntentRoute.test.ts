@@ -14,13 +14,19 @@ import { getServerSession } from 'next-auth'
 import { POST as createIntent } from '@/app/api/payments/intent/route'
 
 describe('POST /api/payments/intent', () => {
+  const SAVED_NODE_ENV = process.env.NODE_ENV
   beforeAll(async () => { await startTestDb() })
   beforeEach(async () => {
     await clearTestDb()
     vi.mocked(getServerSession).mockReset()
-    delete process.env.STRIPE_SECRET_KEY // Force mock path
+    delete process.env.STRIPE_SECRET_KEY
+    // Existing tests assume the dev-mode mock path; preserve that.
+    ;(process.env as Record<string, string>).NODE_ENV = 'development'
   })
-  afterAll(async () => { await stopTestDb() })
+  afterAll(async () => {
+    await stopTestDb()
+    ;(process.env as Record<string, string | undefined>).NODE_ENV = SAVED_NODE_ENV
+  })
 
   it('401s without auth', async () => {
     vi.mocked(getServerSession).mockResolvedValueOnce(null as never)
@@ -68,5 +74,18 @@ describe('POST /api/payments/intent', () => {
     const json = await readJson<any>(res)
     expect(json.data.paymentIntentId).toMatch(/^pi_mock_/)
     expect(json.data.clientSecret).toContain('_secret_')
+  })
+
+  it('503s in production when STRIPE_SECRET_KEY is unset (no fake pi_mock leak)', async () => {
+    ;(process.env as Record<string, string>).NODE_ENV = 'production'
+    const { tenant, lease } = await makeRentedTenant()
+    vi.mocked(getServerSession).mockResolvedValueOnce(tenantSession(tenant._id.toString()) as never)
+    const res = await createIntent(makeRequest('POST', '', {
+      leaseId: lease._id.toString(),
+      amount: 10000, type: 'rent',
+    }))
+    expect(res.status).toBe(503)
+    const json = await readJson<any>(res)
+    expect(json.error).toMatch(/not configured/i)
   })
 })

@@ -1,5 +1,11 @@
-# Render Blueprint — declares the web service + scheduled cron job.
+# Render Blueprint — declares the web service + scheduled cron jobs.
 # Apply: connect this repo in Render, choose "Blueprint" deploy, point at this file.
+#
+# Cron architecture: each scheduled task is a separate Render cron service that
+# posts to the in-app /api/cron endpoint with the shared CRON_SECRET. The web
+# service owns the DB connection logic and Mongoose models, so all jobs run
+# against the same source of truth. The legacy recurring-billing cron uses its
+# own endpoint for historical reasons and is preserved as-is.
 
 services:
   # ── Main Next.js web service ──────────────────────────────────────────────
@@ -42,9 +48,8 @@ services:
       - key: PDK_WEBHOOK_SECRET
         sync: false
 
-  # ── Daily recurring-billing cron at 08:00 UTC (03:00 ET) ──────────────────
-  # Calls the in-app endpoint with the shared secret so it reuses the same
-  # Mongo connection logic + models as the rest of the app.
+  # ── Legacy recurring-billing cron at 08:00 UTC (03:00 ET) ─────────────────
+  # Uses its own endpoint (predates the /api/cron dispatcher).
   - type: cron
     name: tuscany-recurring-billing
     runtime: node
@@ -55,6 +60,161 @@ services:
     envVars:
       - key: APP_URL
         sync: false       # set to https://your-render-app.onrender.com
+      - key: CRON_SECRET
+        fromService:
+          type: web
+          name: tuscany-storage
+          envVarKey: CRON_SECRET
+
+  # ── Invoice generation — daily 00:00 UTC ──────────────────────────────────
+  - type: cron
+    name: tuscany-generate-invoices
+    runtime: node
+    region: ohio
+    schedule: "0 0 * * *"
+    buildCommand: npm install
+    startCommand: node scripts/run-cron-job.js generateInvoices
+    envVars:
+      - key: APP_URL
+        sync: false
+      - key: CRON_SECRET
+        fromService:
+          type: web
+          name: tuscany-storage
+          envVarKey: CRON_SECRET
+
+  # ── Autopay charges — daily 02:00 UTC ─────────────────────────────────────
+  - type: cron
+    name: tuscany-autopay
+    runtime: node
+    region: ohio
+    schedule: "0 2 * * *"
+    buildCommand: npm install
+    startCommand: node scripts/run-cron-job.js autopay
+    envVars:
+      - key: APP_URL
+        sync: false
+      - key: CRON_SECRET
+        fromService:
+          type: web
+          name: tuscany-storage
+          envVarKey: CRON_SECRET
+
+  # ── PDK reconcile — daily 03:00 UTC (heals drift before delinquency runs) ─
+  - type: cron
+    name: tuscany-pdk-reconcile
+    runtime: node
+    region: ohio
+    schedule: "0 3 * * *"
+    buildCommand: npm install
+    startCommand: node scripts/run-cron-job.js pdkReconcile
+    envVars:
+      - key: APP_URL
+        sync: false
+      - key: CRON_SECRET
+        fromService:
+          type: web
+          name: tuscany-storage
+          envVarKey: CRON_SECRET
+
+  # ── Delinquency escalation — daily 06:00 UTC ──────────────────────────────
+  # Late fees, lockouts, lien/auction escalation. THE most important cron —
+  # without this, non-paying tenants stay unbothered.
+  - type: cron
+    name: tuscany-delinquency
+    runtime: node
+    region: ohio
+    schedule: "0 6 * * *"
+    buildCommand: npm install
+    startCommand: node scripts/run-cron-job.js delinquency
+    envVars:
+      - key: APP_URL
+        sync: false
+      - key: CRON_SECRET
+        fromService:
+          type: web
+          name: tuscany-storage
+          envVarKey: CRON_SECRET
+
+  # ── Lockout report email — daily 07:00 UTC ────────────────────────────────
+  - type: cron
+    name: tuscany-lockout-report
+    runtime: node
+    region: ohio
+    schedule: "0 7 * * *"
+    buildCommand: npm install
+    startCommand: node scripts/run-cron-job.js lockoutReportEmail
+    envVars:
+      - key: APP_URL
+        sync: false
+      - key: CRON_SECRET
+        fromService:
+          type: web
+          name: tuscany-storage
+          envVarKey: CRON_SECRET
+
+  # ── Rate management reminder — daily 08:00 UTC (fires on configured day) ──
+  - type: cron
+    name: tuscany-rate-mgmt-reminder
+    runtime: node
+    region: ohio
+    schedule: "0 8 * * *"
+    buildCommand: npm install
+    startCommand: node scripts/run-cron-job.js rateManagementReminder
+    envVars:
+      - key: APP_URL
+        sync: false
+      - key: CRON_SECRET
+        fromService:
+          type: web
+          name: tuscany-storage
+          envVarKey: CRON_SECRET
+
+  # ── Payment reminders — daily 09:00 UTC ───────────────────────────────────
+  - type: cron
+    name: tuscany-reminders
+    runtime: node
+    region: ohio
+    schedule: "0 9 * * *"
+    buildCommand: npm install
+    startCommand: node scripts/run-cron-job.js reminders
+    envVars:
+      - key: APP_URL
+        sync: false
+      - key: CRON_SECRET
+        fromService:
+          type: web
+          name: tuscany-storage
+          envVarKey: CRON_SECRET
+
+  # ── Rate execution — daily 05:00 UTC ──────────────────────────────────────
+  - type: cron
+    name: tuscany-rate-execution
+    runtime: node
+    region: ohio
+    schedule: "0 5 * * *"
+    buildCommand: npm install
+    startCommand: node scripts/run-cron-job.js rateExecution
+    envVars:
+      - key: APP_URL
+        sync: false
+      - key: CRON_SECRET
+        fromService:
+          type: web
+          name: tuscany-storage
+          envVarKey: CRON_SECRET
+
+  # ── Rate management — monthly, 1st of month at 04:00 UTC ──────────────────
+  - type: cron
+    name: tuscany-rate-management
+    runtime: node
+    region: ohio
+    schedule: "0 4 1 * *"
+    buildCommand: npm install
+    startCommand: node scripts/run-cron-job.js rateManagement
+    envVars:
+      - key: APP_URL
+        sync: false
       - key: CRON_SECRET
         fromService:
           type: web

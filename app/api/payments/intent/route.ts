@@ -38,23 +38,24 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 })
     }
 
-    // Check if Stripe is configured
+    // Stripe must be configured for real payments. Dev keeps the mock so the
+    // portal payment flow stays runnable offline; prod refuses to issue a
+    // fake intent that the frontend would then "succeed" on, leaving the
+    // facility with a Payment record but no money.
     if (!process.env.STRIPE_SECRET_KEY) {
-      // Mock payment intent for development
-      const mockId = `pi_mock_${crypto.randomBytes(12).toString('hex')}`
-      const mockSecret = `${mockId}_secret_${crypto.randomBytes(12).toString('hex')}`
-
       if (process.env.NODE_ENV === 'development') {
+        const mockId = `pi_mock_${crypto.randomBytes(12).toString('hex')}`
+        const mockSecret = `${mockId}_secret_${crypto.randomBytes(12).toString('hex')}`
         console.log(`[DEV STRIPE] Mock PaymentIntent created: ${mockId} for $${parsed.data.amount / 100}`)
+        return NextResponse.json({
+          success: true,
+          data: { clientSecret: mockSecret, paymentIntentId: mockId },
+        })
       }
-
-      return NextResponse.json({
-        success: true,
-        data: {
-          clientSecret: mockSecret,
-          paymentIntentId: mockId,
-        },
-      })
+      return NextResponse.json(
+        { success: false, error: 'Payment service not configured' },
+        { status: 503 },
+      )
     }
 
     // Real Stripe integration

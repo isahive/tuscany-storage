@@ -27,9 +27,6 @@ export async function GET() {
         replyToEmail: settings.replyToEmail ?? '',
         fromDisplayName: settings.fromDisplayName ?? '',
         reminderDaysBefore: settings.reminderDaysBefore ?? 3,
-        textOnCreditWithoutPayment: settings.textOnCreditWithoutPayment ?? false,
-        textOnOnlineRental: settings.textOnOnlineRental ?? false,
-        printInvoiceReminders: settings.printInvoiceReminders ?? false,
         printFormat: settings.printFormat ?? 'letter',
         invoiceHeader: settings.invoiceHeader ?? '',
       },
@@ -55,9 +52,7 @@ export async function PUT(req: NextRequest) {
     // Whitelist allowed fields
     const allowedFields = [
       'notificationEmail', 'replyToEmail', 'fromDisplayName',
-      'reminderDaysBefore', 'textOnCreditWithoutPayment',
-      'textOnOnlineRental', 'printInvoiceReminders',
-      'printFormat', 'invoiceHeader',
+      'reminderDaysBefore', 'printFormat', 'invoiceHeader',
     ]
 
     const update: Record<string, any> = {}

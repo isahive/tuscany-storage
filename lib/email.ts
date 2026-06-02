@@ -21,8 +21,12 @@ export async function sendEmail(
   }
 
   if (!resend) {
-    console.warn("[EMAIL] Resend not configured — set RESEND_API_KEY");
-    return null;
+    // Production deploys MUST configure RESEND_API_KEY. Silently no-oping here
+    // is worse than failing — callers (sendTemplatedNotification) record a
+    // 'failed' Notification so the admin sees the gap.
+    throw new Error(
+      "Email service not configured: RESEND_API_KEY is not set",
+    );
   }
 
   const recipients = Array.isArray(to) ? to.join(", ") : to;

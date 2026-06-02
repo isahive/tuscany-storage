@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeAll, beforeEach, afterAll, vi } from 'vitest'
+import crypto from 'crypto'
 import { startTestDb, stopTestDb, clearTestDb } from '@/tests/helpers/db'
 import { makeTenant } from '@/tests/helpers/factories'
 
@@ -132,6 +133,173 @@ describe('POST /api/webhooks/twilio/status', () => {
 
   it('returns 200 even when no matching notification exists', async () => {
     const res = await twilioWebhook(formRequest({ MessageSid: 'SM-unknown', MessageStatus: 'delivered' }) as any)
+    expect(res.status).toBe(200)
+  })
+})
+
+// ─── Signature verification (added after audit) ──────────────────────────────
+
+describe('POST /api/webhooks/twilio/status — signature verification', () => {
+  const SAVED_ENV = { ...process.env }
+  beforeAll(async () => { await startTestDb() })
+  afterAll(async () => { await stopTestDb() })
+  beforeEach(async () => {
+    await clearTestDb()
+    process.env = { ...SAVED_ENV }
+  })
+
+  function signedTwilioReq(url: string, params: Record<string, string>, authToken: string) {
+    const sortedKeys = Object.keys(params).sort()
+    const data = url + sortedKeys.map((k) => k + params[k]).join('')
+    const sig = crypto.createHmac('sha1', authToken).update(data).digest('base64')
+    const fd = new URLSearchParams()
+    for (const [k, v] of Object.entries(params)) fd.set(k, v)
+    return new Request(url, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/x-www-form-urlencoded',
+        'x-twilio-signature': sig,
+      },
+      body: fd.toString(),
+    })
+  }
+
+  it('401s when TWILIO_AUTH_TOKEN is set and signature is missing', async () => {
+    process.env.TWILIO_AUTH_TOKEN = 'auth-tok'
+    process.env.TWILIO_STATUS_CALLBACK_URL = 'http://localhost/wh'
+    const fd = new URLSearchParams({ MessageSid: 'SM-1', MessageStatus: 'delivered' })
+    const req = new Request('http://localhost/wh', {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body: fd.toString(),
+    }) as any
+    const res = await twilioWebhook(req)
+    expect(res.status).toBe(401)
+  })
+
+  it('401s on a bad signature', async () => {
+    process.env.TWILIO_AUTH_TOKEN = 'auth-tok'
+    process.env.TWILIO_STATUS_CALLBACK_URL = 'http://localhost/wh'
+    const fd = new URLSearchParams({ MessageSid: 'SM-1', MessageStatus: 'delivered' })
+    const req = new Request('http://localhost/wh', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/x-www-form-urlencoded',
+        'x-twilio-signature': 'deadbeef',
+      },
+      body: fd.toString(),
+    }) as any
+    const res = await twilioWebhook(req)
+    expect(res.status).toBe(401)
+  })
+
+  it('200s on a correctly-signed payload', async () => {
+    process.env.TWILIO_AUTH_TOKEN = 'auth-tok'
+    process.env.TWILIO_STATUS_CALLBACK_URL = 'http://localhost/wh'
+    const req = signedTwilioReq(
+      'http://localhost/wh',
+      { MessageSid: 'SM-OK', MessageStatus: 'delivered' },
+      'auth-tok',
+    ) as any
+    const res = await twilioWebhook(req)
+    expect(res.status).toBe(200)
+  })
+
+  it('accepts unsigned requests when TWILIO_AUTH_TOKEN is unset (dev mode)', async () => {
+    delete process.env.TWILIO_AUTH_TOKEN
+    const fd = new URLSearchParams({ MessageSid: 'SM-D', MessageStatus: 'delivered' })
+    const req = new Request('http://localhost/wh', {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body: fd.toString(),
+    }) as any
+    const res = await twilioWebhook(req)
+    expect(res.status).toBe(200)
+  })
+})
+
+describe('POST /api/webhooks/resend — Svix signature verification', () => {
+  const SAVED_ENV = { ...process.env }
+  beforeAll(async () => { await startTestDb() })
+  afterAll(async () => { await stopTestDb() })
+  beforeEach(async () => {
+    await clearTestDb()
+    process.env = { ...SAVED_ENV }
+  })
+
+  const SECRET_BYTES = crypto.randomBytes(32)
+  const SECRET = `whsec_${SECRET_BYTES.toString('base64')}`
+
+  function signedResendReq(body: unknown, opts: { tsOffsetSec?: number; tamperedSig?: boolean } = {}) {
+    const raw = JSON.stringify(body)
+    const id = 'msg_test_001'
+    const ts = String(Math.floor(Date.now() / 1000) + (opts.tsOffsetSec ?? 0))
+    const sig = crypto
+      .createHmac('sha256', SECRET_BYTES)
+      .update(`${id}.${ts}.${raw}`)
+      .digest('base64')
+    const headerSig = opts.tamperedSig ? `v1,${sig}aa` : `v1,${sig}`
+    return new Request('http://localhost/wh', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'svix-id': id,
+        'svix-timestamp': ts,
+        'svix-signature': headerSig,
+      },
+      body: raw,
+    })
+  }
+
+  it('401s when the secret is set and no signature headers are present', async () => {
+    process.env.RESEND_WEBHOOK_SECRET = SECRET
+    const req = new Request('http://localhost/wh', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ type: 'email.delivered', data: { email_id: 'x' } }),
+    }) as any
+    const res = await resendWebhook(req)
+    expect(res.status).toBe(401)
+  })
+
+  it('401s when the signature does not match', async () => {
+    process.env.RESEND_WEBHOOK_SECRET = SECRET
+    const req = signedResendReq(
+      { type: 'email.delivered', data: { email_id: 'x' } },
+      { tamperedSig: true },
+    ) as any
+    const res = await resendWebhook(req)
+    expect(res.status).toBe(401)
+  })
+
+  it('401s when the timestamp is outside the replay window', async () => {
+    process.env.RESEND_WEBHOOK_SECRET = SECRET
+    const req = signedResendReq(
+      { type: 'email.delivered', data: { email_id: 'x' } },
+      { tsOffsetSec: -10 * 60 }, // 10 min in the past
+    ) as any
+    const res = await resendWebhook(req)
+    expect(res.status).toBe(401)
+  })
+
+  it('200s on a correctly-signed payload', async () => {
+    process.env.RESEND_WEBHOOK_SECRET = SECRET
+    const req = signedResendReq({
+      type: 'email.delivered',
+      data: { email_id: 'rs-signed' },
+    }) as any
+    const res = await resendWebhook(req)
+    expect(res.status).toBe(200)
+  })
+
+  it('accepts unsigned requests when RESEND_WEBHOOK_SECRET is unset (dev mode)', async () => {
+    delete process.env.RESEND_WEBHOOK_SECRET
+    const req = new Request('http://localhost/wh', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ type: 'email.delivered', data: { email_id: 'rs-dev' } }),
+    }) as any
+    const res = await resendWebhook(req)
     expect(res.status).toBe(200)
   })
 })

@@ -38,12 +38,7 @@ interface CommunicationSettings {
   fromDisplayName: string
   reminderPeriodDays: number
 
-  // Text
-  textOnCreditWithoutPayment: boolean
-  textOnOnlineRental: boolean
-
   // Print
-  printInvoiceReminders: boolean
   printFormat: 'letter' | 'postcard'
   invoiceReceiptHeader: string
 
@@ -68,9 +63,6 @@ const DEFAULT_SETTINGS: CommunicationSettings = {
   replyToEmail: '',
   fromDisplayName: '',
   reminderPeriodDays: 3,
-  textOnCreditWithoutPayment: false,
-  textOnOnlineRental: false,
-  printInvoiceReminders: false,
   printFormat: 'letter',
   invoiceReceiptHeader: '',
   adminNotifications: {
@@ -359,50 +351,6 @@ export default function CommunicationSettingsPage() {
           </CardContent>
         </Card>
 
-        {/* ── Text Message Settings ───────────────────────────────────────── */}
-        <Card sx={{ border: '1px solid #E5E7EB', boxShadow: 'none', borderRadius: 2 }}>
-          <Box sx={sectionHeaderSx}>
-            <SmsIcon sx={{ fontSize: 18 }} />
-            Text Message Settings
-          </Box>
-          <CardContent sx={{ p: 2.5 }}>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={settings.textOnCreditWithoutPayment}
-                    onChange={(e) =>
-                      updateField('textOnCreditWithoutPayment', e.target.checked)
-                    }
-                    sx={checkboxSx}
-                  />
-                }
-                label={
-                  <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                    Text owner when there is a credit without payment
-                  </Typography>
-                }
-              />
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={settings.textOnOnlineRental}
-                    onChange={(e) =>
-                      updateField('textOnOnlineRental', e.target.checked)
-                    }
-                    sx={checkboxSx}
-                  />
-                }
-                label={
-                  <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                    Text owner when a tenant rents online
-                  </Typography>
-                }
-              />
-            </Box>
-          </CardContent>
-        </Card>
-
         {/* ── Print Settings ──────────────────────────────────────────────── */}
         <Card sx={{ border: '1px solid #E5E7EB', boxShadow: 'none', borderRadius: 2 }}>
           <Box sx={sectionHeaderSx}>
@@ -411,28 +359,6 @@ export default function CommunicationSettingsPage() {
           </Box>
           <CardContent sx={{ p: 2.5 }}>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={settings.printInvoiceReminders}
-                    onChange={(e) =>
-                      updateField('printInvoiceReminders', e.target.checked)
-                    }
-                    sx={checkboxSx}
-                  />
-                }
-                label={
-                  <Box>
-                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                      Print Invoice Reminders
-                    </Typography>
-                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                      Automatically create print queue items when billing runs
-                    </Typography>
-                  </Box>
-                }
-              />
-
               <FormControl>
                 <FormLabel
                   sx={{

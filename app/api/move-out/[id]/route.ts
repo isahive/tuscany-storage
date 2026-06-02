@@ -8,6 +8,7 @@ import Lease from '@/models/Lease'
 import Unit from '@/models/Unit'
 import Tenant from '@/models/Tenant'
 import { sendTemplatedNotification } from '@/lib/sendNotification'
+import { notifyFirstMatchingWaitingListEntry } from '@/lib/waitingListMatch'
 
 interface RouteContext {
   params: Promise<{ id: string }>
@@ -105,8 +106,17 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
         }
       }
 
-      // TODO: trigger waiting list notification flow — check if any waiting list
-      // entries match this unit's size/type and notify the next eligible entry
+      // Notify the next waiting-list entry whose preference matches the
+      // freed unit. Fire-and-forget: if it fails the move-out approval still
+      // succeeds — admin can re-trigger manually from the waiting-list page.
+      try {
+        const unitForMatch = await Unit.findById(moveOutRequest.unitId)
+          .select('_id unitNumber size type')
+          .lean<{ _id: unknown; unitNumber?: string; size?: string; type?: string } | null>()
+        await notifyFirstMatchingWaitingListEntry(unitForMatch)
+      } catch (err) {
+        console.error('[move-out approval] waiting list match failed:', err)
+      }
     }
 
     const updated = await MoveOutRequest.findById(id)

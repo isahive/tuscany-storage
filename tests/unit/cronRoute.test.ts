@@ -12,6 +12,7 @@ const jobMocks = vi.hoisted(() => ({
   runRateExecution:            vi.fn(async () => []),
   runRateManagementReminder:   vi.fn(async () => ({ sent: false })),
   runLockoutReportEmail:       vi.fn(async () => ({ sent: false, count: 0 })),
+  reconcilePdkHolders:         vi.fn(async () => ({ scanned: 0, provisioned: 0, patched: 0, inSync: 0, failed: 0, errors: [] })),
 }))
 vi.mock('@/jobs/invoices', () => ({ runInvoiceGeneration: jobMocks.runInvoiceGeneration }))
 vi.mock('@/jobs/autopay', () => ({ runAutopay: jobMocks.runAutopay }))
@@ -21,6 +22,7 @@ vi.mock('@/jobs/rate-management', () => ({ runRateManagement: jobMocks.runRateMa
 vi.mock('@/jobs/rate-execution', () => ({ runRateExecution: jobMocks.runRateExecution }))
 vi.mock('@/jobs/rate-management-reminder', () => ({ runRateManagementReminder: jobMocks.runRateManagementReminder }))
 vi.mock('@/jobs/lockout-report-email', () => ({ runLockoutReportEmail: jobMocks.runLockoutReportEmail }))
+vi.mock('@/jobs/pdk-reconcile', () => ({ reconcilePdkHolders: jobMocks.reconcilePdkHolders }))
 
 import { GET as listJobs, POST as runJob } from '@/app/api/cron/route'
 
@@ -34,6 +36,7 @@ describe('GET /api/cron — list jobs', () => {
     expect(names).toEqual(expect.arrayContaining([
       'generateInvoices', 'autopay', 'delinquency', 'reminders',
       'rateManagement', 'rateExecution', 'rateManagementReminder', 'lockoutReportEmail',
+      'pdkReconcile',
     ]))
     expect(json.data.jobs[0]).toHaveProperty('schedule')
   })
@@ -77,6 +80,12 @@ describe('POST /api/cron — execute job', () => {
     const json = await res.json()
     expect(json.data).toEqual({ job: 'generateInvoices', result: 'invoices-result' })
     expect(jobMocks.runInvoiceGeneration).toHaveBeenCalledTimes(1)
+  })
+
+  it('dispatches pdkReconcile to the reconcile job', async () => {
+    const res = await runJob(makeRequest('POST', '/api/cron', { job: 'pdkReconcile' }))
+    expect(res.status).toBe(200)
+    expect(jobMocks.reconcilePdkHolders).toHaveBeenCalledTimes(1)
   })
 
   it('500s and surfaces the error message when a job throws', async () => {

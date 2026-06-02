@@ -37,7 +37,6 @@ export interface ISettingsDocument extends Document {
 
   // ── Billing ───────────────────────────────────────────────────────────────
   billingDaysBeforeDue: number  // days before due date billing is generated (default 7)
-  daysRequiredBeforeBillingDay: number // default 0
 
   // ── Billing Cycle ─────────────────────────────────────────────────────────
   billingCycleAnchor: 'first_of_month' | 'signup_day' | 'custom_day'
@@ -61,15 +60,6 @@ export interface ISettingsDocument extends Document {
   setupFeeAmount: number
   setupFeeName: string
   setupFeeDescription: string
-
-  // ── Rental options ────────────────────────────────────────────────────────
-  enablePrepay: boolean
-  disablePartialPaymentsForLockedOut: boolean
-  saveUnpaidRentals: boolean
-  autoAcknowledgeRentals: boolean
-  enableAdditionalDeposits: boolean
-  customerRentalProrating: boolean    // prorate second month
-  defaultProratingForManagerRentals: boolean
 
   // ── Reservations ──────────────────────────────────────────────────────────
   enableReservations: boolean
@@ -178,9 +168,6 @@ export interface ISettingsDocument extends Document {
   replyToEmail: string
   fromDisplayName: string
   reminderDaysBefore: number       // 0–20, days before due to send reminder
-  textOnCreditWithoutPayment: boolean
-  textOnOnlineRental: boolean
-  printInvoiceReminders: boolean
   printFormat: 'letter' | 'postcard'
   invoiceHeader: string
   /** Full-width logo banner shown at the top of every tenant-facing email.
@@ -246,7 +233,6 @@ const SettingsSchema = new Schema<ISettingsDocument>(
 
     // Billing
     billingDaysBeforeDue:        { type: Number, default: 7 },
-    daysRequiredBeforeBillingDay: { type: Number, default: 0 },
 
     // Billing Cycle
     billingCycleAnchor: {
@@ -282,15 +268,6 @@ const SettingsSchema = new Schema<ISettingsDocument>(
     setupFeeAmount:        { type: Number, default: 0 },
     setupFeeName:          { type: String, default: 'Setup Fee' },
     setupFeeDescription:   { type: String, default: '' },
-
-    // Rental options
-    enablePrepay:                       { type: Boolean, default: false },
-    disablePartialPaymentsForLockedOut: { type: Boolean, default: false },
-    saveUnpaidRentals:                  { type: Boolean, default: false },
-    autoAcknowledgeRentals:             { type: Boolean, default: false },
-    enableAdditionalDeposits:           { type: Boolean, default: false },
-    customerRentalProrating:            { type: Boolean, default: false },
-    defaultProratingForManagerRentals:  { type: Boolean, default: false },
 
     // Reservations
     enableReservations:   { type: Boolean, default: false },
@@ -399,9 +376,6 @@ const SettingsSchema = new Schema<ISettingsDocument>(
     replyToEmail:               { type: String, default: '' },
     fromDisplayName:            { type: String, default: '' },
     reminderDaysBefore:         { type: Number, default: 3 },
-    textOnCreditWithoutPayment: { type: Boolean, default: false },
-    textOnOnlineRental:         { type: Boolean, default: false },
-    printInvoiceReminders:      { type: Boolean, default: false },
     printFormat:                { type: String, enum: ['letter', 'postcard'], default: 'letter' },
     invoiceHeader:              { type: String, default: '' },
     emailLogoUrl:               { type: String, default: '' },

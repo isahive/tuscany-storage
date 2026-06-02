@@ -35,18 +35,9 @@ interface FormState {
   billingCycleCustomDay: number
   // Billing
   billingDaysBeforeDue: number
-  daysRequiredBeforeBillingDay: number
   // Proration
   prorationModel: ProrationModel
   prorationDaysBasis: ProrationDaysBasis
-  // Rental options
-  enablePrepay: boolean
-  disablePartialPaymentsForLockedOut: boolean
-  saveUnpaidRentals: boolean
-  autoAcknowledgeRentals: boolean
-  enableAdditionalDeposits: boolean
-  customerRentalProrating: boolean
-  defaultProratingForManagerRentals: boolean
   // Reservations
   enableReservations: boolean
   reservationLimitDays: number
@@ -66,16 +57,8 @@ const DEFAULTS: FormState = {
   billingCycleAnchor: 'first_of_month',
   billingCycleCustomDay: 1,
   billingDaysBeforeDue: 7,
-  daysRequiredBeforeBillingDay: 0,
   prorationModel: 'first_month_full_then_prorate',
   prorationDaysBasis: 'actual_days_in_month',
-  enablePrepay: false,
-  disablePartialPaymentsForLockedOut: false,
-  saveUnpaidRentals: false,
-  autoAcknowledgeRentals: false,
-  enableAdditionalDeposits: false,
-  customerRentalProrating: false,
-  defaultProratingForManagerRentals: false,
   enableReservations: false,
   reservationLimitDays: 0,
   unitTypeReservationFees: [],
@@ -221,16 +204,8 @@ export default function RentalSettingsPage() {
             billingCycleAnchor: d.billingCycleAnchor ?? DEFAULTS.billingCycleAnchor,
             billingCycleCustomDay: d.billingCycleCustomDay ?? DEFAULTS.billingCycleCustomDay,
             billingDaysBeforeDue: d.billingDaysBeforeDue ?? 7,
-            daysRequiredBeforeBillingDay: d.daysRequiredBeforeBillingDay ?? 0,
             prorationModel: d.prorationModel ?? DEFAULTS.prorationModel,
             prorationDaysBasis: d.prorationDaysBasis ?? DEFAULTS.prorationDaysBasis,
-            enablePrepay: d.enablePrepay ?? false,
-            disablePartialPaymentsForLockedOut: d.disablePartialPaymentsForLockedOut ?? false,
-            saveUnpaidRentals: d.saveUnpaidRentals ?? false,
-            autoAcknowledgeRentals: d.autoAcknowledgeRentals ?? false,
-            enableAdditionalDeposits: d.enableAdditionalDeposits ?? false,
-            customerRentalProrating: d.customerRentalProrating ?? false,
-            defaultProratingForManagerRentals: d.defaultProratingForManagerRentals ?? false,
             enableReservations: d.enableReservations ?? false,
             reservationLimitDays: d.reservationLimitDays ?? 0,
             unitTypeReservationFees: Array.isArray(d.unitTypeReservationFees) ? d.unitTypeReservationFees : [],
@@ -355,11 +330,6 @@ export default function RentalSettingsPage() {
           value={form.billingDaysBeforeDue}
           onChange={(v) => setNum('billingDaysBeforeDue', v)}
         />
-        <NumberField
-          label="Days required before billing day"
-          value={form.daysRequiredBeforeBillingDay}
-          onChange={(v) => setNum('daysRequiredBeforeBillingDay', v)}
-        />
 
         <Divider sx={{ my: 3, borderColor: '#E5E7EB' }} />
 
@@ -386,36 +356,6 @@ export default function RentalSettingsPage() {
             { value: 'actual_days_in_month', label: 'Actual days in the month (28–31)' },
             { value: 'thirty_day_month',     label: '30-day month (banking method)' },
           ]}
-        />
-
-        <Divider sx={{ my: 3, borderColor: '#E5E7EB' }} />
-
-        {/* Rental options */}
-        <SectionHeading>Rental Options</SectionHeading>
-        <SettingSwitch label="Enable prepay for customers" checked={form.enablePrepay} onChange={(v) => setBool('enablePrepay', v)} />
-        <SettingSwitch
-          label="Disable partial and prepayments for locked out customers"
-          checked={form.disablePartialPaymentsForLockedOut}
-          onChange={(v) => setBool('disablePartialPaymentsForLockedOut', v)}
-        />
-        <SettingSwitch label="Save unpaid customer rentals" checked={form.saveUnpaidRentals} onChange={(v) => setBool('saveUnpaidRentals', v)} />
-        <SettingSwitch
-          label="Automatically acknowledge new rentals / reservations"
-          checked={form.autoAcknowledgeRentals}
-          onChange={(v) => setBool('autoAcknowledgeRentals', v)}
-        />
-        <SettingSwitch label="Enable additional deposits" checked={form.enableAdditionalDeposits} onChange={(v) => setBool('enableAdditionalDeposits', v)} />
-        <SettingSwitch
-          label="Customer Rental Prorating"
-          hint="Bill for first full month, prorate second month billed later."
-          checked={form.customerRentalProrating}
-          onChange={(v) => setBool('customerRentalProrating', v)}
-        />
-        <SettingSwitch
-          label="Default Prorating for Manager Rentals"
-          hint="Bill for first full month, prorate second month billed later."
-          checked={form.defaultProratingForManagerRentals}
-          onChange={(v) => setBool('defaultProratingForManagerRentals', v)}
         />
 
         <Divider sx={{ my: 3, borderColor: '#E5E7EB' }} />

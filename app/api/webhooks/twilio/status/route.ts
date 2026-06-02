@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import crypto from 'crypto'
 import { connectDB } from '@/lib/db'
 import Notification from '@/models/Notification'
 
@@ -9,21 +10,52 @@ import Notification from '@/models/Notification'
  *   MessageSid, MessageStatus (queued|sent|delivered|undelivered|failed),
  *   ErrorCode (optional, when failed/undelivered)
  *
- * Configure this URL via TWILIO_STATUS_CALLBACK_URL (used in lib/twilio.ts)
- * or directly on the Messaging Service in the Twilio console.
- *
- * Production hardening:
- *   - Verify the X-Twilio-Signature header using TWILIO_AUTH_TOKEN and the
- *     full request URL (see twilio.validateRequest).
- *   - Rate-limit by IP (Twilio publishes its outbound IP ranges).
- * Demo accepts any payload so a live SID can be plugged later without code.
+ * Signed via X-Twilio-Signature: base64(HMAC-SHA1(authToken, fullUrl +
+ * sorted-concat-form-fields)). We verify it before touching the DB so a
+ * forged status can't flip a Notification to 'delivered'. In dev or when
+ * TWILIO_AUTH_TOKEN is unset we skip verification (logs a warning).
  */
+function buildTwilioSignature(authToken: string, url: string, params: Record<string, string>): string {
+  const sortedKeys = Object.keys(params).sort()
+  const data = url + sortedKeys.map((k) => k + params[k]).join('')
+  return crypto.createHmac('sha1', authToken).update(data).digest('base64')
+}
+
+function verifyTwilioSignature(
+  url: string,
+  params: Record<string, string>,
+  headerSig: string | null,
+): boolean {
+  const authToken = process.env.TWILIO_AUTH_TOKEN
+  if (!authToken) {
+    console.warn('[Twilio Status Webhook] TWILIO_AUTH_TOKEN unset — skipping signature verification')
+    return true
+  }
+  if (!headerSig) return false
+  const expected = buildTwilioSignature(authToken, url, params)
+  const a = Buffer.from(expected, 'utf8')
+  const b = Buffer.from(headerSig, 'utf8')
+  if (a.length !== b.length) return false
+  return crypto.timingSafeEqual(a, b)
+}
+
 export async function POST(req: NextRequest) {
   try {
     const form = await req.formData()
-    const messageSid = form.get('MessageSid')?.toString()
-    const messageStatus = form.get('MessageStatus')?.toString()
-    const errorCode = form.get('ErrorCode')?.toString()
+    // Build the param map the same way Twilio does for signing — every form
+    // field as a string.
+    const params: Record<string, string> = {}
+    for (const [k, v] of form.entries()) params[k] = v.toString()
+
+    const signatureUrl =
+      process.env.TWILIO_STATUS_CALLBACK_URL || req.url
+    if (!verifyTwilioSignature(signatureUrl, params, req.headers.get('x-twilio-signature'))) {
+      return NextResponse.json({ success: false, error: 'invalid signature' }, { status: 401 })
+    }
+
+    const messageSid = params.MessageSid
+    const messageStatus = params.MessageStatus
+    const errorCode = params.ErrorCode
 
     if (!messageSid || !messageStatus) {
       return NextResponse.json({ success: false, error: 'Missing MessageSid or MessageStatus' }, { status: 400 })

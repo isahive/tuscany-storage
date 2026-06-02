@@ -297,7 +297,7 @@ export default function WaitingListPage() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [convertDialogOpen, setConvertDialogOpen] = useState(false)
   const [selectedEntry, setSelectedEntry] = useState<WaitingListRow | null>(null)
-  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'info' }>({
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'info' | 'warning' | 'error' }>({
     open: false,
     message: '',
     severity: 'success',
@@ -328,25 +328,72 @@ export default function WaitingListPage() {
 
   // ── Actions ─────────────────────────────────────────────────────────────────
 
-  const handleNotify = useCallback((entryId: string) => {
-    // TODO: call POST /api/admin/waiting-list/:id/notify
-    setRows((prev) =>
-      prev.map((r) =>
-        r.id === entryId
-          ? { ...r, status: 'notified' as WaitingListStatus, notifiedAt: new Date().toISOString() }
-          : r,
-      ),
-    )
-    setSnackbar({ open: true, message: 'Notification sent via SMS and email.', severity: 'success' })
+  const handleNotify = useCallback(async (entryId: string) => {
+    try {
+      const res = await fetch(`/api/admin/waiting-list/${entryId}/notify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok || !json?.success) {
+        throw new Error(json?.error || 'Notification failed')
+      }
+      const dispatch = json?.data?.dispatch ?? { email: false, sms: false }
+      setRows((prev) =>
+        prev.map((r) =>
+          r.id === entryId
+            ? { ...r, status: 'notified' as WaitingListStatus, notifiedAt: new Date().toISOString() }
+            : r,
+        ),
+      )
+      const sentVia = [dispatch.email && 'email', dispatch.sms && 'SMS'].filter(Boolean).join(' + ')
+      setSnackbar({
+        open: true,
+        message: sentVia
+          ? `Notification sent via ${sentVia}.`
+          : 'Marked as notified, but no message could be delivered.',
+        severity: sentVia ? 'success' : 'warning',
+      })
+    } catch (err) {
+      setSnackbar({
+        open: true,
+        message: err instanceof Error ? err.message : 'Notification failed',
+        severity: 'error',
+      })
+    }
   }, [])
 
-  const handleConvert = useCallback((entryId: string) => {
-    setRows((prev) =>
-      prev.map((r) =>
-        r.id === entryId ? { ...r, status: 'converted' as WaitingListStatus } : r,
-      ),
-    )
-    setSnackbar({ open: true, message: 'Tenant created successfully.', severity: 'success' })
+  const handleConvert = useCallback(async (entryId: string) => {
+    try {
+      const res = await fetch(`/api/admin/waiting-list/${entryId}/convert`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok || !json?.success) {
+        throw new Error(json?.error || 'Conversion failed')
+      }
+      setRows((prev) =>
+        prev.map((r) =>
+          r.id === entryId ? { ...r, status: 'converted' as WaitingListStatus } : r,
+        ),
+      )
+      setSnackbar({
+        open: true,
+        message: json?.data?.reused
+          ? 'Linked to existing tenant account.'
+          : 'Tenant created successfully.',
+        severity: 'success',
+      })
+    } catch (err) {
+      setSnackbar({
+        open: true,
+        message: err instanceof Error ? err.message : 'Conversion failed',
+        severity: 'error',
+      })
+    }
   }, [])
 
   const openConvertDialog = useCallback((entry: WaitingListRow) => {

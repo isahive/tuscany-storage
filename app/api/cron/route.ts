@@ -7,6 +7,7 @@ import { runRateManagementReminder } from '@/jobs/rate-management-reminder'
 import { runRateExecution } from '@/jobs/rate-execution'
 import { runInvoiceGeneration } from '@/jobs/invoices'
 import { runLockoutReportEmail } from '@/jobs/lockout-report-email'
+import { reconcilePdkHolders } from '@/jobs/pdk-reconcile'
 
 const JOBS = {
   generateInvoices: {
@@ -48,6 +49,11 @@ const JOBS = {
     fn: runLockoutReportEmail,
     schedule: '0 7 * * *',
     description: 'Daily Lock Out Report digest emailed to the notifications email',
+  },
+  pdkReconcile: {
+    fn: reconcilePdkHolders,
+    schedule: '0 3 * * *',
+    description: 'Reconcile Tuscany tenants with PDK holders + facility-hour rules',
   },
 } as const
 

@@ -26,8 +26,6 @@ export async function GET() {
         customersCanEditBilling: s?.customersCanEditBilling ?? true,
         customersCanScheduleMoveOuts: s?.customersCanScheduleMoveOuts ?? true,
         newRenterInstructions: s?.newRenterInstructions ?? '',
-        enablePrepay: s?.enablePrepay ?? false,
-        disablePartialPaymentsForLockedOut: s?.disablePartialPaymentsForLockedOut ?? false,
         gateTextToOpen: s?.gateTextToOpen ?? false,
         gateTextToOpenNumber: s?.gateTextToOpenNumber ?? '',
         // Reservation fees — exposed publicly so the unit listing can render

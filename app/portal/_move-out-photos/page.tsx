@@ -49,9 +49,14 @@ function brandLabel(brand: string) {
 }
 
 async function uploadPhoto(file: File): Promise<string> {
-  // TODO: replace with real Cloudflare R2 signed-upload flow
-  await new Promise((resolve) => setTimeout(resolve, 400))
-  return `https://storage.example.com/mock/${file.name.replace(/\s+/g, '-')}`
+  const fd = new FormData()
+  fd.append('file', file)
+  const res = await fetch('/api/portal/move-out-photo', { method: 'POST', body: fd })
+  const json = await res.json().catch(() => ({}))
+  if (!res.ok || !json?.success || !json?.url) {
+    throw new Error(json?.error || 'Photo upload failed')
+  }
+  return json.url as string
 }
 
 // ─── Step indicator ─────────────────────────────────────────────────────────

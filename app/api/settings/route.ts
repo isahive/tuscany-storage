@@ -37,7 +37,6 @@ const updateSettingsSchema = z
     customerNameFormat: z.enum(['last_first', 'first_last']),
     // Billing
     billingDaysBeforeDue: z.number().int().min(0),
-    daysRequiredBeforeBillingDay: z.number().int().min(0),
     // Billing Cycle
     billingCycleAnchor: z.enum(['first_of_month', 'signup_day', 'custom_day']),
     billingCycleCustomDay: z.number().int().min(1).max(28),
@@ -52,14 +51,6 @@ const updateSettingsSchema = z
     auctionGracePeriodDays: z.number().int().min(0),
     auctionDaysAfterLockout: z.number().int().min(0).max(365),
     auctionFixedDate: z.string().nullable(),
-    // Rental options
-    enablePrepay: z.boolean(),
-    disablePartialPaymentsForLockedOut: z.boolean(),
-    saveUnpaidRentals: z.boolean(),
-    autoAcknowledgeRentals: z.boolean(),
-    enableAdditionalDeposits: z.boolean(),
-    customerRentalProrating: z.boolean(),
-    defaultProratingForManagerRentals: z.boolean(),
     // Reservations
     enableReservations: z.boolean(),
     reservationLimitDays: z.number().int().min(0),

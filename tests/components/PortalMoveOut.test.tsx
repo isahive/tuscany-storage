@@ -44,7 +44,10 @@ describe('<MoveOutPage>', () => {
     render(<MoveOutPage />)
     expect(await screen.findByText(/Request Move Out of Unit G5/)).toBeInTheDocument()
     const input = screen.getByLabelText(/Select requested move out date/) as HTMLInputElement
-    const today = new Date().toISOString().split('T')[0]
+    // Match the page's local-time computation; toISOString() (UTC) drifts a
+    // day around midnight and made this test flaky.
+    const d = new Date()
+    const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
     expect(input.min).toBe(today)
   })
 

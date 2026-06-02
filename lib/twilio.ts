@@ -21,8 +21,11 @@ export async function sendSMS(to: string, body: string): Promise<string | null> 
 
   const twilioClient = getClient()
   if (!twilioClient || !fromNumber) {
-    console.error('[SMS] Twilio not configured')
-    return null
+    // Loud failure in prod — callers track this and record a 'failed'
+    // Notification so the admin sees the dispatch gap.
+    throw new Error(
+      'SMS service not configured: TWILIO_ACCOUNT_SID / TWILIO_AUTH_TOKEN / TWILIO_PHONE_NUMBER missing',
+    )
   }
 
   const message = await twilioClient.messages.create({

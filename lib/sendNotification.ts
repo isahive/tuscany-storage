@@ -203,31 +203,54 @@ export async function sendTemplatedNotification(args: SendTemplatedArgs): Promis
 
     let resendMessageId: string | null = null
     let twilioMessageSid: string | null = null
+    // Track per-channel attempt outcome so we can set Notification.status
+    // correctly when one or both dispatches fail. A "sent" record that never
+    // actually went out is the worst possible state — admins assume the
+    // tenant heard from us.
+    let emailFailureReason: string | null = null
+    let smsFailureReason: string | null = null
+    let emailDispatched = false
+    let smsDispatched = false
 
     if (sentEmail) {
-      // Wrap with facility logo banner + signature footer so the email looks
-      // identical to the live admin's branded layout.
-      const settings = await getSettings()
-      const wrapped = wrapTenantEmail(emailBody, settings)
-      resendMessageId = await sendEmail(tenant.email, subject, wrapped)
+      try {
+        const settings = await getSettings()
+        const wrapped = wrapTenantEmail(emailBody, settings)
+        resendMessageId = await sendEmail(tenant.email, subject, wrapped)
+        emailDispatched = true
+      } catch (err) {
+        emailFailureReason = err instanceof Error ? err.message : String(err)
+        console.error(`[sendTemplatedNotification] email failed for "${templateName}":`, emailFailureReason)
+      }
     }
     if (sentSms) {
-      twilioMessageSid = await sendSMS(tenant.phone, smsBody)
+      try {
+        twilioMessageSid = await sendSMS(tenant.phone, smsBody)
+        smsDispatched = true
+      } catch (err) {
+        smsFailureReason = err instanceof Error ? err.message : String(err)
+        console.error(`[sendTemplatedNotification] sms failed for "${templateName}":`, smsFailureReason)
+      }
     }
 
     if (sentEmail || sentSms) {
       const channel: 'email' | 'sms' | 'both' =
         sentEmail && sentSms ? 'both' : sentEmail ? 'email' : 'sms'
+      const anyDispatched = emailDispatched || smsDispatched
+      const failureReason = anyDispatched
+        ? undefined
+        : [emailFailureReason, smsFailureReason].filter(Boolean).join('; ') || 'dispatch failed'
       await Notification.create({
         tenantId: (tenant as ITenantDocument)._id,
         type: notificationType,
         channel,
         subject,
         body: sentEmail ? emailBody : smsBody,
-        status: 'sent',
-        sentAt: new Date(),
+        status: anyDispatched ? 'sent' : 'failed',
+        sentAt: anyDispatched ? new Date() : undefined,
         templateName,
         eventKey,
+        ...(failureReason ? { failureReason } : {}),
         // Persist provider message IDs so the webhook handlers can correlate
         // delivery/bounce/open events back to this row.
         ...(resendMessageId ? { resendMessageId } : {}),
