@@ -7,6 +7,7 @@ import { signIn, useSession } from 'next-auth/react'
 import { loadStripe } from '@stripe/stripe-js'
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js'
 import ReserveSidebar, { type ChargeBreakdown } from '@/components/public/ReserveSidebar'
+import { ACH_MANDATE_TEXT, ACH_MANDATE_SHORT } from '@/lib/achMandate'
 
 const stripePromise = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
   ? loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)
@@ -80,6 +81,16 @@ interface FormData {
    *  `confirmCardPayment` instead of using the CardElement. Empty string =
    *  use the new-card form. */
   savedPaymentMethodId: string
+  /** Payment instrument the prospect chose. Drives whether step 3 calls
+   *  `confirmCardPayment` vs `confirmUsBankAccountPayment` and whether step 2
+   *  shows the card form or the ACH bank-account form. */
+  paymentMethodType: 'card' | 'ach'
+  achRouting: string
+  achAccount: string
+  achAccountConfirm: string
+  achAccountType: 'checking' | 'savings'
+  achHolderType: 'individual' | 'company'
+  achAuthorized: boolean
 }
 
 interface ReserveResult {
@@ -376,6 +387,7 @@ function Step1PersonalInfo({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           unitId: unit._id,
+          paymentMethodType: form.paymentMethodType,
           firstName,
           lastName,
           email: form.email,
@@ -860,21 +872,40 @@ function Step2PaymentInfo({
       onContinue()
       return
     }
-    if (!form.cardholderFirstName.trim() || !form.cardholderLastName.trim()) {
-      setError('Please enter the cardholder name')
-      return
-    }
     if (!form.billingSameAsContact) {
       if (!form.billingLine1.trim() || !form.billingCity.trim() || !form.billingState.trim() || !form.billingZip.trim()) {
         setError('Please fill in your billing address')
         return
       }
     }
-    if (stripe && elements) {
-      const card = elements.getElement(CardElement)
-      if (!card) {
-        setError('Card element not loaded')
+    if (form.paymentMethodType === 'ach') {
+      if (!form.achRouting || form.achRouting.length < 9) {
+        setError('Routing number must be 9 digits.')
         return
+      }
+      if (!form.achAccount) {
+        setError('Account number is required.')
+        return
+      }
+      if (form.achAccount !== form.achAccountConfirm) {
+        setError('Account numbers do not match.')
+        return
+      }
+      if (!form.achAuthorized) {
+        setError('Please authorize the ACH debit by checking the box below.')
+        return
+      }
+    } else {
+      if (!form.cardholderFirstName.trim() || !form.cardholderLastName.trim()) {
+        setError('Please enter the cardholder name')
+        return
+      }
+      if (stripe && elements) {
+        const card = elements.getElement(CardElement)
+        if (!card) {
+          setError('Card element not loaded')
+          return
+        }
       }
     }
     onContinue()
@@ -967,48 +998,118 @@ function Step2PaymentInfo({
               <div>
                 <label className="block text-sm font-medium text-brown mb-1">Payment Type</label>
                 <select
-                  value="credit_card"
-                  onChange={() => { /* only credit_card supported for now */ }}
+                  value={form.paymentMethodType}
+                  onChange={(e) => setForm({
+                    ...form,
+                    paymentMethodType: e.target.value as 'card' | 'ach',
+                  })}
                   className="w-full rounded border border-mid px-3 py-2 text-sm text-brown bg-white focus:border-tan focus:outline-none focus:ring-1 focus:ring-tan/30"
                 >
-                  <option value="credit_card">Credit Card</option>
-                  <option value="ach" disabled>ACH (coming soon)</option>
+                  <option value="card">Credit / Debit Card</option>
+                  <option value="ach">Bank Transfer (ACH)</option>
                 </select>
+                {form.paymentMethodType === 'ach' && (
+                  <p className="mt-1 text-xs text-muted">
+                    Funds take 3-5 business days to clear. Your unit is held during this window.
+                  </p>
+                )}
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Field
-                  label="First Name (Cardholder)"
-                  value={form.cardholderFirstName}
-                  onChange={set('cardholderFirstName')}
-                  required
-                />
-                <Field
-                  label="Last Name (Cardholder)"
-                  value={form.cardholderLastName}
-                  onChange={set('cardholderLastName')}
-                  required
-                />
-              </div>
+              {form.paymentMethodType === 'card' && (
+                <>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <Field
+                      label="First Name (Cardholder)"
+                      value={form.cardholderFirstName}
+                      onChange={set('cardholderFirstName')}
+                      required
+                    />
+                    <Field
+                      label="Last Name (Cardholder)"
+                      value={form.cardholderLastName}
+                      onChange={set('cardholderLastName')}
+                      required
+                    />
+                  </div>
 
-              <div>
-                <label className="block text-sm font-medium text-brown mb-1">Card Details</label>
-                <div className="rounded border border-mid p-3 bg-white focus-within:border-tan transition-colors">
-                  <CardElement options={{
-                    style: {
-                      base: { fontSize: '15px', color: '#1C0F06', '::placeholder': { color: '#9CA3AF' } },
-                      invalid: { color: '#EF4444' },
-                    },
-                  }} />
+                  <div>
+                    <label className="block text-sm font-medium text-brown mb-1">Card Details</label>
+                    <div className="rounded border border-mid p-3 bg-white focus-within:border-tan transition-colors">
+                      <CardElement options={{
+                        style: {
+                          base: { fontSize: '15px', color: '#1C0F06', '::placeholder': { color: '#9CA3AF' } },
+                          invalid: { color: '#EF4444' },
+                        },
+                      }} />
+                    </div>
+                    <p className="mt-1.5 text-xs text-muted">Test card: 4242 4242 4242 4242 · Any future date · Any CVC</p>
+                  </div>
+
+                  <CheckboxField
+                    label="Save this card on file for future monthly payments"
+                    checked={form.saveCard}
+                    onChange={set('saveCard')}
+                  />
+                </>
+              )}
+
+              {form.paymentMethodType === 'ach' && (
+                <div className="space-y-4 rounded border border-mid bg-cream/30 p-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <SelectField
+                      label="Account holder type"
+                      value={form.achHolderType}
+                      onChange={(v) => setForm({ ...form, achHolderType: (v as 'individual' | 'company') || 'individual' })}
+                      options={['individual', 'company']}
+                      required
+                    />
+                    <SelectField
+                      label="Account type"
+                      value={form.achAccountType}
+                      onChange={(v) => setForm({ ...form, achAccountType: (v as 'checking' | 'savings') || 'checking' })}
+                      options={['checking', 'savings']}
+                      required
+                    />
+                  </div>
+
+                  <Field
+                    label="Routing number"
+                    value={form.achRouting}
+                    onChange={(v) => set('achRouting')(v.replace(/\D/g, '').slice(0, 9))}
+                    placeholder="9 digits"
+                    required
+                  />
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <Field
+                      label="Account number"
+                      type="password"
+                      value={form.achAccount}
+                      onChange={(v) => set('achAccount')(v.replace(/\D/g, ''))}
+                      required
+                    />
+                    <Field
+                      label="Confirm account number"
+                      type="password"
+                      value={form.achAccountConfirm}
+                      onChange={(v) => set('achAccountConfirm')(v.replace(/\D/g, ''))}
+                      required
+                    />
+                  </div>
+
+                  <div className="rounded border border-mid bg-white p-3 text-xs text-brown/90">
+                    <p className="mb-1 font-semibold text-brown">Authorization for ACH debit</p>
+                    <p className="leading-relaxed">{ACH_MANDATE_TEXT}</p>
+                  </div>
+
+                  <CheckboxField
+                    label={ACH_MANDATE_SHORT}
+                    checked={form.achAuthorized}
+                    onChange={set('achAuthorized')}
+                    required
+                  />
                 </div>
-                <p className="mt-1.5 text-xs text-muted">Test card: 4242 4242 4242 4242 · Any future date · Any CVC</p>
-              </div>
-
-              <CheckboxField
-                label="Save this card on file for future monthly payments"
-                checked={form.saveCard}
-                onChange={set('saveCard')}
-              />
+              )}
             </>
           )}
         </div>
@@ -1269,6 +1370,10 @@ function Step3ReviewSubmit({
             leaseId,
             promoCode: promoCode || undefined,
             protectionPlanId: protectionPlanId || null,
+            // If the user changed payment instrument between step 1 and step 3,
+            // update-amount will cancel and recreate the intent in the right
+            // mode (card vs ACH are mutually exclusive on payment_method_types).
+            paymentMethodType: form.savedPaymentMethodId ? 'card' : form.paymentMethodType,
           }),
         })
         const updateJson = await updateRes.json()
@@ -1280,6 +1385,7 @@ function Step3ReviewSubmit({
 
       // 2. Confirm payment client-side
       let confirmedIntentId: string | undefined
+      const usingAch = !form.savedPaymentMethodId && form.paymentMethodType === 'ach'
       if (!devMode && activeClientSecret) {
         if (!stripe) throw new Error('Stripe not loaded')
 
@@ -1290,6 +1396,31 @@ function Step3ReviewSubmit({
           })
           if (stripeErr) throw new Error(stripeErr.message ?? 'Payment failed')
           if (paymentIntent?.status !== 'succeeded') throw new Error('Payment did not complete')
+          confirmedIntentId = paymentIntent.id
+        } else if (usingAch) {
+          const billingName =
+            `${form.cardholderFirstName} ${form.cardholderLastName}`.trim() || tenantName
+          const { paymentIntent, error: stripeErr } = await stripe.confirmUsBankAccountPayment(activeClientSecret, {
+            payment_method: {
+              us_bank_account: {
+                routing_number: form.achRouting,
+                account_number: form.achAccount,
+                account_holder_type: form.achHolderType,
+                account_type: form.achAccountType,
+              },
+              billing_details: {
+                name: billingName,
+                email: form.email,
+                phone: form.cellPhone,
+              },
+            },
+          })
+          if (stripeErr) throw new Error(stripeErr.message ?? 'ACH authorization failed')
+          // ACH initiates in `processing` and clears in 3-5 business days.
+          // `succeeded` also valid if Stripe instantly verified the account.
+          if (paymentIntent?.status !== 'processing' && paymentIntent?.status !== 'succeeded') {
+            throw new Error('ACH was not initiated. Please try again.')
+          }
           confirmedIntentId = paymentIntent.id
         } else {
           if (!elements) throw new Error('Stripe not loaded')
@@ -1335,6 +1466,7 @@ function Step3ReviewSubmit({
         body: JSON.stringify({
           leaseId,
           paymentIntentId: confirmedIntentId,
+          paymentMethodType: usingAch ? 'ach' : 'card',
           signatureData,
           signatureType,
           saveCard: form.saveCard,
@@ -1584,6 +1716,13 @@ export default function ReservePage() {
     cardholderLastName: '',
     saveCard: true,
     savedPaymentMethodId: '',
+    paymentMethodType: 'card',
+    achRouting: '',
+    achAccount: '',
+    achAccountConfirm: '',
+    achAccountType: 'checking',
+    achHolderType: 'individual',
+    achAuthorized: false,
   })
   const [reserveResult, setReserveResult] = useState<ReserveResult | null>(null)
   const [recoveredName, setRecoveredName] = useState('')

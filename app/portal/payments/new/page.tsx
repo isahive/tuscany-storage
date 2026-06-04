@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { loadStripe } from '@stripe/stripe-js'
 import { Elements, CardNumberElement, CardExpiryElement, CardCvcElement, useStripe, useElements } from '@stripe/react-stripe-js'
+import { ACH_MANDATE_TEXT, ACH_MANDATE_SHORT } from '@/lib/achMandate'
 
 declare global {
   interface Window {
@@ -106,11 +107,21 @@ function MakePaymentForm({
   const router = useRouter()
 
   const [amount, setAmount] = useState((statement.total / 100).toFixed(2))
-  const [method, setMethod] = useState<'one_time' | 'saved'>(savedCard ? 'saved' : 'one_time')
+  const [method, setMethod] = useState<'one_time' | 'saved' | 'ach'>(savedCard ? 'saved' : 'one_time')
   const [saveForFuture, setSaveForFuture] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [turnstileToken, setTurnstileToken] = useState('')
+
+  // ACH-specific state. Routing/account numbers are sent straight to Stripe
+  // via `confirmUsBankAccountPayment` — they never touch our backend so we
+  // never see them in logs or transit through our request body.
+  const [achRouting, setAchRouting] = useState('')
+  const [achAccount, setAchAccount] = useState('')
+  const [achAccountConfirm, setAchAccountConfirm] = useState('')
+  const [achAccountType, setAchAccountType] = useState<'checking' | 'savings'>('checking')
+  const [achHolderType, setAchHolderType] = useState<'individual' | 'company'>('individual')
+  const [achAuthorized, setAchAuthorized] = useState(false)
 
   // Storable parity — verification widget surfaces only when the backend says
   // the tenant has tripped one of the four thresholds (5 fails in a row,
@@ -151,13 +162,38 @@ function MakePaymentForm({
       return
     }
 
+    if (method === 'ach') {
+      if (!achRouting || achRouting.length < 9) {
+        setError('Routing number must be 9 digits.')
+        return
+      }
+      if (!achAccount) {
+        setError('Account number is required.')
+        return
+      }
+      if (achAccount !== achAccountConfirm) {
+        setError('Account numbers do not match.')
+        return
+      }
+      if (!achAuthorized) {
+        setError('Please authorize the ACH debit by checking the box below.')
+        return
+      }
+    }
+
+    const paymentMethodType: 'card' | 'ach' = method === 'ach' ? 'ach' : 'card'
+
     setSubmitting(true)
     try {
       // Step 1 — ask backend to create a PaymentIntent.
       const intentRes = await fetch('/api/portal/pay-multi/intent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: amountCents, turnstileToken: turnstileToken || undefined }),
+        body: JSON.stringify({
+          amount: amountCents,
+          paymentMethodType,
+          turnstileToken: turnstileToken || undefined,
+        }),
       })
       const intentJson = await intentRes.json()
       if (!intentRes.ok || !intentJson.success) {
@@ -182,59 +218,97 @@ function MakePaymentForm({
         // No Stripe key — skip confirmation; backend will mock the intent id.
         paymentIntentId = undefined
       } else {
-        if (!stripe || !elements) throw new Error('Card form not loaded yet.')
+        if (!stripe) throw new Error('Payment form not loaded yet.')
 
-        let confirmOptions: any
-        if (method === 'one_time') {
-          const cardEl = elements.getElement(CardNumberElement)
-          if (!cardEl) throw new Error('Card number field missing.')
-          // Billing details come straight from the tenant record — no need to
-          // re-collect the address/name we already captured at agreement signing.
-          confirmOptions = {
-            payment_method: {
-              card: cardEl,
-              billing_details: {
-                name: `${tenant.firstName} ${tenant.lastName}`.trim(),
-                address: {
-                  line1: tenant.address || undefined,
-                  city: tenant.city || undefined,
-                  state: tenant.state || undefined,
-                  postal_code: tenant.zip || undefined,
-                  country: 'US',
+        if (paymentMethodType === 'ach') {
+          // ACH confirm path. Routing/account numbers travel directly to
+          // Stripe in the same call — they never reach our backend.
+          const { paymentIntent, error: stripeErr } = await stripe.confirmUsBankAccountPayment(
+            intentJson.data.clientSecret,
+            {
+              payment_method: {
+                us_bank_account: {
+                  routing_number: achRouting,
+                  account_number: achAccount,
+                  account_holder_type: achHolderType,
+                  account_type: achAccountType,
+                },
+                billing_details: {
+                  name: `${tenant.firstName} ${tenant.lastName}`.trim(),
+                  email: undefined,
                 },
               },
             },
+          )
+          if (stripeErr) {
+            await fetch('/api/portal/pay-multi/record-decline', { method: 'POST' }).catch(() => {})
+            resetTurnstile()
+            await onVerificationChange()
+            throw new Error(stripeErr.message ?? 'ACH authorization failed')
           }
+          // ACH starts in `processing` and clears 3-5 business days later —
+          // `succeeded` is also valid (instant verification flow).
+          if (!paymentIntent || (paymentIntent.status !== 'processing' && paymentIntent.status !== 'succeeded')) {
+            await fetch('/api/portal/pay-multi/record-decline', { method: 'POST' }).catch(() => {})
+            resetTurnstile()
+            await onVerificationChange()
+            throw new Error('ACH was not initiated. Please try again.')
+          }
+          paymentIntentId = paymentIntent.id
         } else {
-          // Saved-card path — pass the PM id explicitly. Falling back to
-          // `undefined` (Stripe-pick-the-default) silently fails when the
-          // customer has no `default_payment_method` set on Stripe.
-          if (!savedCard?.id) throw new Error('Saved card unavailable. Please pick another method.')
-          confirmOptions = { payment_method: savedCard.id }
-        }
+          if (!elements) throw new Error('Card form not loaded yet.')
+          let confirmOptions: any
+          if (method === 'one_time') {
+            const cardEl = elements.getElement(CardNumberElement)
+            if (!cardEl) throw new Error('Card number field missing.')
+            // Billing details come straight from the tenant record — no need to
+            // re-collect the address/name we already captured at agreement signing.
+            confirmOptions = {
+              payment_method: {
+                card: cardEl,
+                billing_details: {
+                  name: `${tenant.firstName} ${tenant.lastName}`.trim(),
+                  address: {
+                    line1: tenant.address || undefined,
+                    city: tenant.city || undefined,
+                    state: tenant.state || undefined,
+                    postal_code: tenant.zip || undefined,
+                    country: 'US',
+                  },
+                },
+              },
+            }
+          } else {
+            // Saved-card path — pass the PM id explicitly. Falling back to
+            // `undefined` (Stripe-pick-the-default) silently fails when the
+            // customer has no `default_payment_method` set on Stripe.
+            if (!savedCard?.id) throw new Error('Saved card unavailable. Please pick another method.')
+            confirmOptions = { payment_method: savedCard.id }
+          }
 
-        const { paymentIntent, error: stripeErr } = await stripe.confirmCardPayment(
-          intentJson.data.clientSecret,
-          confirmOptions,
-        )
-        if (stripeErr) {
-          // Card-side decline never reaches our finalize endpoint, so the
-          // failed-streak would never bump. Report it explicitly so the
-          // Storable "5 in a row" trigger still works. Awaiting the report
-          // before the status refresh ensures the widget appears on the same
-          // attempt that trips the threshold (not the one after).
-          await fetch('/api/portal/pay-multi/record-decline', { method: 'POST' }).catch(() => {})
-          resetTurnstile()
-          await onVerificationChange()
-          throw new Error(stripeErr.message ?? 'Card declined')
+          const { paymentIntent, error: stripeErr } = await stripe.confirmCardPayment(
+            intentJson.data.clientSecret,
+            confirmOptions,
+          )
+          if (stripeErr) {
+            // Card-side decline never reaches our finalize endpoint, so the
+            // failed-streak would never bump. Report it explicitly so the
+            // Storable "5 in a row" trigger still works. Awaiting the report
+            // before the status refresh ensures the widget appears on the same
+            // attempt that trips the threshold (not the one after).
+            await fetch('/api/portal/pay-multi/record-decline', { method: 'POST' }).catch(() => {})
+            resetTurnstile()
+            await onVerificationChange()
+            throw new Error(stripeErr.message ?? 'Card declined')
+          }
+          if (!paymentIntent || paymentIntent.status !== 'succeeded') {
+            await fetch('/api/portal/pay-multi/record-decline', { method: 'POST' }).catch(() => {})
+            resetTurnstile()
+            await onVerificationChange()
+            throw new Error('Payment was not completed. Please try again.')
+          }
+          paymentIntentId = paymentIntent.id
         }
-        if (!paymentIntent || paymentIntent.status !== 'succeeded') {
-          await fetch('/api/portal/pay-multi/record-decline', { method: 'POST' }).catch(() => {})
-          resetTurnstile()
-          await onVerificationChange()
-          throw new Error('Payment was not completed. Please try again.')
-        }
-        paymentIntentId = paymentIntent.id
       }
 
       // Step 3 — finalize on the backend (apply oldest-first + create Payment row).
@@ -244,6 +318,7 @@ function MakePaymentForm({
         body: JSON.stringify({
           amount: amountCents,
           paymentIntentId,
+          paymentMethodType,
           saveForFuture: method === 'one_time' && saveForFuture,
           turnstileToken: turnstileToken || undefined,
         }),
@@ -406,6 +481,28 @@ function MakePaymentForm({
               </div>
             </div>
           </label>
+          <label
+            className={`flex cursor-pointer items-start gap-3 rounded border p-3 transition-colors sm:col-span-2 ${
+              method === 'ach'
+                ? 'border-olive bg-olive/5 ring-1 ring-olive'
+                : 'border-gray-300 bg-white hover:border-gray-400'
+            }`}
+          >
+            <input
+              type="radio"
+              name="method"
+              value="ach"
+              checked={method === 'ach'}
+              onChange={() => setMethod('ach')}
+              className="mt-1 h-4 w-4 text-olive focus:ring-olive"
+            />
+            <div className="flex-1">
+              <div className="text-sm font-semibold text-gray-900">Pay by bank transfer (ACH)</div>
+              <div className="mt-0.5 text-xs text-gray-600">
+                Direct debit from a US checking or savings account. Funds take 3-5 business days to clear.
+              </div>
+            </div>
+          </label>
         </div>
       </fieldset>
 
@@ -449,6 +546,90 @@ function MakePaymentForm({
                 We&apos;ll keep it on file so you can pay faster next time and enable autopay.
               </span>
             </span>
+          </label>
+        </div>
+      )}
+
+      {/* ACH fields — bank account details + NACHA mandate.
+          Routing/account numbers go straight to Stripe via
+          confirmUsBankAccountPayment; they never touch our backend. */}
+      {method === 'ach' && (
+        <div className="space-y-4 rounded border border-gray-200 bg-gray-50 p-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label className={labelClass}>Account holder type</label>
+              <select
+                value={achHolderType}
+                onChange={(e) => setAchHolderType(e.target.value as 'individual' | 'company')}
+                className={inputClass}
+              >
+                <option value="individual">Individual</option>
+                <option value="company">Company / business</option>
+              </select>
+            </div>
+            <div>
+              <label className={labelClass}>Account type</label>
+              <select
+                value={achAccountType}
+                onChange={(e) => setAchAccountType(e.target.value as 'checking' | 'savings')}
+                className={inputClass}
+              >
+                <option value="checking">Checking</option>
+                <option value="savings">Savings</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className={labelClass}>Routing number</label>
+            <input
+              value={achRouting}
+              onChange={(e) => setAchRouting(e.target.value.replace(/\D/g, '').slice(0, 9))}
+              inputMode="numeric"
+              autoComplete="off"
+              placeholder="9 digits"
+              className={inputClass}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label className={labelClass}>Account number</label>
+              <input
+                type="password"
+                value={achAccount}
+                onChange={(e) => setAchAccount(e.target.value.replace(/\D/g, ''))}
+                inputMode="numeric"
+                autoComplete="off"
+                className={inputClass}
+              />
+            </div>
+            <div>
+              <label className={labelClass}>Confirm account number</label>
+              <input
+                type="password"
+                value={achAccountConfirm}
+                onChange={(e) => setAchAccountConfirm(e.target.value.replace(/\D/g, ''))}
+                inputMode="numeric"
+                autoComplete="off"
+                className={inputClass}
+              />
+            </div>
+          </div>
+
+          <div className="rounded border border-gray-300 bg-white p-3 text-xs text-gray-700">
+            <p className="mb-2 font-semibold text-gray-900">Authorization for ACH debit</p>
+            <p className="leading-relaxed">{ACH_MANDATE_TEXT}</p>
+          </div>
+
+          <label className="flex items-start gap-2 text-sm text-gray-700">
+            <input
+              type="checkbox"
+              checked={achAuthorized}
+              onChange={(e) => setAchAuthorized(e.target.checked)}
+              className="mt-0.5 h-4 w-4 rounded border-gray-300 text-olive focus:ring-olive"
+            />
+            <span>{ACH_MANDATE_SHORT}</span>
           </label>
         </div>
       )}

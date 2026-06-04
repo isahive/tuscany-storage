@@ -12,6 +12,10 @@ import { computeBillingDay } from '@/lib/billing/billingDay'
 
 const schema = z.object({
   unitId: z.string(),
+  /** Payment instrument the prospect is paying with. ACH branches the
+   *  PaymentIntent's payment_method_types and triggers the mandate ack flow
+   *  on the frontend. */
+  paymentMethodType: z.enum(['card', 'ach']).default('card'),
   firstName: z.string().min(1),
   lastName: z.string().min(1),
   email: z.string().email(),
@@ -59,7 +63,7 @@ export async function POST(req: NextRequest) {
     }
 
     const {
-      unitId, firstName, lastName, email, phone, password,
+      unitId, paymentMethodType, firstName, lastName, email, phone, password,
       address, city, state, zip,
       driversLicense, driversLicenseNumber, driversLicenseState,
       idPhotoUrl,
@@ -180,15 +184,23 @@ export async function POST(req: NextRequest) {
         amount: totalAmount,
         currency: 'usd',
         customer: customer.id,
-        payment_method_types: ['card'],
+        payment_method_types: paymentMethodType === 'ach' ? ['us_bank_account'] : ['card'],
         setup_future_usage: 'off_session',
+        ...(paymentMethodType === 'ach'
+          ? {
+              payment_method_options: {
+                us_bank_account: { verification_method: 'automatic' },
+              },
+            }
+          : {}),
         metadata: {
           tenantId: tenant._id.toString(),
           leaseId: lease._id.toString(),
           type: 'move_in',
+          paymentMethodType,
         },
       }, {
-        idempotencyKey: `reserve-${unit._id}-${tenant._id}-${Date.now()}`,
+        idempotencyKey: `reserve-${unit._id}-${tenant._id}-${paymentMethodType}-${Date.now()}`,
       })
       clientSecret = intent.client_secret
     }

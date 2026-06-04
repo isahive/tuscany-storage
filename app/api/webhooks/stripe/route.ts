@@ -67,18 +67,26 @@ export async function POST(req: NextRequest) {
           // the synchronous apply-payment flow deferred touching items and
           // balance. Reconcile them now that the money has actually moved.
           if (wasPending) {
+            // Two sources for which charge rows this payment settled:
+            //   - metadata.itemIds: set by apply-payment for admin/portal flows
+            //   - payment.appliedToItemIds: set by reserve/finalize for public
+            //     move-in (no metadata path because IDs are minted alongside
+            //     the payment row itself).
+            // Prefer metadata when present, fall back to the row's own field.
             const itemIdsCsv = (paymentIntent.metadata?.itemIds ?? "") as string;
-            const itemIds = itemIdsCsv
+            const metadataItemIds = itemIdsCsv
               .split(",")
               .map((s) => s.trim())
               .filter(Boolean);
-            if (itemIds.length > 0) {
-              const { Types } = await import("mongoose");
-              const objectIds = itemIds
-                .filter((s) => Types.ObjectId.isValid(s))
-                .map((s) => new Types.ObjectId(s));
+            const { Types } = await import("mongoose");
+            const resolvedItemIds = metadataItemIds.length > 0
+              ? metadataItemIds
+                  .filter((s) => Types.ObjectId.isValid(s))
+                  .map((s) => new Types.ObjectId(s))
+              : (payment.appliedToItemIds ?? []);
+            if (resolvedItemIds.length > 0) {
               await Payment.updateMany(
-                { _id: { $in: objectIds }, tenantId: payment.tenantId, status: "pending" },
+                { _id: { $in: resolvedItemIds }, tenantId: payment.tenantId, status: "pending" },
                 { $set: { status: "succeeded", lastAttemptAt: new Date() } },
               );
             }
@@ -128,17 +136,19 @@ export async function POST(req: NextRequest) {
           // tenant.balance so the outstanding stays correct.
           if (wasSucceeded) {
             const itemIdsCsv = (paymentIntent.metadata?.itemIds ?? "") as string;
-            const itemIds = itemIdsCsv
+            const metadataItemIds = itemIdsCsv
               .split(",")
               .map((s) => s.trim())
               .filter(Boolean);
-            if (itemIds.length > 0) {
-              const { Types } = await import("mongoose");
-              const objectIds = itemIds
-                .filter((s) => Types.ObjectId.isValid(s))
-                .map((s) => new Types.ObjectId(s));
+            const { Types } = await import("mongoose");
+            const resolvedItemIds = metadataItemIds.length > 0
+              ? metadataItemIds
+                  .filter((s) => Types.ObjectId.isValid(s))
+                  .map((s) => new Types.ObjectId(s))
+              : (payment.appliedToItemIds ?? []);
+            if (resolvedItemIds.length > 0) {
               await Payment.updateMany(
-                { _id: { $in: objectIds }, tenantId: payment.tenantId, status: "succeeded" },
+                { _id: { $in: resolvedItemIds }, tenantId: payment.tenantId, status: "succeeded" },
                 { $set: { status: "pending", lastAttemptAt: new Date() } },
               );
             }

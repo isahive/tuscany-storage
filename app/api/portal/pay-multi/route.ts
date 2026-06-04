@@ -20,9 +20,13 @@ import { verifyTurnstileToken } from '@/lib/turnstile'
 const schema = z.object({
   /** Amount in cents the tenant is paying. */
   amount: z.number().int().positive(),
-  /** PaymentIntent id confirmed by `stripe.confirmCardPayment` on the frontend.
-   *  Omitted in dev mode (no Stripe key) — we then synthesise a mock id. */
+  /** PaymentIntent id confirmed by `stripe.confirmCardPayment` (card) or
+   *  `confirmUsBankAccountPayment` (ACH) on the frontend. Omitted in dev mode
+   *  (no Stripe key) — we then synthesise a mock id. */
   paymentIntentId: z.string().optional(),
+  /** Which instrument the tenant used. Affects the description on the ledger
+   *  row + the expected post-confirm status (ACH stays 'processing' for 3-5d). */
+  paymentMethodType: z.enum(['card', 'ach']).default('card'),
   /** When true, set the confirmed PM as the customer's default for future
    *  charges (autopay, off-session billing). */
   saveForFuture: z.boolean().optional(),
@@ -58,7 +62,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: parsed.error.issues[0]?.message ?? 'Invalid data' }, { status: 400 })
     }
 
-    const { amount, paymentIntentId, saveForFuture, turnstileToken } = parsed.data
+    const { amount, paymentIntentId, paymentMethodType, saveForFuture, turnstileToken } = parsed.data
 
     await connectDB()
 
@@ -165,9 +169,10 @@ export async function POST(req: NextRequest) {
       amount,
     })
 
+    const methodLabel = paymentMethodType === 'ach' ? 'One Time ACH' : 'One Time Credit Card'
     const description = paymentStatus === 'succeeded'
-      ? `One Time Credit Card — Self-pay${remaining > 0 ? ` (${(remaining / 100).toFixed(2)} applied to credit)` : ''}`
-      : 'One Time Credit Card — Pending'
+      ? `${methodLabel} — Self-pay${remaining > 0 ? ` (${(remaining / 100).toFixed(2)} applied to credit)` : ''}`
+      : `${methodLabel} — Pending`
 
     const paymentRow = await Payment.create({
       tenantId: tenant._id,

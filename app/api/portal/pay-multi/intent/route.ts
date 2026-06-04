@@ -15,6 +15,9 @@ import { verifyTurnstileToken } from '@/lib/turnstile'
 const schema = z.object({
   /** Total in cents. */
   amount: z.number().int().positive(),
+  /** Payment instrument the tenant is using. ACH requires a separate
+   *  `payment_method_types` and a mandate ack on the frontend. */
+  paymentMethodType: z.enum(['card', 'ach']).default('card'),
   /** Cloudflare Turnstile token — required only when the tenant has tripped
    *  Storable's Web Visitor Verification thresholds. */
   turnstileToken: z.string().optional(),
@@ -42,7 +45,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: parsed.error.issues[0]?.message ?? 'Invalid data' }, { status: 400 })
     }
 
-    const { amount, turnstileToken } = parsed.data
+    const { amount, paymentMethodType, turnstileToken } = parsed.data
 
     await connectDB()
 
@@ -103,21 +106,35 @@ export async function POST(req: NextRequest) {
       await tenant.save()
     }
 
+    // Card intents leave 3DS to the client-side confirm. ACH intents need a
+    // payment_method_options block so Stripe applies the mandate Stripe-side
+    // when the frontend calls confirmUsBankAccountPayment.
     const intent = await stripe.paymentIntents.create({
       amount,
       currency: 'usd',
       customer: customerId,
-      payment_method_types: ['card'],
-      // No `confirm:true` — frontend will call `stripe.confirmCardPayment` so
-      // 3DS challenge can be presented to the user when required.
+      payment_method_types: paymentMethodType === 'ach' ? ['us_bank_account'] : ['card'],
+      // No `confirm:true` — frontend will call `stripe.confirmCardPayment`
+      // (card) or `confirmUsBankAccountPayment` (ACH) so SCA/mandate challenge
+      // can be presented to the user when required.
       setup_future_usage: 'off_session', // lets the tenant opt-in to saving later
+      ...(paymentMethodType === 'ach'
+        ? {
+            payment_method_options: {
+              us_bank_account: {
+                verification_method: 'automatic',
+              },
+            },
+          }
+        : {}),
       metadata: {
         tenantId: session.user.id,
         leaseId: lease?._id?.toString() ?? '',
         selfPay: 'true',
+        paymentMethodType,
       },
     }, {
-      idempotencyKey: `portal-pay-intent-${session.user.id}-${amount}-${Date.now()}`,
+      idempotencyKey: `portal-pay-intent-${session.user.id}-${paymentMethodType}-${amount}-${Date.now()}`,
     })
 
     return NextResponse.json({

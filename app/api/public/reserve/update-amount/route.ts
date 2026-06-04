@@ -14,6 +14,10 @@ const schema = z.object({
   signDate: z.string().optional(),
   promoCode: z.string().optional(),
   protectionPlanId: z.string().nullable().optional(),
+  /** Payment instrument the prospect now wants to use. If it differs from the
+   *  existing intent's `payment_method_types`, we cancel and recreate — Stripe
+   *  doesn't let us swap that field on an existing intent. */
+  paymentMethodType: z.enum(['card', 'ach']).optional(),
 })
 
 // POST /api/public/reserve/update-amount
@@ -27,7 +31,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Invalid request' }, { status: 400 })
     }
 
-    const { leaseId, signDate, promoCode, protectionPlanId } = parsed.data
+    const { leaseId, signDate, promoCode, protectionPlanId, paymentMethodType } = parsed.data
 
     await connectDB()
 
@@ -141,7 +145,49 @@ export async function POST(req: NextRequest) {
         }
       }
 
+      const desiredPmTypes = paymentMethodType === 'ach' ? ['us_bank_account'] : ['card']
+
       if (intent) {
+        const currentTypes = intent.payment_method_types ?? []
+        const typesMatch = currentTypes.length === desiredPmTypes.length
+          && currentTypes.every((t: string) => desiredPmTypes.includes(t))
+
+        if (!typesMatch && paymentMethodType) {
+          // Stripe forbids mutating payment_method_types on a live intent —
+          // cancel and create a fresh one in the requested mode.
+          try { await stripe.paymentIntents.cancel(intent.id) } catch { /* already canceled / completed */ }
+          const tenant = await Tenant.findById(lease.tenantId)
+          const newIntent = await stripe.paymentIntents.create({
+            amount: dueTotal,
+            currency: 'usd',
+            customer: tenant?.stripeCustomerId,
+            payment_method_types: desiredPmTypes,
+            setup_future_usage: 'off_session',
+            ...(paymentMethodType === 'ach'
+              ? {
+                  payment_method_options: {
+                    us_bank_account: { verification_method: 'automatic' },
+                  },
+                }
+              : {}),
+            metadata: {
+              tenantId: lease.tenantId.toString(),
+              leaseId: lease._id.toString(),
+              type: 'move_in',
+              paymentMethodType,
+            },
+          })
+          return NextResponse.json({
+            success: true,
+            data: {
+              clientSecret: newIntent.client_secret,
+              paymentIntentId: newIntent.id,
+              amount: dueTotal,
+              devMode: false,
+            },
+          })
+        }
+
         if (intent.amount !== dueTotal) {
           intent = await stripe.paymentIntents.update(intent.id, { amount: dueTotal })
         }

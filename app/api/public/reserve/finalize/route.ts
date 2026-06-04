@@ -17,6 +17,9 @@ import { sendTemplatedNotification } from '@/lib/sendNotification'
 const schema = z.object({
   leaseId: z.string(),
   paymentIntentId: z.string().optional(),
+  /** How the prospect paid. ACH stays in `processing` for 3-5 days — we accept
+   *  that and let the Stripe webhook reconcile when clearing completes. */
+  paymentMethodType: z.enum(['card', 'ach']).default('card'),
   signatureData: z.string().min(1),
   signatureType: z.enum(['drawn', 'typed']),
   saveCard: z.boolean().optional(),
@@ -44,7 +47,7 @@ export async function POST(req: NextRequest) {
     }
 
     const {
-      leaseId, paymentIntentId, signatureData, signatureType, saveCard,
+      leaseId, paymentIntentId, paymentMethodType, signatureData, signatureType, saveCard,
       billingAddress, promoCode, protectionPlanId,
     } = parsed.data
 
@@ -57,18 +60,30 @@ export async function POST(req: NextRequest) {
     if (!unit) return NextResponse.json({ success: false, error: 'Unit not found' }, { status: 404 })
 
     // ─── 1. Validate Stripe intent (or generate dev id) ────────────────────────
+    // Card payments resolve to status='succeeded' immediately after
+    // confirmCardPayment. ACH payments resolve to status='processing' and only
+    // flip to 'succeeded' 3-5 business days later via the webhook. We accept
+    // both here and tag the resulting ledger rows accordingly — the webhook
+    // reconciles ACH on clearing (status flip + balance decrement).
     let confirmedIntentId = paymentIntentId
+    let paymentStatus: 'succeeded' | 'pending' = paymentMethodType === 'ach' ? 'pending' : 'succeeded'
+
     if (process.env.STRIPE_SECRET_KEY) {
       if (!paymentIntentId) {
         return NextResponse.json({ success: false, error: 'Payment confirmation required' }, { status: 400 })
       }
       const { stripe } = await import('@/lib/stripe')
       const intent = await stripe.paymentIntents.retrieve(paymentIntentId)
-      if (intent.status !== 'succeeded') {
+
+      if (intent.status === 'succeeded') {
+        paymentStatus = 'succeeded'
+      } else if (intent.status === 'processing' && paymentMethodType === 'ach') {
+        paymentStatus = 'pending'
+      } else {
         return NextResponse.json({ success: false, error: 'Payment not confirmed. Please try again.' }, { status: 402 })
       }
 
-      // If user opted out of saving card, detach the payment method
+      // If user opted out of saving the instrument, detach it.
       if (saveCard === false && intent.payment_method && typeof intent.payment_method === 'string') {
         try { await stripe.paymentMethods.detach(intent.payment_method) } catch { /* ignore */ }
       }
@@ -215,12 +230,18 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    // Charge rows track money the tenant owes. For card payments we mark
+    // them succeeded immediately (the money already moved). For ACH the money
+    // is still in transit, so the charges stay pending and the webhook flips
+    // them when payment_intent.succeeded fires (3-5 business days later).
+    const chargeRowStatus = paymentStatus === 'succeeded' ? 'succeeded' : 'pending'
+
     // ── Create the charges sequentially so balanceAfter walks correctly ──
     const createdCharges: any[] = []
     for (const l of lines) {
       const balanceAfter = await nextBalanceAfter(Payment, lease.tenantId, {
         direction: 'charge',
-        status: 'succeeded',
+        status: chargeRowStatus,
         amount: l.amount,
       })
       const c = await Payment.create({
@@ -230,7 +251,7 @@ export async function POST(req: NextRequest) {
         amount: l.amount,
         currency: 'usd',
         type: l.type,
-        status: 'succeeded',
+        status: chargeRowStatus,
         direction: 'charge',
         balanceAfter,
         description: l.description,
@@ -241,13 +262,17 @@ export async function POST(req: NextRequest) {
       createdCharges.push(c)
     }
 
-    // ── Create the matching payment row that settled the move-in total ──
+    // ── Create the matching payment row that settled (or will settle) the move-in total ──
     const totalCents = lines.reduce((s, l) => s + l.amount, 0)
     const paymentBalanceAfter = await nextBalanceAfter(Payment, lease.tenantId, {
       direction: 'payment',
-      status: 'succeeded',
+      status: paymentStatus,
       amount: totalCents,
     })
+    const paymentMethodLabel = paymentMethodType === 'ach' ? 'ACH' : 'Credit Card'
+    const moveInDescription = paymentStatus === 'pending'
+      ? `Move-in payment — ${paymentMethodLabel} (Pending)`
+      : `Move-in payment — ${paymentMethodLabel}`
     await Payment.create({
       tenantId: lease.tenantId,
       leaseId: lease._id,
@@ -255,18 +280,20 @@ export async function POST(req: NextRequest) {
       amount: totalCents,
       currency: 'usd',
       type: 'rent',
-      status: 'succeeded',
+      status: paymentStatus,
       direction: 'payment',
       balanceAfter: paymentBalanceAfter,
       stripePaymentIntentId: confirmedIntentId!,
-      description: 'Move-in payment — Credit Card',
+      description: moveInDescription,
       appliedToItemIds: createdCharges.map((c) => c._id),
       attemptCount: 1,
       lastAttemptAt: now,
     })
 
     // Sync the denormalized tenant.balance so the dashboard reads correctly
-    // without waiting for the next ledger walk.
+    // without waiting for the next ledger walk. For card → 0 (money moved).
+    // For ACH pending → 0 also (balanceAfter from nextBalanceAfter), but if
+    // the ACH later fails, the stripe webhook restores the charge as a debt.
     await Tenant.findByIdAndUpdate(lease.tenantId, { balance: paymentBalanceAfter })
 
     // ─── 7. Increment counts ───────────────────────────────────────────────────
