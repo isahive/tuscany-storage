@@ -14,8 +14,12 @@ function getClient() {
 }
 
 export async function sendSMS(to: string, body: string): Promise<string | null> {
-  if (process.env.NODE_ENV === 'development') {
-    console.log(`[SMS DEV] To: ${to}, Body: ${body}`)
+  // Hard safety gate: only send real SMS when explicitly running in production.
+  // If NODE_ENV is unset, 'development', 'dev', 'test', or anything else, suppress.
+  if (process.env.NODE_ENV !== 'production') {
+    console.log(
+      `[SMS GUARD] suppressed (NODE_ENV=${process.env.NODE_ENV ?? '(unset)'}) — To: ${to}, Body: ${body}`,
+    )
     return null
   }
 

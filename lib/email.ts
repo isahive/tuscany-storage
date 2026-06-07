@@ -14,9 +14,15 @@ export async function sendEmail(
   html: string,
   options?: { replyTo?: string },
 ): Promise<string | null> {
-  if (process.env.NODE_ENV === "development" && !resend) {
+  // Hard safety gate: only send real email when explicitly running in production.
+  // If NODE_ENV is unset, 'development', 'dev', 'test', or anything else, suppress
+  // — even when RESEND_API_KEY is configured (a key in .env.local would otherwise
+  // dispatch to real customers from a dev/staging environment).
+  if (process.env.NODE_ENV !== "production") {
     const recipients = Array.isArray(to) ? to.join(", ") : to;
-    console.log(`[EMAIL DEV] To: ${recipients}, Subject: ${subject}`);
+    console.log(
+      `[EMAIL GUARD] suppressed (NODE_ENV=${process.env.NODE_ENV ?? "(unset)"}) — To: ${recipients}, Subject: ${subject}`,
+    );
     return null;
   }
 
