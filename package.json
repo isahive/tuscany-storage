@@ -23,6 +23,7 @@
     "backfill:balance-after": "ts-node --project tsconfig.scripts.json scripts/backfill-balance-after.ts",
     "migrate:local-to-atlas": "ts-node --project tsconfig.scripts.json scripts/migrate-local-to-atlas.ts",
     "seed:alan-wolfe": "ts-node --project tsconfig.scripts.json scripts/seed-alan-wolfe.ts",
+    "import:billing": "ts-node --project tsconfig.scripts.json scripts/import-billing-history.ts",
     "billing:preview": "node scripts/run-recurring-billing.js --dry",
     "billing:run": "node scripts/run-recurring-billing.js",
     "migrate": "ts-node --project tsconfig.scripts.json scripts/migrate.ts",

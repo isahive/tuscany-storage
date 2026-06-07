@@ -1,0 +1,23 @@
+{
+  "email": "customer@example.com",
+  "rows": [
+    {
+      "date": "6/24/2022",
+      "storableId": "54233195",
+      "type": "rent",
+      "status": "succeeded",
+      "direction": "charge",
+      "amount": 8500,
+      "description": "Unit C2 rent for 1 month period starting 7/1/2022"
+    },
+    {
+      "date": "7/13/2022",
+      "storableId": "39260184",
+      "type": "rent",
+      "status": "succeeded",
+      "direction": "payment",
+      "amount": 8500,
+      "description": "Visa ending in 6078 — Paid $85.00 of Unit C2 rent for 1 month period starting 7/1/2022"
+    }
+  ]
+}
