@@ -128,6 +128,11 @@ export default function RentNowModal({
                 {formatMoney(currentPriceCents)}
               </span>
             </div>
+            {hasPromo && (
+              <span className="text-sm text-gray-600">
+                {formatMoney(originalPriceCents)} per month after the move-in special promotional price
+              </span>
+            )}
           </label>
 
           {/* Promo banner */}

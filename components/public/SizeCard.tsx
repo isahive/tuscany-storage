@@ -86,6 +86,13 @@ export default function SizeCard({
         </div>
       </div>
 
+      {/* Regular recurring rate — only shown when a move-in special applies */}
+      {hasPromo && (
+        <p className="mt-2 text-right text-sm text-gray-600">
+          {formatMoney(originalPriceCents)} per month after the move-in special promotional price
+        </p>
+      )}
+
       {/* Promo banner — full width */}
       {promoText && (
         <p className="mt-5 rounded bg-[#FFF7D6] px-4 py-3 text-sm text-gray-800">
