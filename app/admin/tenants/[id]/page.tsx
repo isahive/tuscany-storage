@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
+import Image from 'next/image'
 import {
   Avatar,
   Box,
@@ -350,10 +351,13 @@ export default function TenantDetailPage() {
             <CardContent sx={{ textAlign: 'center' }}>
               {tenant.idPhotoUrl ? (
                 <Box sx={{ borderRadius: 2, overflow: 'hidden', mb: 1 }}>
-                  <img
+                  <Image
                     src={tenant.idPhotoUrl}
                     alt="ID Photo"
-                    style={{ width: '100%', maxHeight: 260, objectFit: 'contain', borderRadius: 8 }}
+                    width={640}
+                    height={260}
+                    unoptimized
+                    style={{ width: '100%', height: 'auto', maxHeight: 260, objectFit: 'contain', borderRadius: 8 }}
                   />
                 </Box>
               ) : (

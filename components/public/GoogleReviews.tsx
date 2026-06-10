@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Image from 'next/image'
 
 interface Review {
   author: string
@@ -129,11 +130,13 @@ export default function GoogleReviews() {
               {/* Author row — top */}
               <div className="mb-5 flex items-center gap-4">
                 {review.profilePhoto ? (
-                  <img
+                  <Image
                     src={review.profilePhoto}
                     alt=""
+                    width={48}
+                    height={48}
+                    unoptimized
                     className="h-12 w-12 rounded-full object-cover ring-2 ring-mid/30"
-                    loading="lazy"
                   />
                 ) : (
                   <div className="flex h-12 w-12 items-center justify-center rounded-full bg-brown/5 ring-2 ring-mid/30">

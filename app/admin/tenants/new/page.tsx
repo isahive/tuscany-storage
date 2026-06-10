@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import {
   Alert,
   Box,
@@ -367,7 +368,7 @@ export default function NewCustomerPage() {
                   </Typography>
                   {idPhoto ? (
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                      <img src={idPhoto} alt="ID" style={{ height: 48, borderRadius: 4, border: '1px solid #E5E7EB' }} />
+                      <Image src={idPhoto} alt="ID" width={72} height={48} unoptimized style={{ height: 48, width: 'auto', borderRadius: 4, border: '1px solid #E5E7EB' }} />
                       <Button size="small" color="error" onClick={() => setIdPhoto(null)}>Remove</Button>
                     </Box>
                   ) : (

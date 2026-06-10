@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState, DragEvent } from 'react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import { loadStripe } from '@stripe/stripe-js'
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js'
 import { formatMoney, formatDate } from '@/lib/utils'
@@ -440,10 +441,13 @@ function Step2({
           <div className="grid grid-cols-[repeat(auto-fill,minmax(110px,1fr))] gap-3">
             {files.map((file, index) => (
               <div key={`${file.name}-${index}`} className="relative">
-                <img
+                <Image
                   src={URL.createObjectURL(file)}
                   alt={file.name}
-                  className="aspect-square w-full rounded border border-gray-200 object-cover"
+                  width={110}
+                  height={110}
+                  unoptimized
+                  className="aspect-square h-auto w-full rounded border border-gray-200 object-cover"
                 />
                 <button
                   type="button"

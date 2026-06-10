@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo, useId } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 import { signIn, useSession } from 'next-auth/react'
 import { loadStripe } from '@stripe/stripe-js'
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js'
@@ -515,7 +516,7 @@ function Step1PersonalInfo({
               <p className="text-xs text-muted mb-2">Upload a photo of your driver&apos;s license or government-issued ID</p>
               {form.idPhotoUrl ? (
                 <div className="relative rounded-lg border border-mid overflow-hidden bg-white">
-                  <img src={form.idPhotoUrl} alt="ID" className="w-full max-h-48 object-contain" />
+                  <Image src={form.idPhotoUrl} alt="ID" width={640} height={192} unoptimized className="w-full h-auto max-h-48 object-contain" />
                   <button
                     type="button"
                     onClick={() => setForm({ ...form, idPhotoUrl: '' })}
@@ -1561,7 +1562,7 @@ function Step3ReviewSubmit({
                     <div style={{ flex: 1, minWidth: '180px' }}>
                       <div style={{ borderBottom: '1px solid #1C0F06', minHeight: '48px', display: 'flex', alignItems: 'flex-end', paddingBottom: '2px', marginBottom: '4px' }}>
                         {signatureData ? (
-                          <img src={signatureData} alt="Signature" style={{ height: '44px', objectFit: 'contain' }} />
+                          <Image src={signatureData} alt="Signature" width={132} height={44} unoptimized style={{ height: '44px', width: 'auto', objectFit: 'contain' }} />
                         ) : (
                           <span style={{ color: '#9CA3AF', fontSize: '12px', fontStyle: 'italic' }}>Sign below ↓</span>
                         )}

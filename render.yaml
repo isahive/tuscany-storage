@@ -12,6 +12,11 @@
 # Shared env group: APP_URL and CRON_SECRET are pasted ONCE into the
 # `tuscany-cron-shared` env var group and inherited by every cron. CRON_SECRET
 # must match the value set on the web service so it accepts the calls.
+#
+# autoDeploy is OFF for every cron: they are pure timers (HTTP callers) whose
+# code almost never changes, and rebuilding all 11 on every push exhausted the
+# workspace's build-pipeline minutes (builds then fail instantly with
+# `pipeline_minutes_exhausted`). Deploy a cron manually when scripts/ change.
 
 envVarGroups:
   - name: tuscany-cron-shared
@@ -32,6 +37,7 @@ services:
     name: tuscany-recurring-billing
     runtime: node
     region: ohio
+    autoDeploy: false
     schedule: "0 8 * * *"
     buildCommand: npm install
     startCommand: node scripts/run-recurring-billing.js
@@ -43,6 +49,7 @@ services:
     name: tuscany-generate-invoices
     runtime: node
     region: ohio
+    autoDeploy: false
     schedule: "0 0 * * *"
     buildCommand: npm install
     startCommand: node scripts/run-cron-job.js generateInvoices
@@ -54,6 +61,7 @@ services:
     name: tuscany-autopay
     runtime: node
     region: ohio
+    autoDeploy: false
     schedule: "0 2 * * *"
     buildCommand: npm install
     startCommand: node scripts/run-cron-job.js autopay
@@ -65,6 +73,7 @@ services:
     name: tuscany-pdk-reconcile
     runtime: node
     region: ohio
+    autoDeploy: false
     schedule: "0 3 * * *"
     buildCommand: npm install
     startCommand: node scripts/run-cron-job.js pdkReconcile
@@ -81,6 +90,7 @@ services:
     name: tuscany-visitor-access
     runtime: node
     region: ohio
+    autoDeploy: false
     schedule: "*/2 * * * *"
     buildCommand: npm install
     startCommand: node scripts/run-cron-job.js visitorAccessExpiration
@@ -94,6 +104,7 @@ services:
     name: tuscany-delinquency
     runtime: node
     region: ohio
+    autoDeploy: false
     schedule: "0 6 * * *"
     buildCommand: npm install
     startCommand: node scripts/run-cron-job.js delinquency
@@ -105,6 +116,7 @@ services:
     name: tuscany-lockout-report
     runtime: node
     region: ohio
+    autoDeploy: false
     schedule: "0 7 * * *"
     buildCommand: npm install
     startCommand: node scripts/run-cron-job.js lockoutReportEmail
@@ -116,6 +128,7 @@ services:
     name: tuscany-rate-mgmt-reminder
     runtime: node
     region: ohio
+    autoDeploy: false
     schedule: "0 8 * * *"
     buildCommand: npm install
     startCommand: node scripts/run-cron-job.js rateManagementReminder
@@ -127,6 +140,7 @@ services:
     name: tuscany-reminders
     runtime: node
     region: ohio
+    autoDeploy: false
     schedule: "0 9 * * *"
     buildCommand: npm install
     startCommand: node scripts/run-cron-job.js reminders
@@ -138,6 +152,7 @@ services:
     name: tuscany-rate-execution
     runtime: node
     region: ohio
+    autoDeploy: false
     schedule: "0 5 * * *"
     buildCommand: npm install
     startCommand: node scripts/run-cron-job.js rateExecution
@@ -149,6 +164,7 @@ services:
     name: tuscany-rate-management
     runtime: node
     region: ohio
+    autoDeploy: false
     schedule: "0 4 1 * *"
     buildCommand: npm install
     startCommand: node scripts/run-cron-job.js rateManagement
