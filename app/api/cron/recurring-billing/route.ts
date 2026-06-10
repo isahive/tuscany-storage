@@ -23,6 +23,10 @@ import { nextBalanceAfter } from '@/lib/paymentBalance'
  *   { date?: string (YYYY-MM-DD), dryRun?: boolean, tenantId?: string }
  */
 
+// Vercel function limit — the sweep iterates every active lease with
+// off-session Stripe charges. Requires Fluid compute (300s on all plans).
+export const maxDuration = 300
+
 interface ChargeResult {
   leaseId: string
   tenantName: string
