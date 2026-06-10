@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
+  Autocomplete,
   Box,
   Card,
   CardActionArea,
@@ -11,14 +12,17 @@ import {
   Chip,
   CircularProgress,
   Grid,
+  InputAdornment,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
   TableRow,
+  TextField,
   Typography,
 } from '@mui/material'
+import SearchIcon from '@mui/icons-material/Search'
 import HomeWorkIcon from '@mui/icons-material/HomeWork'
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney'
 import MeetingRoomIcon from '@mui/icons-material/MeetingRoom'
@@ -54,6 +58,14 @@ interface MoveOutRow {
   unit: string
   moveOutDate: string
   balance: number
+}
+
+interface SearchOption {
+  group: 'Clients' | 'Units'
+  id: string
+  label: string
+  detail: string
+  href: string
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -122,6 +134,40 @@ export default function AdminDashboard() {
   const [moveOuts, setMoveOuts] = useState<MoveOutRow[]>([])
   const [loading, setLoading] = useState(true)
 
+  // ── Search bar (clients + units) ──────────────────────────────────────────
+  const [searchInput, setSearchInput] = useState('')
+  const [searchOptions, setSearchOptions] = useState<SearchOption[]>([])
+  const [searchLoading, setSearchLoading] = useState(false)
+
+  useEffect(() => {
+    const q = searchInput.trim()
+    if (!q) { setSearchOptions([]); setSearchLoading(false); return }
+    let cancelled = false
+    setSearchLoading(true)
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/admin/search?q=${encodeURIComponent(q)}`)
+        const json = await res.json()
+        if (!cancelled && json.success) {
+          const opts: SearchOption[] = [
+            ...json.data.clients.map((c: { id: string; name: string; detail: string }) => ({
+              group: 'Clients' as const, id: c.id, label: c.name, detail: c.detail, href: `/admin/tenants/${c.id}`,
+            })),
+            ...json.data.units.map((u: { id: string; unitNumber: string; detail: string }) => ({
+              group: 'Units' as const, id: u.id, label: `Unit ${u.unitNumber}`, detail: u.detail, href: `/admin/units/${u.id}`,
+            })),
+          ]
+          setSearchOptions(opts)
+        }
+      } catch {
+        // ignore — stale or failed lookup
+      } finally {
+        if (!cancelled) setSearchLoading(false)
+      }
+    }, 250)
+    return () => { cancelled = true; clearTimeout(timer) }
+  }, [searchInput])
+
   useEffect(() => {
     async function load() {
       try {
@@ -156,9 +202,63 @@ export default function AdminDashboard() {
 
   return (
     <Box>
-      <Typography variant="h5" sx={{ fontWeight: 700, mb: 3, color: 'text.primary' }}>
+      <Typography variant="h5" sx={{ fontWeight: 700, mb: 2, color: 'text.primary' }}>
         Dashboard
       </Typography>
+
+      {/* Search — clients or units */}
+      <Autocomplete<SearchOption>
+        options={searchOptions}
+        loading={searchLoading}
+        filterOptions={(x) => x}
+        groupBy={(o) => o.group}
+        getOptionLabel={(o) => o.label}
+        isOptionEqualToValue={(o, v) => o.id === v.id && o.group === v.group}
+        inputValue={searchInput}
+        onInputChange={(_, val, reason) => { if (reason !== 'reset') setSearchInput(val) }}
+        onChange={(_, val) => {
+          if (val) {
+            router.push(val.href)
+            setSearchInput('')
+            setSearchOptions([])
+          }
+        }}
+        blurOnSelect
+        clearOnEscape
+        noOptionsText={searchInput.trim() ? 'No matches' : 'Type a name, email, phone, or unit #'}
+        renderOption={(props, option) => (
+          <Box component="li" {...props} key={`${option.group}-${option.id}`}>
+            <Box>
+              <Typography variant="body2" sx={{ fontWeight: 500 }}>{option.label}</Typography>
+              {option.detail && (
+                <Typography variant="caption" sx={{ color: 'text.secondary' }}>{option.detail}</Typography>
+              )}
+            </Box>
+          </Box>
+        )}
+        renderInput={(params) => (
+          <TextField
+            {...params}
+            placeholder="Search clients or units…"
+            size="small"
+            InputProps={{
+              ...params.InputProps,
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon fontSize="small" sx={{ color: 'text.secondary' }} />
+                </InputAdornment>
+              ),
+              endAdornment: (
+                <>
+                  {searchLoading ? <CircularProgress size={16} sx={{ mr: 1 }} /> : null}
+                  {params.InputProps.endAdornment}
+                </>
+              ),
+            }}
+          />
+        )}
+        sx={{ maxWidth: 480, mb: 4 }}
+      />
 
       {/* KPI Cards */}
       <Grid container spacing={2} sx={{ mb: 4 }}>
