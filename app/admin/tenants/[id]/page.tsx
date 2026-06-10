@@ -416,7 +416,19 @@ export default function TenantDetailPage() {
               {/* Row: Recurring Billing (visual gap matches live) */}
               <Box sx={{ display: 'grid', gridTemplateColumns: '1.1fr 1fr 1.2fr', alignItems: 'center', borderBottom: '1px solid #F3F0EB', mt: 1 }}>
                 <Typography variant="body2" sx={{ px: 2.5, py: 1.5, color: 'text.secondary' }}>Recurring Billing</Typography>
-                <Typography variant="body2" sx={{ px: 2.5, py: 1.5, bgcolor: '#D1FAE5', fontWeight: 600, textAlign: 'left' }}>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    px: 2.5,
+                    py: 1.5,
+                    // Match the balance treatment: green = good (Active),
+                    // red/pink = needs attention (Inactive, like a balance due).
+                    bgcolor: recurringBillingActive ? '#D1FAE5' : '#FEE2E2',
+                    color: recurringBillingActive ? '#065F46' : '#991B1B',
+                    fontWeight: 600,
+                    textAlign: 'left',
+                  }}
+                >
                   {recurringBillingActive ? 'Active' : 'Inactive'}
                 </Typography>
                 <Box sx={{ px: 2.5, py: 1.5 }}>
