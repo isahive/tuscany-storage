@@ -45,11 +45,6 @@ const UNIT_TYPES: { value: UnitType; label: string }[] = [
   { value: 'vehicle_outdoor',    label: 'Vehicle / Outdoor' },
 ]
 
-const UNIT_FLOORS: { value: UnitFloor; label: string }[] = [
-  { value: 'ground', label: 'Ground Floor' },
-  { value: 'upper',  label: 'Upper Floor' },
-]
-
 const ALL_FEATURES = [
   'Climate controlled',
   'Drive-up access',
@@ -244,9 +239,9 @@ export default function EditUnitPage() {
     }
   }
 
-  function handleSelect(field: 'type' | 'floor') {
+  function handleSelect(field: 'type') {
     return (e: SelectChangeEvent) => {
-      setForm((prev) => prev ? { ...prev, [field]: e.target.value } : prev)
+      setForm((prev) => prev ? { ...prev, [field]: e.target.value as UnitType } : prev)
     }
   }
 
@@ -435,22 +430,6 @@ export default function EditUnitPage() {
                       >
                         {UNIT_TYPES.map((t) => (
                           <MenuItem key={t.value} value={t.value}>{t.label}</MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
-                  </Grid>
-
-                  {/* Floor */}
-                  <Grid item xs={12} sm={4}>
-                    <FormControl fullWidth>
-                      <InputLabel>Floor</InputLabel>
-                      <Select
-                        label="Floor"
-                        value={form.floor}
-                        onChange={handleSelect('floor')}
-                      >
-                        {UNIT_FLOORS.map((f) => (
-                          <MenuItem key={f.value} value={f.value}>{f.label}</MenuItem>
                         ))}
                       </Select>
                     </FormControl>
