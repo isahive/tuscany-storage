@@ -308,7 +308,7 @@ export default function DelinquencyPage() {
         showSnackbar(`Payment reminder sent to ${selectedCount} tenant${selectedCount !== 1 ? 's' : ''}.`)
       },
     })
-  }, [selectedCount, showSnackbar])
+  }, [selectedCount, showSnackbar, delinquents, rowSelection])
 
   const handleLockOut = useCallback(() => {
     const eligible = delinquents.filter(

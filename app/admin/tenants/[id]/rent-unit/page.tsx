@@ -166,7 +166,7 @@ export default function RentUnitPage() {
     } finally {
       setLoading(false)
     }
-  }, [tenantId])
+  }, [tenantId, preselectUnitId])
 
   useEffect(() => { load() }, [load])
 

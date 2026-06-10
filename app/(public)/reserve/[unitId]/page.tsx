@@ -4,11 +4,16 @@ import { useState, useEffect, useRef, useCallback, useMemo, useId } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
+import { Dancing_Script } from 'next/font/google'
 import { signIn, useSession } from 'next-auth/react'
 import { loadStripe } from '@stripe/stripe-js'
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js'
 import ReserveSidebar, { type ChargeBreakdown } from '@/components/public/ReserveSidebar'
 import { ACH_MANDATE_TEXT, ACH_MANDATE_SHORT } from '@/lib/achMandate'
+
+// Signature "Type" mode font — next/font self-hosts it (no external
+// stylesheet, loads on every page it's used on).
+const dancingScript = Dancing_Script({ weight: '700', subsets: ['latin'] })
 
 const stripePromise = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
   ? loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)
@@ -1246,7 +1251,7 @@ function SignaturePad({
     ctx.fillStyle = 'white'
     ctx.fillRect(0, 0, canvas.width, canvas.height)
     ctx.fillStyle = '#1C0F06'
-    ctx.font = '56px "Dancing Script", cursive'
+    ctx.font = `56px ${dancingScript.style.fontFamily}`
     ctx.textBaseline = 'middle'
     ctx.fillText(typedName, 20, 64)
     onChange(canvas.toDataURL(), 'typed')
@@ -1254,7 +1259,6 @@ function SignaturePad({
 
   return (
     <div>
-      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&display=swap" />
       <div className="flex items-center justify-between mb-3">
         <div className="flex gap-1 bg-mid/30 rounded-lg p-1 w-fit">
           {(['draw', 'type'] as const).map((m) => (
@@ -1305,7 +1309,7 @@ function SignaturePad({
             <div
               className="w-full border border-mid rounded-lg bg-white px-4 py-3"
               style={{
-                fontFamily: '"Dancing Script", cursive',
+                fontFamily: dancingScript.style.fontFamily,
                 fontSize: '2.5rem',
                 color: '#1C0F06',
                 minHeight: '80px',
