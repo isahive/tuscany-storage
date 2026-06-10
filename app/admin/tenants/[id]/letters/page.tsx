@@ -248,6 +248,7 @@ export default function TenantTemplateLettersPage() {
             label="Concerning Rental of"
             value={rentalScope}
             onChange={(event) => setRentalScope(event.target.value as RentalScope)}
+            helperText="Which rental this letter is about — drives unit placeholders like [[UNIT_NUMBER]] and [[MONTHLY_RATE]]. “Current Rentals” uses this customer’s active unit; “All Rentals” isn’t tied to a specific unit."
             sx={{ ...inputSx, mb: 2.5 }}
           >
             <MenuItem value="current">Current Rentals</MenuItem>

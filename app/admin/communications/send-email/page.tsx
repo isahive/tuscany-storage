@@ -47,8 +47,9 @@ interface TenantRow {
 interface Template {
   _id: string
   name: string
-  subject: string
-  body: string
+  emailSubject: string
+  emailContent: string
+  emailEnabled?: boolean
 }
 
 type CustomerFilter = 'all' | 'active' | 'delinquent' | 'locked_out'
@@ -167,7 +168,13 @@ export default function SendEmailPage() {
     fetch('/api/admin/templates')
       .then((r) => r.json())
       .then((json) => {
-        if (json.success) setTemplates(json.data ?? [])
+        if (json.success) {
+          // Only email-capable templates make sense here.
+          const emailTemplates = (json.data ?? []).filter(
+            (t: Template) => t.emailEnabled !== false && (t.emailContent || t.emailSubject),
+          )
+          setTemplates(emailTemplates)
+        }
       })
       .catch(() => {})
   }, [])
@@ -191,11 +198,14 @@ export default function SendEmailPage() {
     setSelectedIds(new Set())
   }
 
-  function handleLoadTemplate() {
-    const tmpl = templates.find((t) => t._id === templateId)
+  // Selecting a template immediately loads its subject + body into the
+  // editable fields, so staff can read and tweak it before sending.
+  function handleSelectTemplate(id: string) {
+    setTemplateId(id)
+    const tmpl = templates.find((t) => t._id === id)
     if (tmpl) {
-      setSubject(tmpl.subject)
-      setBody(tmpl.body)
+      setSubject(tmpl.emailSubject ?? '')
+      setBody(tmpl.emailContent ?? '')
     }
   }
 
@@ -491,13 +501,13 @@ export default function SendEmailPage() {
             <Box sx={sectionHeaderSx}>Compose Email</Box>
             <CardContent sx={{ p: 2.5 }}>
               {/* Template selector */}
-              <Box sx={{ display: 'flex', gap: 1, mb: 2.5 }}>
+              <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
                 <FormControl fullWidth size="small">
                   <InputLabel>Select Template (optional)</InputLabel>
                   <Select
                     label="Select Template (optional)"
                     value={templateId}
-                    onChange={(e) => setTemplateId(e.target.value)}
+                    onChange={(e) => handleSelectTemplate(e.target.value)}
                   >
                     <MenuItem value="">None</MenuItem>
                     {templates.map((t) => (
@@ -508,10 +518,11 @@ export default function SendEmailPage() {
                   </Select>
                 </FormControl>
                 <Button
+                  component={Link}
+                  href="/admin/communications/templates"
+                  target="_blank"
                   variant="outlined"
                   size="small"
-                  onClick={handleLoadTemplate}
-                  disabled={!templateId}
                   sx={{
                     textTransform: 'none',
                     fontWeight: 600,
@@ -521,9 +532,12 @@ export default function SendEmailPage() {
                     '&:hover': { borderColor: '#9A7A3E', bgcolor: '#FAF7F2' },
                   }}
                 >
-                  Load Template
+                  Edit Templates
                 </Button>
               </Box>
+              <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 2.5 }}>
+                Picking a template loads its subject &amp; body below, where you can read and edit it before sending. Use Edit Templates to update a template permanently.
+              </Typography>
 
               {/* Subject */}
               <TextField
@@ -544,7 +558,7 @@ export default function SendEmailPage() {
                 rows={8}
                 value={body}
                 onChange={(e) => setBody(e.target.value)}
-                helperText="Available placeholders: {{firstName}}, {{lastName}}, {{email}}, {{unit}}, {{balance}}, {{dueDate}}"
+                helperText="Placeholders auto-fill per customer: [[CUSTOMER_NAME]], [[UNIT_NUMBER]], [[UNIT_SIZE]], [[MONTHLY_RATE]], [[BALANCE]], [[DUE_DATE]], [[GATE_CODE]], [[FACILITY_NAME]], [[FACILITY_PHONE]], [[PORTAL_URL]] — see Edit Templates for the full list."
                 sx={inputSx}
               />
 

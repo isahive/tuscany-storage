@@ -48,6 +48,7 @@ const PLACEHOLDER_GROUPS: PlaceholderGroup[] = [
       { token: 'CUSTOMER_USERNAME', label: 'Customer Username' },
       { token: 'CUSTOMER_EMAIL',    label: 'Customer Email' },
       { token: 'CUSTOMER_PHONE',    label: 'Customer Phone' },
+      { token: 'CUSTOMER_ADDRESS',  label: 'Customer Address' },
     ],
   },
   {
@@ -56,15 +57,18 @@ const PLACEHOLDER_GROUPS: PlaceholderGroup[] = [
       { token: 'UNIT_NUMBER',  label: 'Unit Number' },
       { token: 'UNIT_SIZE',    label: 'Unit Size' },
       { token: 'MONTHLY_RATE', label: 'Monthly Rate' },
+      { token: 'DEPOSIT',      label: 'Deposit' },
       { token: 'GATE_CODE',    label: 'Gate Code' },
     ],
   },
   {
     category: 'Account',
     tokens: [
-      { token: 'BALANCE',  label: 'Balance' },
-      { token: 'DUE_DATE', label: 'Due Date' },
-      { token: 'DATE',     label: 'Today\u2019s Date' },
+      { token: 'BALANCE',        label: 'Balance' },
+      { token: 'DUE_DATE',       label: 'Due Date' },
+      { token: 'PAYMENT_AMOUNT', label: 'Payment Amount' },
+      { token: 'PAYMENT_DATE',   label: 'Payment Date' },
+      { token: 'DATE',           label: 'Today\u2019s Date' },
     ],
   },
   {
@@ -75,6 +79,16 @@ const PLACEHOLDER_GROUPS: PlaceholderGroup[] = [
       { token: 'FACILITY_EMAIL',   label: 'Facility Email' },
       { token: 'FACILITY_ADDRESS', label: 'Facility Address' },
       { token: 'FACILITY_URL',     label: 'Facility URL' },
+      { token: 'PORTAL_URL',       label: 'Customer Portal URL' },
+    ],
+  },
+  {
+    category: 'Alternate Contact',
+    tokens: [
+      { token: 'ALTERNATE_CONTACT',      label: 'Alternate Contact Name' },
+      { token: 'ALTERNATE_PHONE_NUMBER', label: 'Alternate Phone' },
+      { token: 'ALTERNATE_EMAIL',        label: 'Alternate Email' },
+      { token: 'ALTERNATE_ADDRESS',      label: 'Alternate Address' },
     ],
   },
 ]
