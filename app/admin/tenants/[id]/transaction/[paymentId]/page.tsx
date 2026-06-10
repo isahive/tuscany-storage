@@ -12,6 +12,9 @@ import {
   CircularProgress,
   InputAdornment,
   Link as MuiLink,
+  ListItemIcon,
+  Menu,
+  MenuItem,
   Snackbar,
   TextField,
   Typography,
@@ -19,6 +22,9 @@ import {
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import ReceiptIcon from '@mui/icons-material/Receipt'
 import UndoIcon from '@mui/icons-material/Undo'
+import SendIcon from '@mui/icons-material/Send'
+import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined'
+import SmsOutlinedIcon from '@mui/icons-material/SmsOutlined'
 import { formatDate, formatMoney } from '@/lib/utils'
 import { useSetAdminPageTitle } from '@/lib/admin-page-title'
 
@@ -86,6 +92,8 @@ export default function TransactionDetailsPage() {
   const [saving, setSaving] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [successMsg, setSuccessMsg] = useState<string | null>(null)
+  const [resendAnchor, setResendAnchor] = useState<null | HTMLElement>(null)
+  const [resending, setResending] = useState(false)
 
   // Editable copy of the two fields the live UI lets staff change.
   const [amountInput, setAmountInput] = useState('')
@@ -138,6 +146,25 @@ export default function TransactionDetailsPage() {
     // Receipt endpoint streams a PDF — opening it in a new tab lets the
     // admin print or save it (mirrors Storable's "Receipt" button).
     window.open(`/api/payments/${paymentId}/receipt`, '_blank', 'noopener,noreferrer')
+  }
+
+  async function handleResend(channel: 'email' | 'sms') {
+    setResendAnchor(null)
+    setResending(true)
+    try {
+      const res = await fetch(`/api/payments/${paymentId}/send-receipt`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ channel }),
+      })
+      const json = await res.json()
+      if (!res.ok || !json.success) throw new Error(json.error ?? 'Failed to send receipt')
+      setSuccessMsg(channel === 'email' ? 'Receipt sent by email' : 'Receipt sent by text')
+    } catch (e) {
+      setErrorMsg(e instanceof Error ? e.message : 'Failed to send receipt')
+    } finally {
+      setResending(false)
+    }
   }
 
   function handleRefund() {
@@ -226,8 +253,37 @@ export default function TransactionDetailsPage() {
             >
               Receipt
             </Button>
+            {payment.direction === 'payment' && (
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<SendIcon fontSize="small" />}
+                onClick={(e) => setResendAnchor(e.currentTarget)}
+                disabled={resending}
+                sx={{ textTransform: 'none', borderColor: '#3F8EBF', color: '#2F6E96', fontWeight: 600 }}
+              >
+                {resending ? 'Sending…' : 'Resend Receipt'}
+              </Button>
+            )}
           </Box>
         </Box>
+
+        <Menu
+          anchorEl={resendAnchor}
+          open={Boolean(resendAnchor)}
+          onClose={() => setResendAnchor(null)}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+          transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+        >
+          <MenuItem onClick={() => handleResend('email')}>
+            <ListItemIcon><EmailOutlinedIcon fontSize="small" /></ListItemIcon>
+            By Email
+          </MenuItem>
+          <MenuItem onClick={() => handleResend('sms')}>
+            <ListItemIcon><SmsOutlinedIcon fontSize="small" /></ListItemIcon>
+            By Text
+          </MenuItem>
+        </Menu>
 
         <CardContent sx={{ p: 0 }}>
           {/* Read-only field rows — mirrors the live "Created / IP Address /
