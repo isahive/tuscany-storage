@@ -3,6 +3,7 @@ import type { TenantRole, TenantStatus } from '@/types'
 
 export interface ITenantBillingAddress {
   line1: string
+  line2?: string
   city: string
   state: string
   zip: string
@@ -16,6 +17,7 @@ export interface ITenantDocument extends Document {
   phone: string
   // Primary contact address
   address?: string
+  addressLine2?: string
   city?: string
   state?: string
   zip?: string
@@ -118,6 +120,7 @@ const TenantSchema = new Schema<ITenantDocument>(
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
     phone: { type: String, required: true },
     address: { type: String },
+    addressLine2: { type: String },
     city: { type: String },
     state: { type: String },
     zip: { type: String },
@@ -175,6 +178,7 @@ const TenantSchema = new Schema<ITenantDocument>(
     howDidYouHearOther: { type: String },
     billingAddress: {
       line1: { type: String },
+      line2: { type: String },
       city: { type: String },
       state: { type: String },
       zip: { type: String },

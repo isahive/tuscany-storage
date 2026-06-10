@@ -26,6 +26,7 @@ interface TenantLabel {
   firstName: string
   lastName: string
   address?: string
+  addressLine2?: string
   city?: string
   state?: string
   zip?: string
@@ -52,6 +53,7 @@ export default function MailingLabelsPage() {
         firstName: t.firstName as string,
         lastName: t.lastName as string,
         address: t.address as string | undefined,
+        addressLine2: t.addressLine2 as string | undefined,
         city: t.city as string | undefined,
         state: t.state as string | undefined,
         zip: t.zip as string | undefined,
@@ -222,6 +224,11 @@ export default function MailingLabelsPage() {
                               <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
                                 {tenant.address}
                               </Typography>
+                              {tenant.addressLine2 && (
+                                <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
+                                  {tenant.addressLine2}
+                                </Typography>
+                              )}
                               {addressLine && (
                                 <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
                                   {addressLine}

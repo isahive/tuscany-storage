@@ -164,7 +164,7 @@ export async function GET(req: NextRequest) {
           name: `${t.firstName} ${t.lastName}`,
           email: t.email,
           phone: t.phone,
-          address: [t.address, t.city, t.state, t.zip].filter(Boolean).join(', '),
+          address: [t.address, t.addressLine2, t.city, t.state, t.zip].filter(Boolean).join(', '),
           status: t.status,
           balance: t.balance,
           createdAt: t.createdAt,

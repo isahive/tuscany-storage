@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo, useId } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { signIn, useSession } from 'next-auth/react'
@@ -31,6 +31,7 @@ interface FormData {
   // Contact Information
   fullName: string
   address: string
+  addressLine2: string
   city: string
   state: string
   zip: string
@@ -70,6 +71,7 @@ interface FormData {
   // Billing (step 2)
   billingSameAsContact: boolean
   billingLine1: string
+  billingLine2: string
   billingCity: string
   billingState: string
   billingZip: string
@@ -202,12 +204,14 @@ function Field({
   hint?: string
   placeholder?: string
 }) {
+  const id = useId()
   return (
     <div>
-      <label className="block text-sm font-medium text-brown mb-1">
+      <label htmlFor={id} className="block text-sm font-medium text-brown mb-1">
         {label}{required && <span className="text-red-500 ml-0.5">*</span>}
       </label>
       <input
+        id={id}
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -229,12 +233,14 @@ function SelectField({
   options: string[]
   required?: boolean
 }) {
+  const id = useId()
   return (
     <div>
-      <label className="block text-sm font-medium text-brown mb-1">
+      <label htmlFor={id} className="block text-sm font-medium text-brown mb-1">
         {label}{required && <span className="text-red-500 ml-0.5">*</span>}
       </label>
       <select
+        id={id}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         required={required}
@@ -347,7 +353,8 @@ function Step1PersonalInfo({
             patch: {
               firstName, lastName,
               phone: form.cellPhone,
-              address: form.address, city: form.city, state: form.state, zip: form.zip,
+              address: form.address, addressLine2: form.addressLine2 || undefined,
+              city: form.city, state: form.state, zip: form.zip,
               alternateContactName: form.alternateContactName || undefined,
               alternatePhone: form.alternatePhone || undefined,
               alternateEmail: form.alternateEmail || undefined,
@@ -394,6 +401,7 @@ function Step1PersonalInfo({
           phone: form.cellPhone,
           password: form.password,
           address: form.address,
+          addressLine2: form.addressLine2 || undefined,
           city: form.city,
           state: form.state,
           zip: form.zip,
@@ -456,7 +464,15 @@ function Step1PersonalInfo({
         <div className="space-y-4">
           <Field label="Name" value={form.fullName} onChange={set('fullName')} required placeholder="Full name" />
           {show('address') && (
-            <Field label="Address" value={form.address} onChange={set('address')} required={req('address')} />
+            <>
+              <Field label="Address Line 1" value={form.address} onChange={set('address')} required={req('address')} />
+              <Field
+                label="Address Line 2"
+                value={form.addressLine2}
+                onChange={set('addressLine2')}
+                placeholder="Apt, suite, unit, etc. (optional)"
+              />
+            </>
           )}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {show('city') && (
@@ -929,6 +945,7 @@ function Step2PaymentInfo({
                 ...form,
                 billingSameAsContact: true,
                 billingLine1: form.address,
+                billingLine2: form.addressLine2,
                 billingCity: form.city,
                 billingState: form.state,
                 billingZip: form.zip,
@@ -941,7 +958,13 @@ function Step2PaymentInfo({
         />
         {!form.billingSameAsContact && (
           <div className="mt-4 space-y-4">
-            <Field label="Address" value={form.billingLine1} onChange={set('billingLine1')} required />
+            <Field label="Address Line 1" value={form.billingLine1} onChange={set('billingLine1')} required />
+            <Field
+              label="Address Line 2"
+              value={form.billingLine2}
+              onChange={set('billingLine2')}
+              placeholder="Apt, suite, unit, etc. (optional)"
+            />
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <Field label="City" value={form.billingCity} onChange={set('billingCity')} required />
               <Field label="State" value={form.billingState} onChange={set('billingState')} required />
@@ -1436,6 +1459,7 @@ function Step3ReviewSubmit({
             address: form.billingSameAsContact
               ? {
                   line1: form.address,
+                  line2: form.addressLine2 || undefined,
                   city: form.city,
                   state: form.state,
                   postal_code: form.zip,
@@ -1443,6 +1467,7 @@ function Step3ReviewSubmit({
                 }
               : {
                   line1: form.billingLine1,
+                  line2: form.billingLine2 || undefined,
                   city: form.billingCity,
                   state: form.billingState,
                 postal_code: form.billingZip,
@@ -1473,6 +1498,7 @@ function Step3ReviewSubmit({
           billingAddress: form.billingSameAsContact
             ? {
                 line1: form.address,
+                line2: form.addressLine2 || undefined,
                 city: form.city,
                 state: form.state,
                 zip: form.zip,
@@ -1480,6 +1506,7 @@ function Step3ReviewSubmit({
               }
             : {
                 line1: form.billingLine1,
+                line2: form.billingLine2 || undefined,
                 city: form.billingCity,
                 state: form.billingState,
                 zip: form.billingZip,
@@ -1677,6 +1704,7 @@ export default function ReservePage() {
   const [form, setForm] = useState<FormData>({
     fullName: '',
     address: '',
+    addressLine2: '',
     city: '',
     state: '',
     zip: '',
@@ -1708,6 +1736,7 @@ export default function ReservePage() {
     howDidYouHearOther: '',
     billingSameAsContact: true,
     billingLine1: '',
+    billingLine2: '',
     billingCity: '',
     billingState: '',
     billingZip: '',
@@ -1766,6 +1795,7 @@ export default function ReservePage() {
           email: prev.email || c.email || '',
           cellPhone: prev.cellPhone || c.phone || '',
           address: prev.address || c.address || '',
+          addressLine2: prev.addressLine2 || c.addressLine2 || '',
           city: prev.city || c.city || '',
           state: prev.state || c.state || '',
           zip: prev.zip || c.zip || '',

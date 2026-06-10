@@ -55,6 +55,7 @@ interface TenantForm {
   firstName: string
   lastName: string
   address: string
+  addressLine2: string
   city: string
   state: string
   zip: string
@@ -105,7 +106,7 @@ export default function EditProfilePage() {
 
   const [form, setForm] = useState<TenantForm>({
     firstName: '', lastName: '',
-    address: '', city: '', state: '', zip: '', phone: '',
+    address: '', addressLine2: '', city: '', state: '', zip: '', phone: '',
     smsOptIn: false,
     email: '', username: '', loginDisabled: false,
     driversLicenseNumber: '', driversLicenseState: '',
@@ -148,6 +149,7 @@ export default function EditProfilePage() {
         firstName: t.firstName ?? '',
         lastName: t.lastName ?? '',
         address: t.address ?? '',
+        addressLine2: t.addressLine2 ?? '',
         city: t.city ?? '',
         state: t.state ?? '',
         zip: t.zip ?? '',
@@ -191,6 +193,7 @@ export default function EditProfilePage() {
         firstName: form.firstName || firstName || '',
         lastName: form.lastName || lastName || '',
         address: form.address,
+        addressLine2: form.addressLine2,
         city: form.city,
         state: form.state,
         zip: form.zip,
@@ -316,8 +319,12 @@ export default function EditProfilePage() {
             />
           </Grid>
           <Grid item xs={12} md={6}>
-            <Typography variant="caption" sx={{ fontWeight: 600 }}>Address</Typography>
+            <Typography variant="caption" sx={{ fontWeight: 600 }}>Address Line 1</Typography>
             <TextField fullWidth size="small" value={form.address} onChange={(e) => update('address', e.target.value)} />
+          </Grid>
+          <Grid item xs={12} md={6}>
+            <Typography variant="caption" sx={{ fontWeight: 600 }}>Address Line 2</Typography>
+            <TextField fullWidth size="small" placeholder="Apt, suite, unit, etc." value={form.addressLine2} onChange={(e) => update('addressLine2', e.target.value)} />
           </Grid>
           <Grid item xs={6} md={3}>
             <Typography variant="caption" sx={{ fontWeight: 600 }}>City</Typography>

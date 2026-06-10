@@ -15,7 +15,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     await connectDB()
 
     const payment = await Payment.findById(params.id)
-      .populate('tenantId', 'firstName lastName email phone address city state zip')
+      .populate('tenantId', 'firstName lastName email phone address addressLine2 city state zip')
       .populate('unitId', 'unitNumber size')
       .lean() as any
 
@@ -71,7 +71,10 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       doc.text(`${tenant.firstName} ${tenant.lastName}`, 50, y); y += 14
       if (tenant.email) { doc.text(tenant.email, 50, y); y += 14 }
       if (tenant.phone) { doc.text(tenant.phone, 50, y); y += 14 }
-      if (tenant.address) { doc.text(`${tenant.address}, ${tenant.city ?? ''} ${tenant.state ?? ''} ${tenant.zip ?? ''}`, 50, y); y += 14 }
+      if (tenant.address) {
+        const l2 = tenant.addressLine2 ? `${tenant.addressLine2}, ` : ''
+        doc.text(`${tenant.address}, ${l2}${tenant.city ?? ''} ${tenant.state ?? ''} ${tenant.zip ?? ''}`, 50, y); y += 14
+      }
     }
     y += 10
 

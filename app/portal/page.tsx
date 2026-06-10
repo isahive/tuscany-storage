@@ -15,6 +15,7 @@ interface Contact {
   email: string
   phone: string
   address: string
+  addressLine2: string
   city: string
   state: string
   zip: string
@@ -236,7 +237,7 @@ function PortalDashboard() {
                 label="Address"
                 value={
                   contact.address
-                    ? `${contact.address}\n${contact.city}, ${contact.state} ${contact.zip}`
+                    ? `${contact.address}\n${contact.addressLine2 ? contact.addressLine2 + '\n' : ''}${contact.city}, ${contact.state} ${contact.zip}`
                     : ''
                 }
               />

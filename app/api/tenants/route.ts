@@ -101,6 +101,7 @@ const createTenantSchema = z.object({
   password: z.string().min(4),
   // Primary address
   address: z.string().optional(),
+  addressLine2: z.string().optional(),
   city: z.string().optional(),
   state: z.string().optional(),
   zip: z.string().optional(),

@@ -56,7 +56,7 @@ interface TenantData {
   firstName: string; lastName: string
   email: string; phone: string
   // Primary address
-  address?: string; city?: string; state?: string; zip?: string
+  address?: string; addressLine2?: string; city?: string; state?: string; zip?: string
   // Alternate contact
   alternateContactName?: string
   alternatePhone?: string
@@ -283,7 +283,7 @@ export default function TenantDetailPage() {
   )
 
   const fullName = `${tenant.firstName} ${tenant.lastName}`
-  const fullAddress = [tenant.address, tenant.city, tenant.state, tenant.zip].filter(Boolean).join(', ')
+  const fullAddress = [tenant.address, tenant.addressLine2, tenant.city, tenant.state, tenant.zip].filter(Boolean).join(', ')
   const activeLease = leases.find((l) => l.status === 'active' || l.status === 'pending_moveout')
   const activeUnit = activeLease && typeof activeLease.unitId === 'object' ? activeLease.unitId.unitNumber : '—'
   const statusC = STATUS_COLORS[tenant.status]

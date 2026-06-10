@@ -99,6 +99,7 @@ export async function GET() {
     if (tenant.phone) { doc.text(tenant.phone, 50, y); y += 13 }
     if (tenant.address) {
       doc.text(`${tenant.address}`, 50, y); y += 13
+      if (tenant.addressLine2) { doc.text(`${tenant.addressLine2}`, 50, y); y += 13 }
       doc.text(`${tenant.city ?? ''}, ${tenant.state ?? ''} ${tenant.zip ?? ''}`.trim(), 50, y); y += 13
     }
     y += 12

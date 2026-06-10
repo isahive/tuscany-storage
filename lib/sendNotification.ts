@@ -14,7 +14,7 @@ import type { NotificationType } from '@/types'
 interface BuildPlaceholderArgs {
   tenant: Pick<ITenantDocument,
     'firstName' | 'lastName' | 'email' | 'phone' | 'gateCode'
-    | 'address' | 'city' | 'state' | 'zip'
+    | 'address' | 'addressLine2' | 'city' | 'state' | 'zip'
     | 'alternateContactName' | 'alternatePhone' | 'alternateEmail'
     | 'alternateAddress' | 'alternateCity' | 'alternateState' | 'alternateZip'
     | 'username'
@@ -50,7 +50,7 @@ export async function buildPlaceholders(args: BuildPlaceholderArgs): Promise<Rec
   const fmtDate = (d?: Date) => (d ? d.toLocaleDateString('en-US') : '')
 
   const fullName = `${tenant.firstName ?? ''} ${tenant.lastName ?? ''}`.trim()
-  const customerAddress = [tenant.address, tenant.city, tenant.state, tenant.zip].filter(Boolean).join(', ')
+  const customerAddress = [tenant.address, tenant.addressLine2, tenant.city, tenant.state, tenant.zip].filter(Boolean).join(', ')
   const alternateAddress = [tenant.alternateAddress, tenant.alternateCity, tenant.alternateState, tenant.alternateZip]
     .filter(Boolean).join(', ')
   const facilityAddress = [settings.facilityAddress, settings.facilityCity, settings.facilityState, settings.facilityZip]

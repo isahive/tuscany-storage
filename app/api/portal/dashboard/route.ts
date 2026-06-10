@@ -102,6 +102,7 @@ export async function GET() {
           email: tenant.email,
           phone: tenant.phone,
           address: tenant.address ?? '',
+          addressLine2: tenant.addressLine2 ?? '',
           city: tenant.city ?? '',
           state: tenant.state ?? '',
           zip: tenant.zip ?? '',

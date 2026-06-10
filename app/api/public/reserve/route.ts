@@ -23,6 +23,7 @@ const schema = z.object({
   password: z.string().min(8),
   // Primary address
   address: z.string().optional(),
+  addressLine2: z.string().optional(),
   city: z.string().optional(),
   state: z.string().optional(),
   zip: z.string().optional(),
@@ -64,7 +65,7 @@ export async function POST(req: NextRequest) {
 
     const {
       unitId, paymentMethodType, firstName, lastName, email, phone, password,
-      address, city, state, zip,
+      address, addressLine2, city, state, zip,
       driversLicense, driversLicenseNumber, driversLicenseState,
       idPhotoUrl,
       alternateContactName, alternatePhone, alternateEmail,
@@ -110,7 +111,7 @@ export async function POST(req: NextRequest) {
     const tenant = await Tenant.create({
       firstName, lastName, email, phone,
       password: hashedPassword,
-      address, city, state, zip,
+      address, addressLine2, city, state, zip,
       driversLicense,
       driversLicenseNumber,
       driversLicenseState,

@@ -26,6 +26,7 @@ const schema = z.object({
   billingAddress: z
     .object({
       line1: z.string().optional().default(''),
+      line2: z.string().optional().default(''),
       city: z.string().optional().default(''),
       state: z.string().optional().default(''),
       zip: z.string().optional().default(''),
@@ -181,6 +182,7 @@ export async function POST(req: NextRequest) {
       await Tenant.findByIdAndUpdate(lease.tenantId, {
         billingAddress: {
           line1: billingAddress.line1,
+          line2: billingAddress.line2,
           city: billingAddress.city,
           state: billingAddress.state,
           zip: billingAddress.zip,

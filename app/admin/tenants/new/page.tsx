@@ -88,6 +88,7 @@ export default function NewCustomerPage() {
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
   const [address, setAddress] = useState('')
+  const [addressLine2, setAddressLine2] = useState('')
   const [city, setCity] = useState('')
   const [state, setState] = useState('')
   const [zip, setZip] = useState('')
@@ -173,6 +174,7 @@ export default function NewCustomerPage() {
         phone: phone.trim(),
         password: disableLogin ? 'disabled_' + Math.random().toString(36).slice(2, 14) : password,
         address: address.trim(),
+        addressLine2: addressLine2.trim() || undefined,
         city: city.trim(),
         state: state.trim(),
         zip: zip.trim(),
@@ -257,9 +259,11 @@ export default function NewCustomerPage() {
               {show('address') && (
                 <>
                   <Grid item xs={12} sm={6}>
-                    <TextField label={lbl('Address', 'address')} fullWidth size="small" value={address} onChange={(e) => setAddress(e.target.value)} required={req('address')} />
+                    <TextField label={lbl('Address Line 1', 'address')} fullWidth size="small" value={address} onChange={(e) => setAddress(e.target.value)} required={req('address')} />
                   </Grid>
-                  <Grid item xs={12} sm={6} />
+                  <Grid item xs={12} sm={6}>
+                    <TextField label="Address Line 2" placeholder="Apt, suite, unit, etc." fullWidth size="small" value={addressLine2} onChange={(e) => setAddressLine2(e.target.value)} />
+                  </Grid>
                 </>
               )}
               {show('city') && (

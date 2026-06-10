@@ -18,6 +18,7 @@ const schema = z.object({
     lastName: z.string().optional(),
     phone: z.string().optional(),
     address: z.string().optional(),
+    addressLine2: z.string().optional(),
     city: z.string().optional(),
     state: z.string().optional(),
     zip: z.string().optional(),

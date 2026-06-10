@@ -50,9 +50,11 @@ export async function POST(req: NextRequest) {
       doc.font('Helvetica-Bold').fontSize(10).fillColor('#000')
         .text(`${tenant.firstName} ${tenant.lastName}`, x, y, { width: labelW - 16 })
       doc.font('Helvetica').fontSize(9)
-      if (tenant.address) doc.text(tenant.address, x, y + 14, { width: labelW - 16 })
+      let ly = y + 14
+      if (tenant.address) { doc.text(tenant.address, x, ly, { width: labelW - 16 }); ly += 12 }
+      if (tenant.addressLine2) { doc.text(tenant.addressLine2, x, ly, { width: labelW - 16 }); ly += 12 }
       const cityLine = [tenant.city, tenant.state, tenant.zip].filter(Boolean).join(', ')
-      if (cityLine) doc.text(cityLine, x, y + 26, { width: labelW - 16 })
+      if (cityLine) doc.text(cityLine, x, ly, { width: labelW - 16 })
     })
 
     doc.end()
