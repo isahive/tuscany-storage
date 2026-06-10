@@ -111,6 +111,7 @@ export async function GET() {
 
     const moveOuts = moveOutRequests.map((r: any) => ({
       id: r._id.toString(),
+      tenantId: r.tenantId?._id?.toString() ?? null,
       name: r.tenantId ? `${r.tenantId.firstName} ${r.tenantId.lastName}` : 'N/A',
       unit: r.unitId?.unitNumber ?? 'N/A',
       moveOutDate: r.requestedDate,

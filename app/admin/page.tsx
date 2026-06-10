@@ -1,9 +1,12 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import {
   Box,
   Card,
+  CardActionArea,
   CardContent,
   Chip,
   CircularProgress,
@@ -46,6 +49,7 @@ interface DelinquentRow {
 
 interface MoveOutRow {
   id: string
+  tenantId: string | null
   name: string
   unit: string
   moveOutDate: string
@@ -66,41 +70,45 @@ interface KpiCardProps {
   icon: React.ReactNode
   iconBg: string
   subLabel?: string
+  /** Destination the whole card links to (reports, customers, or units). */
+  href: string
 }
 
-function KpiCard({ label, value, icon, iconBg, subLabel }: KpiCardProps) {
+function KpiCard({ label, value, icon, iconBg, subLabel, href }: KpiCardProps) {
   return (
     <Card>
-      <CardContent sx={{ p: 2.5 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-          <Box>
-            <Typography variant="body2" sx={{ color: 'text.secondary', mb: 0.5 }}>
-              {label}
-            </Typography>
-            <Typography variant="h4" sx={{ fontWeight: 700, color: 'text.primary', lineHeight: 1 }}>
-              {value}
-            </Typography>
-            {subLabel && (
-              <Typography variant="caption" sx={{ color: 'text.secondary', mt: 0.5, display: 'block' }}>
-                {subLabel}
+      <CardActionArea component={Link} href={href} sx={{ height: '100%' }}>
+        <CardContent sx={{ p: 2.5 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <Box>
+              <Typography variant="body2" sx={{ color: 'text.secondary', mb: 0.5 }}>
+                {label}
               </Typography>
-            )}
+              <Typography variant="h4" sx={{ fontWeight: 700, color: 'text.primary', lineHeight: 1 }}>
+                {value}
+              </Typography>
+              {subLabel && (
+                <Typography variant="caption" sx={{ color: 'text.secondary', mt: 0.5, display: 'block' }}>
+                  {subLabel}
+                </Typography>
+              )}
+            </Box>
+            <Box
+              sx={{
+                width: 48,
+                height: 48,
+                borderRadius: 2,
+                bgcolor: iconBg,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              {icon}
+            </Box>
           </Box>
-          <Box
-            sx={{
-              width: 48,
-              height: 48,
-              borderRadius: 2,
-              bgcolor: iconBg,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            {icon}
-          </Box>
-        </Box>
-      </CardContent>
+        </CardContent>
+      </CardActionArea>
     </Card>
   )
 }
@@ -108,6 +116,7 @@ function KpiCard({ label, value, icon, iconBg, subLabel }: KpiCardProps) {
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function AdminDashboard() {
+  const router = useRouter()
   const [kpi, setKpi] = useState<KpiData | null>(null)
   const [delinquent, setDelinquent] = useState<DelinquentRow[]>([])
   const [moveOuts, setMoveOuts] = useState<MoveOutRow[]>([])
@@ -160,6 +169,7 @@ export default function AdminDashboard() {
             icon={<HomeWorkIcon sx={{ color: '#B8914A' }} />}
             iconBg="#FEF3C7"
             subLabel="of total units"
+            href="/admin/units"
           />
         </Grid>
         <Grid item xs={12} sm={6} lg={4}>
@@ -169,6 +179,7 @@ export default function AdminDashboard() {
             icon={<AttachMoneyIcon sx={{ color: '#16A34A' }} />}
             iconBg="#D1FAE5"
             subLabel="month to date"
+            href="/admin/payments"
           />
         </Grid>
         <Grid item xs={12} sm={6} lg={4}>
@@ -178,6 +189,7 @@ export default function AdminDashboard() {
             icon={<MeetingRoomIcon sx={{ color: '#1E3A5F' }} />}
             iconBg="#DBEAFE"
             subLabel="ready to rent"
+            href="/admin/units"
           />
         </Grid>
         <Grid item xs={12} sm={6} lg={4}>
@@ -187,6 +199,7 @@ export default function AdminDashboard() {
             icon={<WarningAmberIcon sx={{ color: '#92400E' }} />}
             iconBg="#FEF3C7"
             subLabel="past due tenants"
+            href="/admin/delinquency"
           />
         </Grid>
         <Grid item xs={12} sm={6} lg={4}>
@@ -196,6 +209,7 @@ export default function AdminDashboard() {
             icon={<LockIcon sx={{ color: '#991B1B' }} />}
             iconBg="#FEE2E2"
             subLabel="access revoked"
+            href="/admin/reports/lock-out"
           />
         </Grid>
         <Grid item xs={12} sm={6} lg={4}>
@@ -205,6 +219,7 @@ export default function AdminDashboard() {
             icon={<PeopleOutlineIcon sx={{ color: '#3B0764' }} />}
             iconBg="#EDE9FE"
             subLabel="prospects queued"
+            href="/admin/waiting-list"
           />
         </Grid>
       </Grid>
@@ -242,7 +257,15 @@ export default function AdminDashboard() {
                       </TableRow>
                     ) : (
                       delinquent.map((row) => (
-                        <TableRow key={row.id} hover>
+                        <TableRow
+                          key={row.id}
+                          hover
+                          role="link"
+                          tabIndex={0}
+                          onClick={() => router.push(`/admin/tenants/${row.id}`)}
+                          onKeyDown={(e) => { if (e.key === 'Enter') router.push(`/admin/tenants/${row.id}`) }}
+                          sx={{ cursor: 'pointer' }}
+                        >
                           <TableCell sx={{ fontWeight: 500 }}>{row.name}</TableCell>
                           <TableCell sx={{ color: 'text.secondary' }}>{row.unit}</TableCell>
                           <TableCell align="right" sx={{ fontWeight: 600, color: '#DC2626' }}>
@@ -304,7 +327,15 @@ export default function AdminDashboard() {
                       </TableRow>
                     ) : (
                       moveOuts.map((row) => (
-                        <TableRow key={row.id} hover>
+                        <TableRow
+                          key={row.id}
+                          hover={!!row.tenantId}
+                          role={row.tenantId ? 'link' : undefined}
+                          tabIndex={row.tenantId ? 0 : undefined}
+                          onClick={() => row.tenantId && router.push(`/admin/tenants/${row.tenantId}`)}
+                          onKeyDown={(e) => { if (e.key === 'Enter' && row.tenantId) router.push(`/admin/tenants/${row.tenantId}`) }}
+                          sx={{ cursor: row.tenantId ? 'pointer' : 'default' }}
+                        >
                           <TableCell sx={{ fontWeight: 500 }}>{row.name}</TableCell>
                           <TableCell sx={{ color: 'text.secondary' }}>{row.unit}</TableCell>
                           <TableCell align="right" sx={{ color: 'text.secondary' }}>
