@@ -15,6 +15,8 @@ import {
   ListItemButton,
   ListItemIcon,
   ListItemText,
+  Menu,
+  MenuItem,
   Toolbar,
   Typography,
   Avatar,
@@ -41,6 +43,7 @@ import AssessmentIcon from '@mui/icons-material/Assessment'
 import EmailIcon from '@mui/icons-material/Email'
 import InboxIcon from '@mui/icons-material/Inbox'
 import LogoutIcon from '@mui/icons-material/Logout'
+import PersonOutlineIcon from '@mui/icons-material/PersonOutline'
 import NavigateNextIcon from '@mui/icons-material/NavigateNext'
 import { usePathname, useRouter } from 'next/navigation'
 import { theme } from '@/lib/theme'
@@ -234,10 +237,13 @@ function AdminShell({ children }: { children: React.ReactNode }) {
   const muiTheme = useTheme()
   const isDesktop = useMediaQuery(muiTheme.breakpoints.up('md'))
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [profileAnchor, setProfileAnchor] = useState<null | HTMLElement>(null)
   const pathname = usePathname()
   const router = useRouter()
 
   const adminName = session?.user?.name ?? 'Administrator'
+  const adminId = session?.user?.id
+  const adminEmail = session?.user?.email
   const initials = adminName
     .split(' ')
     .map((n: string) => n[0])
@@ -317,7 +323,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
             })}
           </Breadcrumbs>
 
-          {/* Admin identity */}
+          {/* Admin identity — avatar opens the account menu */}
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <Typography
               variant="body2"
@@ -329,31 +335,62 @@ function AdminShell({ children }: { children: React.ReactNode }) {
             >
               {adminName}
             </Typography>
-            <Avatar
-              sx={{
-                width: 34,
-                height: 34,
-                bgcolor: 'secondary.main',
-                color: 'white',
-                fontSize: '0.8rem',
-                fontWeight: 700,
-              }}
+            <IconButton
+              onClick={(e) => setProfileAnchor(e.currentTarget)}
+              aria-label="Open account menu"
+              aria-haspopup="true"
+              aria-expanded={Boolean(profileAnchor)}
+              sx={{ p: 0.5 }}
             >
-              {initials}
-            </Avatar>
-            <Button
-              size="small"
-              startIcon={<LogoutIcon fontSize="small" />}
-              onClick={() => signOut({ callbackUrl: '/login' })}
-              sx={{
-                color: 'text.secondary',
-                display: { xs: 'none', sm: 'flex' },
-                ml: 0.5,
-              }}
-            >
-              Logout
-            </Button>
+              <Avatar
+                sx={{
+                  width: 34,
+                  height: 34,
+                  bgcolor: 'secondary.main',
+                  color: 'white',
+                  fontSize: '0.8rem',
+                  fontWeight: 700,
+                }}
+              >
+                {initials}
+              </Avatar>
+            </IconButton>
           </Box>
+
+          <Menu
+            anchorEl={profileAnchor}
+            open={Boolean(profileAnchor)}
+            onClose={() => setProfileAnchor(null)}
+            anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+            transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+            PaperProps={{ sx: { minWidth: 220, mt: 0.5 } }}
+          >
+            <Box sx={{ px: 2, py: 1 }}>
+              <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.primary' }}>
+                {adminName}
+              </Typography>
+              {adminEmail && (
+                <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                  {adminEmail}
+                </Typography>
+              )}
+            </Box>
+            <Divider />
+            <MenuItem
+              disabled={!adminId}
+              onClick={() => {
+                setProfileAnchor(null)
+                if (adminId) router.push(`/admin/tenants/${adminId}`)
+              }}
+            >
+              <ListItemIcon><PersonOutlineIcon fontSize="small" /></ListItemIcon>
+              My Profile
+            </MenuItem>
+            <MenuItem onClick={() => { setProfileAnchor(null); signOut({ callbackUrl: '/login' }) }}>
+              <ListItemIcon><LogoutIcon fontSize="small" /></ListItemIcon>
+              Sign out
+            </MenuItem>
+          </Menu>
         </Toolbar>
       </AppBar>
 
