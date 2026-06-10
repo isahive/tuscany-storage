@@ -1,3 +1,5 @@
+import Link from 'next/link'
+
 type UnitCell = {
   id: string
   unitNumber: string
@@ -64,35 +66,59 @@ export default function UnitsCanvas({ units, cellPx = 28 }: Props) {
             {s.label}
           </div>
         ))}
+        <span className="text-gray-500">· Click an available unit to rent it</span>
       </div>
 
-      {/* Canvas */}
+      {/* Canvas — a labeled group, not role="img", because available cells
+          are interactive links and must stay exposed to assistive tech. */}
       <div
         className="relative"
         style={{ width: widthPx, height: heightPx }}
-        role="img"
-        aria-label="Facility map"
+        role="group"
+        aria-label="Facility map — available units are clickable"
       >
         {units.map((u) => {
           const w = effW(u)
           const d = effD(u)
           const s = styleFor(u.status)
+          const isAvailable = u.status === 'available'
+          const cellStyle = {
+            left: u.gridX * cellPx,
+            top: u.gridY * cellPx,
+            width: w * cellPx,
+            height: d * cellPx,
+            backgroundColor: s.bg,
+            border: `1px solid ${s.border}`,
+            color: s.color,
+          }
+          const baseClass =
+            'absolute flex items-center justify-center overflow-hidden text-[10px] font-semibold leading-none transition-shadow hover:shadow-md'
+          const label = <span className="px-1 text-center">{u.unitNumber}</span>
+
+          // Available units link straight to the per-unit reserve/rent flow.
+          if (isAvailable) {
+            return (
+              <Link
+                key={u.id}
+                href={`/reserve/${u.id}`}
+                title={`Unit ${u.unitNumber} — ${u.size} — Available · Click to rent`}
+                aria-label={`Rent unit ${u.unitNumber}, ${u.size}, available`}
+                className={`${baseClass} cursor-pointer hover:ring-2 hover:ring-olive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-olive focus-visible:z-10`}
+                style={{ ...cellStyle, touchAction: 'manipulation' }}
+              >
+                {label}
+              </Link>
+            )
+          }
+
           return (
             <div
               key={u.id}
               title={`Unit ${u.unitNumber} — ${u.size} — ${s.label}`}
-              className="absolute flex items-center justify-center overflow-hidden text-[10px] font-semibold leading-none transition-shadow hover:shadow-md"
-              style={{
-                left: u.gridX * cellPx,
-                top: u.gridY * cellPx,
-                width: w * cellPx,
-                height: d * cellPx,
-                backgroundColor: s.bg,
-                border: `1px solid ${s.border}`,
-                color: s.color,
-              }}
+              className={baseClass}
+              style={cellStyle}
             >
-              <span className="px-1 text-center">{u.unitNumber}</span>
+              {label}
             </div>
           )
         })}
