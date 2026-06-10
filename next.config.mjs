@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'standalone',
+  // standalone is for self-hosting (Render) — Vercel uses its own output
+  output: process.env.VERCEL ? undefined : 'standalone',
   reactStrictMode: true,
   experimental: {
     serverComponentsExternalPackages: ['mongoose', 'pdfkit', 'twilio', 'resend'],

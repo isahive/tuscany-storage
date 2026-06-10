@@ -65,33 +65,17 @@ const JOBS = {
 
 type JobName = keyof typeof JOBS
 
-// GET — list registered cron jobs (no auth required).
-export async function GET() {
-  return NextResponse.json({
-    success: true,
-    data: {
-      status: 'ok',
-      jobs: Object.entries(JOBS).map(([name, meta]) => ({
-        name,
-        schedule: meta.schedule,
-        description: meta.description,
-      })),
-    },
-  })
+// Vercel function limit for the heavy sweeps (delinquency, invoices) —
+// requires Fluid compute, which allows up to 300s on all plans.
+export const maxDuration = 300
+
+function isAuthorized(req: NextRequest): boolean {
+  const secret = process.env.CRON_SECRET
+  if (!secret) return true // dev mode — allow without secret
+  return (req.headers.get('authorization') ?? '') === `Bearer ${secret}`
 }
 
-// POST — execute a job by name. Requires Authorization: Bearer <CRON_SECRET>.
-export async function POST(req: NextRequest) {
-  const secret = process.env.CRON_SECRET
-  if (secret) {
-    const auth = req.headers.get('authorization') ?? ''
-    if (auth !== `Bearer ${secret}`) {
-      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
-    }
-  }
-
-  const body = await req.json().catch(() => ({}))
-  const name = body?.job as JobName | undefined
+async function runJob(name: JobName | undefined) {
   if (!name || !(name in JOBS)) {
     return NextResponse.json(
       { success: false, error: `Unknown job. Valid: ${Object.keys(JOBS).join(', ')}` },
@@ -106,4 +90,41 @@ export async function POST(req: NextRequest) {
     const message = error instanceof Error ? error.message : 'Job failed'
     return NextResponse.json({ success: false, error: message }, { status: 500 })
   }
+}
+
+// GET — with ?job=<name>, execute that job (this is how Vercel crons invoke
+// us; Vercel sends Authorization: Bearer <CRON_SECRET> automatically).
+// Without ?job, list registered cron jobs (no auth required).
+export async function GET(req: NextRequest) {
+  const name = new URL(req.url).searchParams.get('job') as JobName | null
+
+  if (name !== null) {
+    if (!isAuthorized(req)) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
+    }
+    return runJob(name)
+  }
+
+  return NextResponse.json({
+    success: true,
+    data: {
+      status: 'ok',
+      jobs: Object.entries(JOBS).map(([name, meta]) => ({
+        name,
+        schedule: meta.schedule,
+        description: meta.description,
+      })),
+    },
+  })
+}
+
+// POST — execute a job by name. Requires Authorization: Bearer <CRON_SECRET>.
+// (How the Render cron services invoke us.)
+export async function POST(req: NextRequest) {
+  if (!isAuthorized(req)) {
+    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const body = await req.json().catch(() => ({}))
+  return runJob(body?.job as JobName | undefined)
 }

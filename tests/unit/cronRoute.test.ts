@@ -28,7 +28,7 @@ import { GET as listJobs, POST as runJob } from '@/app/api/cron/route'
 
 describe('GET /api/cron — list jobs', () => {
   it('returns the registered jobs with schedule + description', async () => {
-    const res = await listJobs()
+    const res = await listJobs(makeRequest('GET', '/api/cron'))
     const json = await res.json()
     expect(json.success).toBe(true)
     expect(Array.isArray(json.data.jobs)).toBe(true)
@@ -39,6 +39,34 @@ describe('GET /api/cron — list jobs', () => {
       'pdkReconcile',
     ]))
     expect(json.data.jobs[0]).toHaveProperty('schedule')
+  })
+})
+
+describe('GET /api/cron?job= — execute job (Vercel cron invocation)', () => {
+  beforeEach(() => {
+    for (const fn of Object.values(jobMocks)) fn.mockClear()
+    delete process.env.CRON_SECRET
+  })
+  afterEach(() => { delete process.env.CRON_SECRET })
+
+  it('400s on unknown job name', async () => {
+    const res = await listJobs(makeRequest('GET', '/api/cron?job=made-up'))
+    expect(res.status).toBe(400)
+  })
+
+  it('401s when CRON_SECRET is configured but Authorization header is wrong', async () => {
+    process.env.CRON_SECRET = 'expected-secret'
+    const res = await listJobs(makeRequest('GET', '/api/cron?job=reminders'))
+    expect(res.status).toBe(401)
+  })
+
+  it('runs the job when CRON_SECRET matches the Bearer header', async () => {
+    process.env.CRON_SECRET = 'good-secret'
+    const res = await listJobs(makeRequest('GET', '/api/cron?job=reminders', undefined, {
+      headers: { authorization: 'Bearer good-secret' } as any,
+    }))
+    expect(res.status).toBe(200)
+    expect(jobMocks.runReminders).toHaveBeenCalledTimes(1)
   })
 })
 
