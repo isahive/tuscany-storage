@@ -33,6 +33,40 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     const facilityState = settings?.facilityState ?? DEFAULT_SETTINGS.facilityState
     const facilityZip = settings?.facilityZip ?? DEFAULT_SETTINGS.facilityZip
     const facilityPhone = settings?.facilityPhone ?? DEFAULT_SETTINGS.facilityPhone
+    const facilityEmail = settings?.facilityEmail ?? (DEFAULT_SETTINGS as any).facilityEmail ?? ''
+    const timeZone = settings?.timeZone ?? DEFAULT_SETTINGS.timeZone
+
+    // Resolve the actual card used for this payment (brand + last 4) from
+    // Stripe when available; falls back to the stored method label otherwise.
+    let cardBrand = ''
+    let cardLast4 = ''
+    if (
+      process.env.STRIPE_SECRET_KEY &&
+      payment.stripePaymentIntentId &&
+      !String(payment.stripePaymentIntentId).startsWith('pi_mock')
+    ) {
+      try {
+        const { stripe } = await import('@/lib/stripe')
+        const pi = await stripe.paymentIntents.retrieve(payment.stripePaymentIntentId, {
+          expand: ['latest_charge'],
+        })
+        const charge: any = (pi as any).latest_charge
+        const card = charge?.payment_method_details?.card
+        if (card) {
+          cardBrand = card.brand ?? ''
+          cardLast4 = card.last4 ?? ''
+        }
+      } catch {
+        // Stripe unavailable / PI not found — fall back to the stored label.
+      }
+    }
+
+    const fmtDateTime = (d: Date) => {
+      const date = d.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', timeZone })
+      const time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone })
+      return `${date} at ${time}`
+    }
+    const titleCase = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s)
 
     const doc = new PDFDocument({ size: 'LETTER', margin: 50 })
     const chunks: Buffer[] = []
@@ -46,7 +80,13 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     doc.fillColor('white').fontSize(20).font('Helvetica-Bold')
       .text(facilityName, 50, 22)
     doc.fontSize(9).font('Helvetica')
-      .text(`${facilityAddress}, ${facilityCity}, ${facilityState} ${facilityZip} | ${facilityPhone}`, 50, 46)
+      .text(
+        [`${facilityAddress}, ${facilityCity}, ${facilityState} ${facilityZip}`, facilityPhone, facilityEmail]
+          .filter(Boolean)
+          .join('  |  '),
+        50,
+        46,
+      )
 
     // Receipt title
     let y = 90
@@ -57,7 +97,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     doc.fontSize(10).font('Helvetica').fillColor('#666')
     doc.text('Receipt #:', 50, y).fillColor(dark).text(payment._id.toString(), 150, y)
     y += 16
-    doc.fillColor('#666').text('Date:', 50, y).fillColor(dark).text(new Date(payment.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }), 150, y)
+    doc.fillColor('#666').text('Date:', 50, y).fillColor(dark).text(fmtDateTime(new Date(payment.createdAt)), 150, y)
     y += 16
     doc.fillColor('#666').text('Status:', 50, y).fillColor(payment.status === 'succeeded' ? '#16A34A' : '#DC2626').text(payment.status.toUpperCase(), 150, y)
     y += 30
@@ -116,10 +156,27 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     doc.text(`$${(payment.amount / 100).toFixed(2)}`, tableX + tableW - 80, y, { width: 70, align: 'right' })
     y += 30
 
-    // Payment method
+    // Payment information
+    doc.fontSize(11).font('Helvetica-Bold').fillColor(dark).text('Payment Information', 50, y)
+    y += 18
+    doc.fontSize(9).font('Helvetica')
+
+    const methodLine = cardLast4
+      ? `${titleCase(cardBrand) || 'Card'} ending in ${cardLast4}`
+      : (payment.paymentMethodLabel || 'Card')
+    doc.fillColor('#666').text('Method:', 50, y).fillColor(dark).text(methodLine, 150, y)
+    y += 14
+
+    if (payment.cardholderName) {
+      doc.fillColor('#666').text('Cardholder:', 50, y).fillColor(dark).text(payment.cardholderName, 150, y)
+      y += 14
+    }
+
+    doc.fillColor('#666').text('Date & Time:', 50, y).fillColor(dark).text(fmtDateTime(new Date(payment.createdAt)), 150, y)
+    y += 14
+
     if (payment.stripePaymentIntentId && !payment.stripePaymentIntentId.startsWith('pi_mock')) {
-      doc.fontSize(9).fillColor('#666').font('Helvetica')
-      doc.text(`Payment ID: ${payment.stripePaymentIntentId}`, 50, y)
+      doc.fillColor('#666').text('Payment ID:', 50, y).fillColor(dark).text(payment.stripePaymentIntentId, 150, y)
       y += 14
     }
 
