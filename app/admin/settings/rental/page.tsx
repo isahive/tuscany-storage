@@ -40,6 +40,9 @@ interface FormState {
   billingCycleCustomDay: number
   // Billing
   billingDaysBeforeDue: number
+  // Tax
+  taxEnabled: boolean
+  taxRate: number
   // Proration
   prorationModel: ProrationModel
   prorationDaysBasis: ProrationDaysBasis
@@ -62,6 +65,8 @@ const DEFAULTS: FormState = {
   billingCycleAnchor: 'first_of_month',
   billingCycleCustomDay: 1,
   billingDaysBeforeDue: 7,
+  taxEnabled: true,
+  taxRate: 9.75,
   prorationModel: 'first_month_full_then_prorate',
   prorationDaysBasis: 'actual_days_in_month',
   enableReservations: false,
@@ -198,6 +203,8 @@ export default function RentalSettingsPage() {
   const [savedOpen, setSavedOpen] = useState(false)
   const [form, setForm] = useState<FormState>(DEFAULTS)
   const [savedForm, setSavedForm] = useState<FormState>(DEFAULTS)
+  // Separate string state so decimal tax rates (e.g. "9.75") type smoothly.
+  const [taxRateInput, setTaxRateInput] = useState('9.75')
 
   useEffect(() => {
     fetch('/api/settings')
@@ -209,6 +216,8 @@ export default function RentalSettingsPage() {
             billingCycleAnchor: d.billingCycleAnchor ?? DEFAULTS.billingCycleAnchor,
             billingCycleCustomDay: d.billingCycleCustomDay ?? DEFAULTS.billingCycleCustomDay,
             billingDaysBeforeDue: d.billingDaysBeforeDue ?? 7,
+            taxEnabled: d.taxEnabled ?? true,
+            taxRate: typeof d.taxRate === 'number' ? d.taxRate : 9.75,
             prorationModel: d.prorationModel ?? DEFAULTS.prorationModel,
             prorationDaysBasis: d.prorationDaysBasis ?? DEFAULTS.prorationDaysBasis,
             enableReservations: d.enableReservations ?? false,
@@ -223,6 +232,7 @@ export default function RentalSettingsPage() {
           }
           setForm(loaded)
           setSavedForm(loaded)
+          setTaxRateInput(String(loaded.taxRate))
         }
       })
       .catch(() => setError('Failed to load settings'))
@@ -386,6 +396,53 @@ export default function RentalSettingsPage() {
           value={form.billingDaysBeforeDue}
           onChange={(v) => setNum('billingDaysBeforeDue', v)}
         />
+
+        <Divider sx={{ my: 3, borderColor: '#E5E7EB' }} />
+
+        {/* Sales Tax */}
+        <SectionHeading>Sales Tax</SectionHeading>
+        <SettingSwitch
+          label="Charge sales tax"
+          hint="When off, no sales tax is added or shown on any checkout, statement, receipt, or invoice."
+          checked={form.taxEnabled}
+          onChange={(v) => {
+            if (v) {
+              const restored = form.taxRate > 0 ? form.taxRate : 9.75
+              setForm((prev) => ({ ...prev, taxEnabled: true, taxRate: restored }))
+              setTaxRateInput(String(restored))
+            } else {
+              setForm((prev) => ({ ...prev, taxEnabled: false, taxRate: 0 }))
+              setTaxRateInput('0')
+            }
+          }}
+        />
+        {form.taxEnabled && (
+          <Box sx={{ mb: 2.5 }}>
+            <Typography variant="body2" sx={{ fontWeight: 600, color: '#2C3826', mb: 0.5 }}>Tax rate (%)</Typography>
+            <TextField
+              type="number"
+              size="small"
+              value={taxRateInput}
+              onChange={(e) => {
+                setTaxRateInput(e.target.value)
+                const n = parseFloat(e.target.value)
+                setNum('taxRate', Number.isFinite(n) ? Math.max(0, Math.min(100, n)) : 0)
+              }}
+              inputProps={{ min: 0, max: 100, step: 0.01 }}
+              sx={{
+                width: 120,
+                '& .MuiOutlinedInput-root': {
+                  '& fieldset': { borderColor: '#E5E7EB' },
+                  '&:hover fieldset': { borderColor: '#B8914A' },
+                  '&.Mui-focused fieldset': { borderColor: '#B8914A' },
+                },
+              }}
+            />
+            <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.5 }}>
+              Applied to rent, protection, and taxable fees. E.g. 9.75
+            </Typography>
+          </Box>
+        )}
 
         <Divider sx={{ my: 3, borderColor: '#E5E7EB' }} />
 

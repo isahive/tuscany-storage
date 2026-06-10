@@ -23,6 +23,7 @@ export const DEFAULT_SETTINGS = {
   dimensionFormat: '10w x 10l x 10h',
   customerNameFormat: 'last_first' as const,
   // Tax
+  taxEnabled: true,
   taxRate: 9.75,
   // Billing
   billingDaysBeforeDue: 7,

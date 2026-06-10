@@ -43,6 +43,7 @@ export interface ISettingsDocument extends Document {
   customerNameFormat: 'last_first' | 'first_last'  // controls list ordering + display
 
   // ── Tax ──────────────────────────────────────────────────────────────────
+  taxEnabled: boolean           // master switch; when false, no tax is charged or shown anywhere
   taxRate: number               // sales tax percentage (e.g. 9.75)
 
   // ── Billing ───────────────────────────────────────────────────────────────
@@ -241,6 +242,7 @@ const SettingsSchema = new Schema<ISettingsDocument>(
     },
 
     // Tax
+    taxEnabled: { type: Boolean, default: true },
     taxRate: { type: Number, default: 9.75 },
 
     // Billing

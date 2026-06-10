@@ -343,6 +343,10 @@ function MakePaymentForm({
   const inputClass = 'w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-olive focus:outline-none'
   const labelClass = 'mb-1 block text-sm font-semibold text-gray-900'
 
+  // Only surface the Tax column when something is actually taxed — keeps it
+  // off entirely when sales tax is disabled facility-wide.
+  const showTax = statement.lineItems.some((it) => it.tax > 0)
+
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
       {error && (
@@ -360,7 +364,7 @@ function MakePaymentForm({
               <th className="px-3 py-2 font-semibold">Item</th>
               <th className="px-3 py-2 font-semibold">Description</th>
               <th className="px-3 py-2 text-right font-semibold">Amount</th>
-              <th className="px-3 py-2 text-right font-semibold">Tax</th>
+              {showTax && <th className="px-3 py-2 text-right font-semibold">Tax</th>}
               <th className="px-3 py-2 text-right font-semibold">Due</th>
             </tr>
           </thead>
@@ -374,22 +378,22 @@ function MakePaymentForm({
                 <td className="px-3 py-2 font-mono text-xs text-gray-700">{it.id.slice(-9)}</td>
                 <td className="px-3 py-2 text-gray-800">{itemDescription(it)}</td>
                 <td className="px-3 py-2 text-right text-gray-800">{fmtMoney(it.amount)}</td>
-                <td className="px-3 py-2 text-right text-gray-800">{fmtMoney(it.tax)}</td>
+                {showTax && <td className="px-3 py-2 text-right text-gray-800">{fmtMoney(it.tax)}</td>}
                 <td className="px-3 py-2 text-right text-gray-900">{fmtMoney(it.due)}</td>
               </tr>
             ))}
             <tr>
-              <td colSpan={4}></td>
+              <td colSpan={showTax ? 4 : 3}></td>
               <td className="pt-3 pr-3 text-right text-gray-700">Subtotal:</td>
               <td className="pt-3 pr-3 text-right text-gray-900">{fmtMoney(statement.outstanding)}</td>
             </tr>
             <tr>
-              <td colSpan={4}></td>
+              <td colSpan={showTax ? 4 : 3}></td>
               <td className="pt-1 pr-3 text-right text-gray-700">Credit:</td>
               <td className="pt-1 pr-3 text-right text-gray-900">{fmtMoney(statement.credit)}</td>
             </tr>
             <tr>
-              <td colSpan={4}></td>
+              <td colSpan={showTax ? 4 : 3}></td>
               <td className="pt-2 pb-3 pr-3 text-right font-semibold text-gray-900">Total:</td>
               <td className="pt-2 pb-3 pr-3 text-right font-bold text-gray-900">{fmtMoney(statement.total)}</td>
             </tr>

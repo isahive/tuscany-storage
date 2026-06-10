@@ -48,6 +48,9 @@ const updateSettingsSchema = z
     phoneFormat: z.string(),
     dimensionFormat: z.string(),
     customerNameFormat: z.enum(['last_first', 'first_last']),
+    // Tax
+    taxEnabled: z.boolean(),
+    taxRate: z.number().min(0).max(100),
     // Billing
     billingDaysBeforeDue: z.number().int().min(0),
     // Billing Cycle
@@ -267,6 +270,13 @@ export async function PUT(req: NextRequest) {
     const parsed = updateSettingsSchema.safeParse(body)
     if (!parsed.success) {
       return NextResponse.json({ success: false, error: parsed.error.message }, { status: 400 })
+    }
+
+    // When sales tax is switched off, force the stored rate to 0 so every
+    // consumer (checkouts, statements, receipts, line items) drops tax with
+    // no extra wiring — the whole codebase already hides tax when rate is 0.
+    if (parsed.data.taxEnabled === false) {
+      parsed.data.taxRate = 0
     }
 
     await connectDB()
