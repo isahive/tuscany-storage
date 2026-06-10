@@ -13,8 +13,6 @@ import {
   IconButton,
   Popover,
   Snackbar,
-  Tab,
-  Tabs,
   TextField,
   Typography,
   Tooltip,
@@ -35,7 +33,6 @@ const CELL_PX = 44      // pixels per grid cell — bigger for readability
 const FEET_PER_CELL = 5 // each cell = 5 ft
 const GRID_COLS = 80
 const GRID_ROWS = 80
-const FLOORS = [1, 2]
 
 const STATUS_CONFIG: Record<
   string,
@@ -120,7 +117,8 @@ export default function CanvasPage() {
   const [loading, setLoading] = useState(true)
   const [fetchError, setFetchError] = useState<string | null>(null)
 
-  const [currentFloor, setCurrentFloor] = useState(1)
+  // Single-level facility — everything lives on one implicit layer.
+  const currentFloor = 1
   const [selectedUnit, setSelectedUnit] = useState<UnitData | null>(null) // placement mode
   const [placingRotation, setPlacingRotation] = useState<0 | 90>(0)
   const [hoverCell, setHoverCell] = useState<{ x: number; y: number } | null>(null)
@@ -324,7 +322,7 @@ export default function CanvasPage() {
     )
     if (placedHere.length === 0) return
     const ok = window.confirm(
-      `Remove all ${placedHere.length} unit${placedHere.length === 1 ? '' : 's'} from floor ${currentFloor}? You can save afterwards to persist.`
+      `Remove all ${placedHere.length} placed unit${placedHere.length === 1 ? '' : 's'} from the map? You can save afterwards to persist.`
     )
     if (!ok) return
     setPositions((prev) => {
@@ -401,31 +399,9 @@ export default function CanvasPage() {
             Canvas Editor
           </Typography>
           <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-            {placedCount} placed on floor {currentFloor} · {units.length} total · 1 cell = {FEET_PER_CELL} ft
+            {placedCount} placed · {units.length} total · 1 cell = {FEET_PER_CELL} ft
           </Typography>
         </Box>
-
-        <Tabs
-          value={currentFloor}
-          onChange={(_, v) => {
-            setCurrentFloor(v)
-            setSelectedUnit(null)
-            setHoverCell(null)
-            setPopoverUnit(null)
-            setPopoverAnchor(null)
-          }}
-          sx={{
-            ml: { xs: 0, sm: 'auto' },
-            minHeight: 36,
-            '& .MuiTab-root': { minHeight: 36, py: 0.5, px: 2, fontSize: '0.85rem' },
-            '& .MuiTabs-indicator': { bgcolor: '#8CA87C' },
-            '& .Mui-selected': { color: '#8CA87C !important', fontWeight: 700 },
-          }}
-        >
-          {FLOORS.map((f) => (
-            <Tab key={f} label={`Floor ${f}`} value={f} />
-          ))}
-        </Tabs>
 
         <Button
           variant="outlined"
@@ -433,9 +409,9 @@ export default function CanvasPage() {
           startIcon={<ClearAllIcon />}
           onClick={handleClearFloor}
           disabled={placedCount === 0}
-          sx={{ fontWeight: 600 }}
+          sx={{ fontWeight: 600, ml: { xs: 0, sm: 'auto' } }}
         >
-          Clear Floor
+          Clear All
         </Button>
 
         <Button
@@ -554,9 +530,7 @@ export default function CanvasPage() {
             ) : (
               sidebarUnits.map((u) => {
                 const sc = STATUS_CONFIG[u.status] ?? STATUS_CONFIG.occupied
-                const isPlacedHere = positions[u._id]?.gridFloor === currentFloor
-                const isPlacedElsewhere =
-                  positions[u._id] && positions[u._id].gridFloor !== currentFloor
+                const isPlacedHere = !!positions[u._id]
                 const isSelected = selectedUnit?._id === u._id
                 return (
                   <Box
@@ -576,7 +550,6 @@ export default function CanvasPage() {
                       border: `2px solid ${
                         isSelected ? '#B8914A' : isPlacedHere ? '#E5E7EB' : sc.border
                       }`,
-                      opacity: isPlacedElsewhere ? 0.5 : 1,
                       transition: 'all 0.12s',
                       '&:hover': {
                         borderColor: '#8CA87C',
@@ -597,13 +570,6 @@ export default function CanvasPage() {
                         label="Placed"
                         size="small"
                         sx={{ height: 16, fontSize: '0.6rem', bgcolor: '#D1FAE5', color: '#065F46', '& .MuiChip-label': { px: 0.75 } }}
-                      />
-                    )}
-                    {isPlacedElsewhere && (
-                      <Chip
-                        label={`F${positions[u._id].gridFloor}`}
-                        size="small"
-                        sx={{ height: 16, fontSize: '0.6rem', bgcolor: '#FEE2E2', color: '#991B1B', '& .MuiChip-label': { px: 0.75 } }}
                       />
                     )}
                   </Box>
@@ -761,7 +727,6 @@ export default function CanvasPage() {
               {[
                 { label: 'Status', value: STATUS_CONFIG[popoverUnit.status]?.label ?? popoverUnit.status },
                 { label: 'Position', value: `Col ${positions[popoverUnit._id].gridX + 1}, Row ${positions[popoverUnit._id].gridY + 1}` },
-                { label: 'Floor', value: `Floor ${positions[popoverUnit._id].gridFloor}` },
                 {
                   label: 'Cells',
                   value: `${cellsWide(popoverUnit, positions[popoverUnit._id].gridRotation)} × ${cellsDeep(popoverUnit, positions[popoverUnit._id].gridRotation)}`,

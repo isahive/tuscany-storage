@@ -10,8 +10,6 @@ import {
   Card,
   Chip,
   CircularProgress,
-  Tab,
-  Tabs,
   Typography,
 } from '@mui/material'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
@@ -28,7 +26,6 @@ import type { UnitType } from '@/types'
 const CELL_PX = 44
 const GRID_COLS = 80
 const GRID_ROWS = 80
-const FLOORS = [1, 2]
 
 interface UnitData {
   _id: string
@@ -61,7 +58,6 @@ export default function UnitSiteViewPage() {
   const [units, setUnits] = useState<UnitData[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [floor, setFloor] = useState(1)
 
   const load = useCallback(async () => {
     setLoading(true); setError(null)
@@ -77,13 +73,11 @@ export default function UnitSiteViewPage() {
 
   useEffect(() => { load() }, [load])
 
-  const placedOnFloor = useMemo(
+  const placedUnits = useMemo(
     () => units.filter((u) =>
-      typeof u.gridX === 'number'
-      && typeof u.gridY === 'number'
-      && (u.gridFloor ?? 1) === floor,
+      typeof u.gridX === 'number' && typeof u.gridY === 'number',
     ),
-    [units, floor],
+    [units],
   )
 
   const unplacedCount = useMemo(
@@ -122,16 +116,6 @@ export default function UnitSiteViewPage() {
       {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>{error}</Alert>}
 
       <Card sx={{ border: '1px solid #E5E7EB', boxShadow: 'none', borderRadius: 2, overflow: 'hidden' }}>
-        <Tabs
-          value={floor}
-          onChange={(_, v) => setFloor(v)}
-          sx={{ borderBottom: '1px solid #E5E7EB', px: 2 }}
-        >
-          {FLOORS.map((f) => (
-            <Tab key={f} label={`Floor ${f}`} value={f} sx={{ textTransform: 'none', fontWeight: 600 }} />
-          ))}
-        </Tabs>
-
         {/* Compact legend so admins know which color is what when scanning the map. */}
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, p: 2, borderBottom: '1px solid #E5E7EB' }}>
           {(['available', 'rented', 'reserved', 'late', 'locked_out', 'pre_lien', 'lien', 'auction', 'moving_out'] as UnitDisplayStatus[]).map((s) => {
@@ -151,10 +135,10 @@ export default function UnitSiteViewPage() {
           <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
             <CircularProgress sx={{ color: '#B8914A' }} />
           </Box>
-        ) : placedOnFloor.length === 0 ? (
+        ) : placedUnits.length === 0 ? (
           <Box sx={{ py: 8, textAlign: 'center' }}>
             <Typography color="text.secondary">
-              No units placed on Floor {floor}. Lay them out in{' '}
+              No units placed yet. Lay them out in{' '}
               <Link href="/admin/units/site-map" style={{ color: '#B8914A' }}>Site Map</Link>.
             </Typography>
           </Box>
@@ -169,7 +153,7 @@ export default function UnitSiteViewPage() {
                 backgroundSize: `${CELL_PX}px ${CELL_PX}px`,
               }}
             >
-              {placedOnFloor.map((unit) => {
+              {placedUnits.map((unit) => {
                 const c = DISPLAY_STATUS_COLORS[unit.displayStatus] ?? { bg: '#F3F4F6', text: '#374151' }
                 const w = cellsWide(unit) * CELL_PX
                 const h = cellsDeep(unit) * CELL_PX
