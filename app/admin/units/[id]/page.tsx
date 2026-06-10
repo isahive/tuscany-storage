@@ -176,6 +176,14 @@ export default function UnitDetailPage() {
             >
               Unit History
             </button>
+            {tenant && lease && (
+              <button
+                onClick={() => router.push(`/admin/tenants/${tenant._id}/schedule-move-out?leaseId=${lease._id}`)}
+                className="rounded border border-amber-500 px-3 py-1.5 text-sm font-semibold text-amber-700 hover:bg-amber-50"
+              >
+                Move Out
+              </button>
+            )}
             <button
               onClick={() => setStatusOpen(true)}
               className="rounded border border-olive px-3 py-1.5 text-sm font-semibold text-olive-darker hover:bg-olive/5"
