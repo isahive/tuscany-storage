@@ -9,9 +9,11 @@ import MailOutlineIcon from '@mui/icons-material/MailOutline'
 import SendIcon from '@mui/icons-material/Send'
 import LabelIcon from '@mui/icons-material/Label'
 import SmsIcon from '@mui/icons-material/Sms'
+import HistoryIcon from '@mui/icons-material/History'
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos'
 
 const CARDS = [
+  { title: 'Communications Log', description: 'Reporting & delivery status for every email and text sent', icon: <HistoryIcon sx={{ color: 'white', fontSize: 28 }} />, href: '/admin/reports/communications-log' },
   { title: 'Print Batches', description: 'Create and manage print batches for invoices and notices', icon: <PrintIcon sx={{ color: 'white', fontSize: 28 }} />, href: '/admin/communications/print-batches' },
   { title: 'Templates', description: 'Edit email, text, and letter notification templates', icon: <DescriptionIcon sx={{ color: 'white', fontSize: 28 }} />, href: '/admin/communications/templates' },
   { title: 'Settings', description: 'Configure email, SMS, and print notification settings', icon: <SettingsIcon sx={{ color: 'white', fontSize: 28 }} />, href: '/admin/communications/settings' },

@@ -592,12 +592,27 @@ const CONFIGS: Record<string, ReportConfig> = {
   },
   'undelivered-notifications': {
     title: 'Undelivered Notifications',
-    apiType: 'transactions', // placeholder — will show empty until notification tracking is added
+    apiType: 'undelivered-notifications',
     showDateFilter: true,
     columns: [
       { key: 'date', label: 'Date', format: 'date' },
       { key: 'tenant', label: 'Tenant' },
+      { key: 'channel', label: 'Channel' },
       { key: 'type', label: 'Type' },
+      { key: 'subject', label: 'Subject' },
+      { key: 'reason', label: 'Reason' },
+    ],
+  },
+  'communications-log': {
+    title: 'Communications Log',
+    apiType: 'communications-log',
+    showDateFilter: true,
+    columns: [
+      { key: 'date', label: 'Date', format: 'date' },
+      { key: 'tenant', label: 'Tenant' },
+      { key: 'channel', label: 'Channel' },
+      { key: 'type', label: 'Type' },
+      { key: 'subject', label: 'Subject' },
       { key: 'status', label: 'Status' },
     ],
   },

@@ -56,6 +56,7 @@ const REPORT_CATEGORIES: ReportCategory[] = [
       { label: 'Tenant Data', href: '/admin/reports/tenant-data' },
       { label: 'Rental Transfers', href: '/admin/reports/rental-transfers' },
       { label: 'Storage Agreements', href: '/admin/reports/storage-agreements' },
+      { label: 'Communications Log', href: '/admin/reports/communications-log' },
       { label: 'Undelivered Notifications', href: '/admin/reports/undelivered-notifications' },
       { label: 'Customer Notes', href: '/admin/reports/customer-notes' },
       { label: 'Credit Card Expiration Dates', href: '/admin/reports/cc-expiration' },

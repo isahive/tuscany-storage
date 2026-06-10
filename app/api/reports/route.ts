@@ -902,7 +902,37 @@ export async function GET(req: NextRequest) {
           type: n.type,
           channel: n.channel,
           subject: n.subject ?? '',
-          reason: n.failureReason ?? '',
+          reason: n.failureReason ?? n.bounceReason ?? '',
+        }))
+        return NextResponse.json({ success: true, data: { rows, summary: { total: rows.length } } })
+      }
+
+      // Full log of every sent communication (email + SMS) with delivery status.
+      case 'communications-log': {
+        const match: Record<string, unknown> = {}
+        if (hasDate) match.createdAt = dateFilter
+        const notifs = await Notification.find(match)
+          .populate('tenantId', 'firstName lastName email phone')
+          .sort({ createdAt: -1 })
+          .limit(1000)
+          .lean()
+        const statusOf = (n: any): string => {
+          if (n.bouncedAt) return 'Bounced'
+          if (n.status === 'failed' || n.status === 'undelivered') return 'Failed'
+          if (n.openedAt) return 'Opened'
+          if (n.deliveredAt) return 'Delivered'
+          if (n.status === 'sent') return 'Sent'
+          if (typeof n.status === 'string' && n.status) return n.status.charAt(0).toUpperCase() + n.status.slice(1)
+          return 'Pending'
+        }
+        const rows = notifs.map((n: any) => ({
+          date: n.sentAt ?? n.createdAt,
+          tenant: n.tenantId ? `${n.tenantId.firstName} ${n.tenantId.lastName}` : 'Unknown',
+          channel: n.channel,
+          type: n.type,
+          subject: n.subject ?? (n.channel === 'sms' ? '(text message)' : ''),
+          status: statusOf(n),
+          reason: n.failureReason ?? n.bounceReason ?? '',
         }))
         return NextResponse.json({ success: true, data: { rows, summary: { total: rows.length } } })
       }
