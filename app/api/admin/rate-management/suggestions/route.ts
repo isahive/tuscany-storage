@@ -13,6 +13,9 @@ import {
   type LeaseFixture,
 } from '@/lib/rateManagement'
 
+// API responses must always reflect live data — never prerender at build.
+export const dynamic = 'force-dynamic'
+
 function medianPriceByType(units: Array<{ type: string; price: number }>): Record<string, number> {
   const grouped: Record<string, number[]> = {}
   for (const u of units) {

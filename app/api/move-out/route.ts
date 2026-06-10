@@ -9,6 +9,9 @@ import Unit from '@/models/Unit'
 import Tenant from '@/models/Tenant'
 import { sendAdminNotification } from '@/lib/email'
 
+// API responses must always reflect live data — never prerender at build.
+export const dynamic = 'force-dynamic'
+
 // ─── GET: Admin — list all move-out requests ──────────────────────────────────
 
 export async function GET(req: NextRequest) {

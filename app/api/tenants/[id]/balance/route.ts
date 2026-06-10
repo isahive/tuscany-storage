@@ -8,6 +8,9 @@ import Payment from '@/models/Payment'
 import RecurringFee from '@/models/RecurringFee'
 import { balanceDelta } from '@/lib/paymentBalance'
 
+// API responses must always reflect live data — never prerender at build.
+export const dynamic = 'force-dynamic'
+
 // GET  /api/tenants/[id]/balance — current balance + breakdown
 // POST /api/tenants/[id]/balance — same but forces a recompute from the ledger
 //

@@ -5,6 +5,9 @@ import { connectDB } from '@/lib/db'
 import Settings from '@/models/Settings'
 import { DEFAULT_SETTINGS } from '@/lib/defaultSettings'
 
+// API responses must always reflect live data — never prerender at build.
+export const dynamic = 'force-dynamic'
+
 // GET /api/admin/fees
 // Returns every active fee from Settings.customFees. There are no hardcoded
 // fee labels anywhere — the entire dropdown / catalogue comes from the DB.

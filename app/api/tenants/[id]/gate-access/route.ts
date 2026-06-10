@@ -14,6 +14,9 @@ import { syncTenantToPdkSafe } from '@/lib/pdkSync'
 import { computeAuctionDate } from '@/lib/auctionDate'
 import { shouldAutoApprove } from '@/lib/lockout'
 
+// API responses must always reflect live data — never prerender at build.
+export const dynamic = 'force-dynamic'
+
 interface RouteContext {
   params: Promise<{ id: string }>
 }

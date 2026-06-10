@@ -17,6 +17,9 @@ import {
   VisitorAccessValidationError,
 } from '@/lib/visitorAccessService'
 
+// API responses must always reflect live data — never prerender at build.
+export const dynamic = 'force-dynamic'
+
 const VALID_STATUSES = new Set(['active', 'expired', 'revoked'])
 
 export async function GET(req: NextRequest) {

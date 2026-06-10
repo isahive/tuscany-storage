@@ -6,6 +6,9 @@ import Tenant from '@/models/Tenant'
 import PasswordResetToken from '@/models/PasswordResetToken'
 import { hashToken, tokenStatus } from '@/lib/passwordReset'
 
+// API responses must always reflect live data — never prerender at build.
+export const dynamic = 'force-dynamic'
+
 const Body = z.object({
   token: z.string().min(10),
   password: z.string().min(8, 'Password must be at least 8 characters'),

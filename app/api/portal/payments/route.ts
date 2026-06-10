@@ -4,6 +4,9 @@ import { authOptions } from '@/lib/auth'
 import { connectDB } from '@/lib/db'
 import Payment from '@/models/Payment'
 
+// API responses must always reflect live data — never prerender at build.
+export const dynamic = 'force-dynamic'
+
 // GET /api/portal/payments
 // Returns the tenant's full payment history, newest first.
 export async function GET() {

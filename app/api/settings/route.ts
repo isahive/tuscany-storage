@@ -9,6 +9,9 @@ import { syncFacilityHoursToPdkSafe } from '@/lib/pdkFacilityHours'
 import { ensureVisitorGroupSafe } from '@/lib/pdkVisitorGroup'
 import { realignAllLeaseBillingDays } from '@/lib/billing/billingDay'
 
+// API responses must always reflect live data — never prerender at build.
+export const dynamic = 'force-dynamic'
+
 type LateLienStatus = 'late' | 'locked_out' | 'pre_lien' | 'lien' | 'auction'
 
 // ── Validation schema (all fields optional — partial update) ──────────────────

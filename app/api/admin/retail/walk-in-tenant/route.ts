@@ -5,6 +5,9 @@ import { authOptions } from '@/lib/auth'
 import { connectDB } from '@/lib/db'
 import Tenant from '@/models/Tenant'
 
+// API responses must always reflect live data — never prerender at build.
+export const dynamic = 'force-dynamic'
+
 // GET /api/admin/retail/walk-in-tenant
 // Returns (creating if needed) the singleton synthetic "Retail Sale" tenant
 // Storable maps walk-in purchases against. There's exactly one per facility

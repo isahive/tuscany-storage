@@ -5,6 +5,9 @@ import { connectDB } from '@/lib/db'
 import NotificationTemplate from '@/models/NotificationTemplate'
 import { DEFAULT_CUSTOM_TEMPLATES } from '@/lib/defaultCustomTemplates'
 
+// API responses must always reflect live data — never prerender at build.
+export const dynamic = 'force-dynamic'
+
 /** GET /api/admin/templates/[id] — get a single template */
 export async function GET(
   _req: NextRequest,

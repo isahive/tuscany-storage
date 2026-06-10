@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server'
 import { connectDB } from '@/lib/db'
 import Promotion from '@/models/Promotion'
 
+// API responses must always reflect live data — never prerender at build.
+export const dynamic = 'force-dynamic'
+
 // GET /api/public/promotions — public, no auth. Returns currently-active promotions.
 export async function GET() {
   try {

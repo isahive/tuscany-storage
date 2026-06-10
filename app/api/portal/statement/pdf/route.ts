@@ -10,6 +10,9 @@ import Settings from '@/models/Settings'
 import { DEFAULT_SETTINGS } from '@/lib/defaultSettings'
 import PDFDocument from 'pdfkit'
 
+// API responses must always reflect live data — never prerender at build.
+export const dynamic = 'force-dynamic'
+
 const PAYMENT_TYPE_LABEL: Record<string, string> = {
   rent: 'Monthly Rent',
   late_fee: 'Past Due Fee',

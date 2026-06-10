@@ -5,6 +5,9 @@ import { authOptions } from '@/lib/auth'
 import { connectDB } from '@/lib/db'
 import ProtectionPlan from '@/models/ProtectionPlan'
 
+// API responses must always reflect live data — never prerender at build.
+export const dynamic = 'force-dynamic'
+
 // ── Validation ───────────────────────────────────────────────────────────────
 
 const createSchema = z.object({

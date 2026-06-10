@@ -9,6 +9,9 @@ import Payment from '@/models/Payment'
 import WaitingList from '@/models/WaitingList'
 import MoveOutRequest from '@/models/MoveOutRequest'
 
+// API responses must always reflect live data — never prerender at build.
+export const dynamic = 'force-dynamic'
+
 export async function GET() {
   try {
     const session = await getServerSession(authOptions)

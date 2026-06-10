@@ -8,6 +8,9 @@ import Unit from '@/models/Unit'
 import Notification from '@/models/Notification'
 import type { ILeaseDocument } from '@/models/Lease'
 
+// API responses must always reflect live data — never prerender at build.
+export const dynamic = 'force-dynamic'
+
 interface RateIncreaseBatchItem {
   leaseId: string
   tenantId: string

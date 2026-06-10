@@ -11,6 +11,9 @@ import {
   validateDateWindow,
 } from '@/lib/promotions'
 
+// API responses must always reflect live data — never prerender at build.
+export const dynamic = 'force-dynamic'
+
 // ── Validation ───────────────────────────────────────────────────────────────
 
 const createSchema = z.object({

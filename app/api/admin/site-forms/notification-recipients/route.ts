@@ -4,6 +4,9 @@ import { authOptions } from '@/lib/auth'
 import { connectDB } from '@/lib/db'
 import ContactNotificationRecipient from '@/models/ContactNotificationRecipient'
 
+// API responses must always reflect live data — never prerender at build.
+export const dynamic = 'force-dynamic'
+
 async function requireAdmin() {
   const session = await getServerSession(authOptions)
   if (!session || session.user.role !== 'admin') return null

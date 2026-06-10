@@ -4,6 +4,9 @@ import { authOptions } from '@/lib/auth'
 import { connectDB } from '@/lib/db'
 import RateManagementBatch from '@/models/RateManagementBatch'
 
+// API responses must always reflect live data — never prerender at build.
+export const dynamic = 'force-dynamic'
+
 // GET /api/admin/rate-management/batches/[id]
 // Returns one batch with all rental + unit-type change rows so the detail
 // page can render the Scheduled Price Changes table.

@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server'
 
+// API responses must always reflect live data — never prerender at build.
+export const dynamic = 'force-dynamic'
+
 // Cache reviews for 1 hour to avoid hitting API limits
 let cachedReviews: any = null
 let cacheTimestamp = 0

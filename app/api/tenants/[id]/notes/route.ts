@@ -5,6 +5,9 @@ import { authOptions } from '@/lib/auth'
 import { connectDB } from '@/lib/db'
 import Note from '@/models/Note'
 
+// API responses must always reflect live data — never prerender at build.
+export const dynamic = 'force-dynamic'
+
 interface RouteContext {
   params: Promise<{ id: string }>
 }

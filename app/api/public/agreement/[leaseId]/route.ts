@@ -7,6 +7,9 @@ import Settings from '@/models/Settings'
 import { DEFAULT_SETTINGS } from '@/lib/defaultSettings'
 import { buildPlaceholders } from '@/lib/sendNotification'
 
+// API responses must always reflect live data — never prerender at build.
+export const dynamic = 'force-dynamic'
+
 // Minimal TipTap JSON → HTML converter (no external deps)
 function nodeToHtml(node: any): string {
   if (!node) return ''

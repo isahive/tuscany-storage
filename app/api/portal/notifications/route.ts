@@ -4,6 +4,9 @@ import { authOptions } from '@/lib/auth'
 import { connectDB } from '@/lib/db'
 import Notification from '@/models/Notification'
 
+// API responses must always reflect live data — never prerender at build.
+export const dynamic = 'force-dynamic'
+
 // Strip HTML so email bodies (which are templated HTML) render as clean text
 // in the portal — also sidesteps any markup rendering concerns.
 function toPreview(body: string): string {

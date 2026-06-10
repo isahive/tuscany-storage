@@ -10,6 +10,9 @@ import Payment from '@/models/Payment'
 import { renderTemplate } from '@/lib/sendNotification'
 import { getSettings } from '@/lib/getSettings'
 
+// API responses must always reflect live data — never prerender at build.
+export const dynamic = 'force-dynamic'
+
 interface RouteContext {
   params: Promise<{ id: string }>
 }

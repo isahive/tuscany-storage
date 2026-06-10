@@ -4,6 +4,9 @@ import { authOptions } from '@/lib/auth'
 import { connectDB } from '@/lib/db'
 import Unit from '@/models/Unit'
 
+// API responses must always reflect live data — never prerender at build.
+export const dynamic = 'force-dynamic'
+
 // GET /api/portal/available-units
 // Lists units the tenant can rent additionally (status: available).
 export async function GET() {

@@ -10,6 +10,9 @@ import { runLockoutReportEmail } from '@/jobs/lockout-report-email'
 import { reconcilePdkHolders } from '@/jobs/pdk-reconcile'
 import { runVisitorAccessExpiration } from '@/jobs/visitor-access-expiration'
 
+// API responses must always reflect live data — never prerender at build.
+export const dynamic = 'force-dynamic'
+
 const JOBS = {
   generateInvoices: {
     fn: runInvoiceGeneration,

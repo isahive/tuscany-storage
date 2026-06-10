@@ -4,6 +4,9 @@ import { authOptions } from '@/lib/auth'
 import { connectDB } from '@/lib/db'
 import LockoutEvent from '@/models/LockoutEvent'
 
+// API responses must always reflect live data — never prerender at build.
+export const dynamic = 'force-dynamic'
+
 // GET /api/admin/lockout-events?status=pending|approved&from=&to=
 // Backs Storable's Lock Out Report. Default returns last 30 days of events
 // (both pending + approved) so the admin can scan the recent activity log.

@@ -7,6 +7,9 @@ import Lease from '@/models/Lease'
 import Payment from '@/models/Payment'
 import '@/models/Tenant'
 
+// API responses must always reflect live data — never prerender at build.
+export const dynamic = 'force-dynamic'
+
 interface RouteContext {
   params: Promise<{ id: string }>
 }

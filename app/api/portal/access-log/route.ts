@@ -4,6 +4,9 @@ import { authOptions } from '@/lib/auth'
 import { connectDB } from '@/lib/db'
 import AccessLog from '@/models/AccessLog'
 
+// API responses must always reflect live data — never prerender at build.
+export const dynamic = 'force-dynamic'
+
 // GET /api/portal/access-log
 // Query params: eventType, startDate, endDate, limit, skip
 export async function GET(req: NextRequest) {

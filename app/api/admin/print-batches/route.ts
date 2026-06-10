@@ -6,6 +6,9 @@ import { connectDB } from '@/lib/db'
 import { parsePaginationParams } from '@/lib/utils'
 import PrintBatch from '@/models/PrintBatch'
 
+// API responses must always reflect live data — never prerender at build.
+export const dynamic = 'force-dynamic'
+
 export async function GET(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions)

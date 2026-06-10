@@ -15,6 +15,9 @@ import Note from '@/models/Note'
 import Promotion from '@/models/Promotion'
 import Notification from '@/models/Notification'
 
+// API responses must always reflect live data — never prerender at build.
+export const dynamic = 'force-dynamic'
+
 // GET /api/reports?type=revenues&from=2026-01-01&to=2026-04-30
 export async function GET(req: NextRequest) {
   try {

@@ -11,6 +11,9 @@ import { authOptions } from '@/lib/auth'
 import { pdkFetch } from '@/lib/pdkAuth'
 import { pdkConfigured } from '@/lib/pdkSync'
 
+// API responses must always reflect live data — never prerender at build.
+export const dynamic = 'force-dynamic'
+
 interface PdkDeviceRaw {
   id: string
   name: string

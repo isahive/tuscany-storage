@@ -14,6 +14,9 @@ import { connectDB } from '@/lib/db'
 import Lease from '@/models/Lease'
 import { computeBillingDay } from '@/lib/billing/billingDay'
 
+// API responses must always reflect live data — never prerender at build.
+export const dynamic = 'force-dynamic'
+
 const ANCHORS = new Set(['first_of_month', 'signup_day', 'custom_day'])
 
 export async function GET(req: NextRequest) {

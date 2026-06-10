@@ -5,6 +5,9 @@ import { connectDB } from '@/lib/db'
 import Lease from '@/models/Lease'
 import Payment from '@/models/Payment'
 
+// API responses must always reflect live data — never prerender at build.
+export const dynamic = 'force-dynamic'
+
 // GET /api/portal/balance
 // Returns the tenant's current period balance: monthlyRate minus succeeded payments this month.
 export async function GET() {

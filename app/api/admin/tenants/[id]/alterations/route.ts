@@ -4,6 +4,9 @@ import { authOptions } from '@/lib/auth'
 import { connectDB } from '@/lib/db'
 import TenantAlteration from '@/models/TenantAlteration'
 
+// API responses must always reflect live data — never prerender at build.
+export const dynamic = 'force-dynamic'
+
 // GET /api/admin/tenants/[id]/alterations
 // Storable's "Tenant Alterations" page. Returns all audit rows for the tenant,
 // newest first. Used to surface who added / removed a promotion, rate changes,

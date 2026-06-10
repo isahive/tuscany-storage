@@ -4,6 +4,9 @@ import { authOptions } from '@/lib/auth'
 import { connectDB } from '@/lib/db'
 import { getVerificationStatus, tenantKey } from '@/lib/paymentVerification'
 
+// API responses must always reflect live data — never prerender at build.
+export const dynamic = 'force-dynamic'
+
 // GET /api/portal/verification-status
 // Tells the portal payment form whether Cloudflare Turnstile should be
 // rendered before letting the tenant submit. Used to mirror Storable Easy's

@@ -7,6 +7,9 @@ import { parsePaginationParams } from '@/lib/utils'
 import WaitingList from '@/models/WaitingList'
 import { sendTemplatedNotification } from '@/lib/sendNotification'
 
+// API responses must always reflect live data — never prerender at build.
+export const dynamic = 'force-dynamic'
+
 export async function GET(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions)

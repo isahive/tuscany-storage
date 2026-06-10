@@ -7,6 +7,9 @@ import Lease from '@/models/Lease'
 import Unit from '@/models/Unit'
 import Payment from '@/models/Payment'
 
+// API responses must always reflect live data — never prerender at build.
+export const dynamic = 'force-dynamic'
+
 /**
  * GET /api/portal/dashboard
  *

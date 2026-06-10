@@ -8,6 +8,9 @@ import Tenant from '@/models/Tenant'
 import Settings from '@/models/Settings'
 import { buildTenantGroupFilter } from '@/lib/tenantGroupResolver'
 
+// API responses must always reflect live data — never prerender at build.
+export const dynamic = 'force-dynamic'
+
 export async function GET(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions)

@@ -5,6 +5,9 @@ import { connectDB } from '@/lib/db'
 import Lease from '@/models/Lease'
 import ProtectionPlan from '@/models/ProtectionPlan'
 
+// API responses must always reflect live data — never prerender at build.
+export const dynamic = 'force-dynamic'
+
 // GET /api/portal/protection-plan
 // Returns the tenant's current plan (from active lease) + all available plans.
 export async function GET() {
