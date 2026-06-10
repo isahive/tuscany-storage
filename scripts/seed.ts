@@ -49,7 +49,6 @@ async function seed() {
     depth: number
     sqft: number
     type: 'standard' | 'climate_controlled' | 'drive_up' | 'vehicle_outdoor'
-    floor: 'ground' | 'upper'
     price: number
     status: 'available' | 'occupied' | 'reserved' | 'maintenance'
     features: string[]
@@ -150,7 +149,6 @@ async function seed() {
         depth: spec.depth,
         sqft: spec.sqft,
         type: spec.type,
-        floor: 'ground',
         price: spec.price,
         status: i < spec.availableCount ? 'available' : 'occupied',
         features: spec.features,

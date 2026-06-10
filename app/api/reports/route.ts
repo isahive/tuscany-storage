@@ -512,7 +512,6 @@ export async function GET(req: NextRequest) {
           size: u.size,
           sqft: u.sqft,
           type: u.type,
-          floor: u.floor,
           price: u.price,
           status: u.status,
           features: (u.features || []).join(', '),
@@ -716,7 +715,6 @@ export async function GET(req: NextRequest) {
           size: u.size,
           sqft: u.sqft,
           type: u.type,
-          floor: u.floor,
           price: u.price,
           features: (u.features || []).join(', '),
         }))

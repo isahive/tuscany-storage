@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
     const status = req.nextUrl.searchParams.get('status') ?? undefined
 
     const units = await Unit.find()
-      .select('unitNumber size type floor price status currentTenantId')
+      .select('unitNumber size type price status currentTenantId')
       .sort({ unitNumber: 1 })
       .lean<Array<any>>()
 
@@ -83,7 +83,6 @@ export async function GET(req: NextRequest) {
         unitNumber: u.unitNumber,
         size: u.size,
         type: u.type,
-        floor: u.floor,
         price: u.price,
         rawStatus: u.status,
         displayStatus,

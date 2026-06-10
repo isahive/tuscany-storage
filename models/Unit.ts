@@ -1,5 +1,5 @@
 import mongoose, { Schema, Document, Types } from 'mongoose'
-import type { UnitType, UnitFloor, UnitStatus } from '@/types'
+import type { UnitType, UnitStatus } from '@/types'
 
 export interface IUnitDocument extends Document {
   unitNumber: string
@@ -8,7 +8,6 @@ export interface IUnitDocument extends Document {
   depth: number
   sqft: number
   type: UnitType
-  floor: UnitFloor
   price: number
   status: UnitStatus
   features: string[]
@@ -60,7 +59,6 @@ const UnitSchema = new Schema<IUnitDocument>(
       enum: ['standard', 'climate_controlled', 'drive_up', 'vehicle_outdoor'],
       required: true,
     },
-    floor: { type: String, enum: ['ground', 'upper'], required: true },
     price: { type: Number, required: true }, // cents
     status: {
       type: String,

@@ -37,7 +37,6 @@ interface UnitData {
   type: UnitType
   width: number
   depth: number
-  floor: 'ground' | 'upper'
   status: 'available' | 'occupied' | 'maintenance' | 'reserved'
   displayStatus: UnitDisplayStatus
   gridX?: number

@@ -34,7 +34,7 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import SaveIcon from '@mui/icons-material/Save'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
 import type { SelectChangeEvent } from '@mui/material'
-import type { Unit, UnitType, UnitFloor } from '@/types'
+import type { Unit, UnitType } from '@/types'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -61,7 +61,6 @@ const ALL_FEATURES = [
 interface FormState {
   unitNumber: string
   type: UnitType
-  floor: UnitFloor
   width: string
   depth: string
   priceDollars: string
@@ -80,7 +79,6 @@ function unitToForm(unit: Unit): FormState {
   return {
     unitNumber:   unit.unitNumber,
     type:         unit.type,
-    floor:        unit.floor,
     width:        String(unit.width),
     depth:        String(unit.depth),
     priceDollars: String(unit.price / 100),
@@ -113,7 +111,6 @@ function buildPatch(original: Unit, form: FormState): Record<string, unknown> {
 
   if (form.unitNumber.trim() !== original.unitNumber)  patch.unitNumber = form.unitNumber.trim()
   if (form.type  !== original.type)                    patch.type       = form.type
-  if (form.floor !== original.floor)                   patch.floor      = form.floor
   if (width !== original.width)                        patch.width      = width
   if (depth !== original.depth)                        patch.depth      = depth
   if (price !== original.price)                        patch.price      = price

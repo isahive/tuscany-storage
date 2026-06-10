@@ -6,7 +6,6 @@ export type TenantStatus = 'active' | 'delinquent' | 'locked_out' | 'moved_out'
 export type TenantRole = 'tenant' | 'admin'
 export type UnitStatus = 'available' | 'occupied' | 'maintenance' | 'reserved'
 export type UnitType = 'standard' | 'climate_controlled' | 'drive_up' | 'vehicle_outdoor'
-export type UnitFloor = 'ground' | 'upper'
 export type LeaseStatus = 'active' | 'ended' | 'pending_moveout'
 export type PaymentStatus = 'pending' | 'succeeded' | 'failed' | 'refunded' | 'voided'
 export type PaymentType = 'rent' | 'late_fee' | 'deposit' | 'prorated' | 'credit' | 'other'
@@ -72,7 +71,6 @@ export interface IUnit {
   depth: number
   sqft: number
   type: UnitType
-  floor: UnitFloor
   price: number
   status: UnitStatus
   features: string[]
@@ -186,7 +184,6 @@ export interface Unit {
   depth: number
   sqft: number
   type: UnitType
-  floor: UnitFloor
   price: number        // cents
   status: UnitStatus
   features: string[]

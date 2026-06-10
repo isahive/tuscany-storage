@@ -141,7 +141,6 @@ const createUnitSchema = z.object({
   width: z.number().positive(),
   depth: z.number().positive(),
   type: z.enum(['standard', 'climate_controlled', 'drive_up', 'vehicle_outdoor']),
-  floor: z.enum(['ground', 'upper']),
   price: z.number().int().positive(),
   features: z.array(z.string()).optional(),
   notes: z.string().optional(),

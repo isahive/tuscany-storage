@@ -33,7 +33,6 @@ interface PopulatedUnit {
   unitNumber: string
   size: string
   type: UnitType
-  floor: 'ground' | 'upper'
   price: number
   status: UnitStatus
   displayStatus: UnitDisplayStatus
@@ -161,7 +160,7 @@ export default function UnitDetailPage() {
             <div className="h-6 border-l border-gray-300" />
             <div>
               <h1 className="font-display text-2xl font-semibold text-olive-darker">Unit {unit.unitNumber}</h1>
-              <p className="text-xs text-gray-500">{TYPE_LABEL[unit.type]} · {unit.size} · {unit.floor === 'ground' ? 'Ground floor' : 'Upper floor'}</p>
+              <p className="text-xs text-gray-500">{TYPE_LABEL[unit.type]} · {unit.size}</p>
             </div>
             <span
               className="ml-1 inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold"
@@ -204,7 +203,6 @@ export default function UnitDetailPage() {
               <DetailRow label="Unit number" value={unit.unitNumber} />
               <DetailRow label="Size" value={unit.size} />
               <DetailRow label="Type" value={TYPE_LABEL[unit.type]} />
-              <DetailRow label="Floor" value={unit.floor === 'ground' ? 'Ground' : 'Upper'} />
               <DetailRow
                 label="Features"
                 value={

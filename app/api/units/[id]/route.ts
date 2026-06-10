@@ -98,7 +98,6 @@ const updateUnitSchema = z.object({
   width: z.number().positive().optional(),
   depth: z.number().positive().optional(),
   type: z.enum(['standard', 'climate_controlled', 'drive_up', 'vehicle_outdoor']).optional(),
-  floor: z.enum(['ground', 'upper']).optional(),
   price: z.number().int().positive().optional(),
   status: z.enum(['available', 'occupied', 'maintenance', 'reserved']).optional(),
   features: z.array(z.string()).optional(),

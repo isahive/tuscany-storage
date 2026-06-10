@@ -32,7 +32,6 @@ export async function makeUnit(opts: Partial<Record<string, unknown>> = {}) {
     width:      opts.width ?? 10,
     depth:      opts.depth ?? 10,
     sqft:       opts.sqft ?? 100,
-    floor:      opts.floor ?? 'ground',
     type:       opts.type ?? 'standard',
     price:      opts.price ?? 10000,
     monthlyRate: opts.monthlyRate ?? 10000,

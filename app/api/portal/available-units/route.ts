@@ -17,7 +17,7 @@ export async function GET() {
 
     const units = await Unit.find({ status: 'available' })
       .sort({ price: 1 })
-      .select('unitNumber size width depth sqft type floor price features')
+      .select('unitNumber size width depth sqft type price features')
       .lean()
 
     return NextResponse.json({
@@ -28,7 +28,6 @@ export async function GET() {
         size: u.size,
         sqft: u.sqft,
         type: u.type,
-        floor: u.floor,
         price: u.price,
         features: u.features ?? [],
       })),

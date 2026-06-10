@@ -21,7 +21,6 @@ interface Unit {
   size: string
   sqft: number
   type: string
-  floor: string
   price: number
   status: string
   features: string[]

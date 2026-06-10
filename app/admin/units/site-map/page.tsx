@@ -63,7 +63,6 @@ interface UnitData {
   width: number
   depth: number
   type: string
-  floor: string
   price: number
   status: string
   features: string[]

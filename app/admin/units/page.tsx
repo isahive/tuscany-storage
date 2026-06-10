@@ -36,7 +36,6 @@ interface UnitData {
   unitNumber: string
   size: string
   type: UnitType
-  floor: 'ground' | 'upper'
   price: number
   status: 'available' | 'occupied' | 'maintenance' | 'reserved'
   displayStatus: UnitDisplayStatus

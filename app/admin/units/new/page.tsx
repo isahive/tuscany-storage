@@ -27,7 +27,7 @@ import {
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import AddIcon from '@mui/icons-material/Add'
 import type { SelectChangeEvent } from '@mui/material'
-import type { UnitType, UnitFloor } from '@/types'
+import type { UnitType } from '@/types'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -54,7 +54,6 @@ const ALL_FEATURES = [
 interface FormState {
   unitNumber: string
   type: UnitType
-  floor: UnitFloor
   width: string
   depth: string
   priceDollars: string
@@ -72,7 +71,6 @@ interface FormErrors {
 const INITIAL_FORM: FormState = {
   unitNumber:   '',
   type:         'standard',
-  floor:        'ground',
   width:        '',
   depth:        '',
   priceDollars: '',
@@ -155,7 +153,6 @@ export default function NewUnitPage() {
     const payload = {
       unitNumber: form.unitNumber.trim(),
       type:       form.type,
-      floor:      form.floor,
       width,
       depth,
       size:       `${width}x${depth}`,

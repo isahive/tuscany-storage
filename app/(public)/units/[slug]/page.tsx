@@ -13,11 +13,6 @@ const TYPE_LABELS: Record<string, string> = {
   vehicle_outdoor: 'Vehicle Storage',
 }
 
-const FLOOR_LABELS: Record<string, string> = {
-  ground: 'Ground Floor',
-  upper: 'Upper Floor',
-}
-
 const formatMoney = (cents: number) =>
   new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(cents / 100)
 
@@ -27,7 +22,6 @@ interface Unit {
   size: string
   sqft: number
   type: string
-  floor: string
   price: number
   status: string
   features: string[]
@@ -84,7 +78,6 @@ export default function UnitDetailPage() {
 
   const imageUrl = unitImage(unit)
   const typeLabel = TYPE_LABELS[unit.type] ?? unit.type
-  const floorLabel = FLOOR_LABELS[unit.floor] ?? unit.floor
   const isAvailable = unit.status === 'available'
 
   return (
@@ -136,7 +129,7 @@ export default function UnitDetailPage() {
               Unit {unit.unitNumber}
             </h1>
             <p className="text-muted mb-6">
-              {unit.size} &middot; {unit.sqft} sq ft &middot; {floorLabel}
+              {unit.size} &middot; {unit.sqft} sq ft
             </p>
 
             <div className="bg-white rounded-lg border border-mid p-6 mb-6">
