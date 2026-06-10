@@ -1,5 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "regions": ["iad1"],
   "crons": [
     { "path": "/api/cron?job=generateInvoices", "schedule": "0 0 * * *" },
     { "path": "/api/cron?job=autopay", "schedule": "0 2 * * *" },
