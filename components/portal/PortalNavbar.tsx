@@ -9,6 +9,7 @@ import { signOut } from 'next-auth/react'
 const PORTAL_NAV = [
   { label: 'Dashboard',        href: '/portal' },
   { label: 'Recurring Billing', href: '/portal/billing' },
+  { label: 'Payment History',  href: '/portal/receipts' },
   // Rent Storage uses the same public listing — the reserve page detects the
   // logged-in session and pre-fills info / offers the saved card on file.
   { label: 'Rent Storage',     href: '/units' },
