@@ -22,7 +22,7 @@ import { POST as markDelinquent } from '@/app/api/admin/units/[id]/mark-delinque
 
 describe('GET /api/units/[id]', () => {
   beforeAll(async () => { await startTestDb() })
-  beforeEach(async () => { await clearTestDb() })
+  beforeEach(async () => { await clearTestDb(); vi.mocked(getServerSession).mockReset() })
   afterAll(async () => { await stopTestDb() })
 
   it('404s on unknown id', async () => {
@@ -30,12 +30,38 @@ describe('GET /api/units/[id]', () => {
     expect(res.status).toBe(404)
   })
 
-  it('returns the unit with computed displayStatus', async () => {
+  it('returns a sanitized public payload to unauthenticated callers', async () => {
     const u = await makeUnit({ unitNumber: 'X-1', status: 'available' })
     const res = await getUnit(makeRequest('GET', '') as any, { params: Promise.resolve({ id: u._id.toString() }) })
     expect(res.status).toBe(200)
     const json = await readJson<any>(res)
     expect(json.data.unitNumber).toBe('X-1')
+    expect(json.data.price).toBeDefined()
+    expect(json.data.status).toBe('available')
+    // Tenant/lease/payment state must never leak to the public
+    expect(json.data.currentTenantId).toBeUndefined()
+    expect(json.data.currentLeaseId).toBeUndefined()
+    expect(json.data.displayStatus).toBeUndefined()
+    expect(json.data.nextBillDate).toBeUndefined()
+    expect(json.data.leaseMonthlyRate).toBeUndefined()
+  })
+
+  it('never exposes tenant PII on occupied units to the public', async () => {
+    const { unit, tenant } = await makeRentedTenant()
+    const res = await getUnit(makeRequest('GET', '') as any, { params: Promise.resolve({ id: unit._id.toString() }) })
+    expect(res.status).toBe(200)
+    const body = JSON.stringify(await readJson<any>(res))
+    expect(body).not.toContain(tenant._id.toString())
+    expect(body).not.toContain(tenant.email)
+  })
+
+  it('returns the enriched unit with displayStatus for admins', async () => {
+    const u = await makeUnit({ unitNumber: 'X-2', status: 'available' })
+    vi.mocked(getServerSession).mockResolvedValueOnce(adminSession() as never)
+    const res = await getUnit(makeRequest('GET', '') as any, { params: Promise.resolve({ id: u._id.toString() }) })
+    expect(res.status).toBe(200)
+    const json = await readJson<any>(res)
+    expect(json.data.unitNumber).toBe('X-2')
     expect(json.data.displayStatus).toBe('available')
   })
 })

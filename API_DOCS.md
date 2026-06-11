@@ -449,8 +449,8 @@ NextAuth manages these routes automatically. They are listed here for reference.
 
 ### [GET] /api/units
 
-**Auth:** Public (no authentication required)
-**Description:** List units with optional filtering and pagination. Used for the public-facing unit availability view.
+**Auth:** Admin only
+**Description:** List units with optional filtering and pagination, enriched with tenant/lease-derived `displayStatus`. Public pages query the database server-side instead.
 
 **Query Parameters:**
 
@@ -499,6 +499,7 @@ NextAuth manages these routes automatically. They are listed here for reference.
 
 | Code | Description |
 |---|---|
+| 403 | Forbidden — not admin |
 | 500 | Internal server error |
 
 ---
@@ -559,8 +560,8 @@ NextAuth manages these routes automatically. They are listed here for reference.
 
 ### [GET] /api/units/:id
 
-**Auth:** Public
-**Description:** Get a single unit by ID. Populates `currentTenantId` and `currentLeaseId` references.
+**Auth:** Public (sanitized) / Admin (full)
+**Description:** Get a single unit by ID. Unauthenticated callers receive only public-safe fields (`unitNumber`, `size`, `sqft`, `width`, `depth`, `type`, `price`, `status`, `features`, `pricingOptions`, `reservationPrice`). Admins receive the full document with populated `currentTenantId` / `currentLeaseId`, `displayStatus`, and billing fields.
 
 **Path Parameters:**
 

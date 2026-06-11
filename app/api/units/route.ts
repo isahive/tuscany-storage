@@ -15,6 +15,14 @@ export const dynamic = 'force-dynamic'
 
 export async function GET(req: NextRequest) {
   try {
+    // Admin-only: the enriched payload includes tenant + lease + payment
+    // state. Public pages query the DB server-side or use /api/units/[id],
+    // which returns a sanitized subset for unauthenticated callers.
+    const session = await getServerSession(authOptions)
+    if (!session || session.user.role !== 'admin') {
+      return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 })
+    }
+
     await connectDB()
 
     const { searchParams } = req.nextUrl

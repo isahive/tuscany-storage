@@ -32,6 +32,7 @@ const ACTIVE_FONTS = 1
 // ▲▲▲ CHANGE THIS TO TEST DIFFERENT COMBOS ▲▲▲
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? 'https://tuscanystorage.com'),
   title: {
     default: 'Tuscany Village Self Storage | Caryville, TN',
     template: '%s | Tuscany Village Self Storage',
@@ -126,7 +127,7 @@ export default function RootLayout({
                   description: 'Office by appointment only',
                 },
               ],
-              image: 'https://tuscanystorage.com/images/facility.jpg',
+              image: 'https://tuscanystorage.com/images/hero/storage-aisle.png',
               priceRange: '$$',
               sameAs: ['https://tuscanystorage.com'],
               hasOfferCatalog: {

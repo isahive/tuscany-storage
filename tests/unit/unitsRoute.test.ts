@@ -2,15 +2,37 @@ import { describe, it, expect, beforeAll, beforeEach, afterAll, vi } from 'vites
 import { startTestDb, stopTestDb, clearTestDb } from '@/tests/helpers/db'
 import { makeUnit } from '@/tests/helpers/factories'
 import { makeRequest, readJson } from '@/tests/helpers/request'
+import { adminSession, tenantSession } from '@/tests/helpers/session'
 
+vi.mock('next-auth', async () => {
+  const actual = await vi.importActual<typeof import('next-auth')>('next-auth')
+  return { ...actual, getServerSession: vi.fn() }
+})
 vi.mock('@/lib/db', () => ({ connectDB: vi.fn(async () => undefined) }))
 
+import { getServerSession } from 'next-auth'
 import { GET as listUnits } from '@/app/api/units/route'
 
-describe('GET /api/units (public)', () => {
+describe('GET /api/units (admin only)', () => {
   beforeAll(async () => { await startTestDb() })
-  beforeEach(async () => { await clearTestDb() })
+  beforeEach(async () => {
+    await clearTestDb()
+    vi.mocked(getServerSession).mockReset()
+    vi.mocked(getServerSession).mockResolvedValue(adminSession() as never)
+  })
   afterAll(async () => { await stopTestDb() })
+
+  it('forbids unauthenticated callers', async () => {
+    vi.mocked(getServerSession).mockResolvedValue(null as never)
+    const res = await listUnits(makeRequest('GET', '/api/units') as any)
+    expect(res.status).toBe(403)
+  })
+
+  it('forbids non-admin tenants', async () => {
+    vi.mocked(getServerSession).mockResolvedValue(tenantSession('t') as never)
+    const res = await listUnits(makeRequest('GET', '/api/units') as any)
+    expect(res.status).toBe(403)
+  })
 
   it('returns all units with pagination metadata', async () => {
     await makeUnit({ unitNumber: 'A1', price: 5000 })

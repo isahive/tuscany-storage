@@ -17,11 +17,27 @@ interface RouteContext {
   params: Promise<{ id: string }>
 }
 
+// Fields safe to expose to unauthenticated visitors (public unit detail +
+// reserve pages). Everything tenant/lease/payment-related stays admin-only.
+const PUBLIC_UNIT_FIELDS =
+  '_id unitNumber size sqft width depth type price status features pricingOptions reservationPrice'
+
 export async function GET(_req: NextRequest, context: RouteContext) {
   try {
     const { id } = await context.params
 
     await connectDB()
+
+    const session = await getServerSession(authOptions)
+    const isAdmin = !!session && session.user.role === 'admin'
+
+    if (!isAdmin) {
+      const publicUnit = await Unit.findById(id).select(PUBLIC_UNIT_FIELDS).lean()
+      if (!publicUnit) {
+        return NextResponse.json({ success: false, error: 'Unit not found' }, { status: 404 })
+      }
+      return NextResponse.json({ success: true, data: publicUnit })
+    }
 
     const unit = await Unit.findById(id)
       .populate('currentTenantId')
