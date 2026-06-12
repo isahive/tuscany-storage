@@ -177,17 +177,19 @@ for (const b of blocks) {
   // the charge row stays, the void row offsets it with direction payment +
   // status voided) ──
   if (/^Void:?$/i.test(title)) {
-    const canceled = body.find((l) => /^Canceled /.test(l)) ?? ''
-    const amtTok = canceled.match(MONEY_RE)?.[0]
-    if (!amtTok) { unparsed.push(`${b.date} ${b.id} Void (no Canceled line)`); continue }
+    // A void can cancel several charges at once — one "Canceled $X of …"
+    // line each; the void's amount is their sum.
+    const canceledLines = body.filter((l) => /^Canceled /.test(l))
+    const amounts = canceledLines.map((l) => l.match(MONEY_RE)?.[0]).filter(Boolean) as string[]
+    if (!amounts.length) { unparsed.push(`${b.date} ${b.id} Void (no Canceled line)`); continue }
     const notes = body.find((l) => l.startsWith('Notes:'))?.replace('Notes:', '').trim()
     const balTok = [...moneyLines].reverse().find((l) => l.startsWith('VOID'))?.match(MONEY_RE)?.[0]
     parsed.push({
       date: b.date, storableId: b.id, kind: 'void', type: 'other', status: 'voided',
-      direction: 'payment', amount: cents(amtTok),
-      description: `Void — ${canceled}${notes ? ` — Notes: ${notes}` : ''}`,
+      direction: 'payment', amount: amounts.reduce((s, a) => s + cents(a), 0),
+      description: `Void — ${canceledLines.join('; ')}${notes ? ` — Notes: ${notes}` : ''}`,
       displayedBalance: balTok !== undefined ? cents(balTok) : undefined,
-      unitHints: unitHints(canceled),
+      unitHints: unitHints(canceledLines.join(' ')),
     })
     continue
   }
