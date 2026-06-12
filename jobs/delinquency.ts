@@ -146,12 +146,15 @@ export async function runDelinquency(): Promise<DelinquencyResult[]> {
         continue
       }
 
-      // Find last successful rent payment
+      // Find last successful rent payment. `direction: 'payment'` matters:
+      // rent CHARGE rows are also type 'rent' + status succeeded, and an
+      // unpaid invoice must not count as money received.
       const lastPayment = await Payment.findOne({
         tenantId: tenant._id,
         leaseId: lease._id,
         type: 'rent',
         status: 'succeeded',
+        direction: 'payment',
       }).sort({ periodStart: -1 })
 
       // Calculate days since billing date
@@ -162,15 +165,26 @@ export async function runDelinquency(): Promise<DelinquencyResult[]> {
       periodEnd.setMonth(periodEnd.getMonth() + 1)
 
       // Check if payment was made for the current billing period
-      const periodCovered = lastPayment && lastPayment.periodStart >= new Date(lastBillingDate.getFullYear(), lastBillingDate.getMonth(), 1)
+      const periodCovered = lastPayment?.periodStart && lastPayment.periodStart >= new Date(lastBillingDate.getFullYear(), lastBillingDate.getMonth(), 1)
 
-      if (periodCovered) {
+      // Nothing outstanding → not delinquent, whatever the payment rows look
+      // like. Imported billing histories don't always carry periodStart, and
+      // tenants with a credit on file were getting locked out spuriously.
+      const paidUp = (tenant.balance ?? 0) <= 0
+
+      if (periodCovered || paidUp) {
         // Payment received — restore to active if currently escalated. Also
         // notify the gate controller so the tenant regains access without
         // waiting for a manual gate-code refresh.
         if (tenant.status !== 'active') {
           const wasLockedOut = tenant.status === 'locked_out'
           await Tenant.findByIdAndUpdate(tenant._id, { status: 'active' })
+          // The lockout stamped an auction date — paying current cancels it.
+          if (lease.auctionDate || lease.auctionScheduledAt) {
+            await Lease.findByIdAndUpdate(lease._id, {
+              $unset: { auctionDate: 1, auctionScheduledAt: 1 },
+            })
+          }
           if (wasLockedOut) {
             await grantAccess(tenant, settings, 'payment_received')
             await syncTenantToPdkSafe(tenant._id)
@@ -198,6 +212,13 @@ export async function runDelinquency(): Promise<DelinquencyResult[]> {
             daysPastDue: 0,
           })
         }
+        continue
+      }
+
+      // A lease that started after the current billing date can't be late for
+      // it — brand-new move-ins were getting flagged for the pre-move-in
+      // period (move-in money is collected at move-in, not invoiced).
+      if (lease.startDate && lease.startDate > lastBillingDate) {
         continue
       }
 
