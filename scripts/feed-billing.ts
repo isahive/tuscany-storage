@@ -451,12 +451,16 @@ async function main() {
     const bd = freshLease!.billingDay
     const thisMonth = new Date(nowD.getFullYear(), nowD.getMonth(), Math.min(bd, 28))
     const lastBilling = thisMonth <= nowD ? thisMonth : new Date(nowD.getFullYear(), nowD.getMonth() - 1, bd)
+    // Mirror jobs/delinquency.ts exactly: payments only, and balance <= 0
+    // counts as current even without periodStart rows.
     const lastPayment = await db.collection('payments')
-      .find({ tenantId: tenant._id, leaseId: lease._id, type: 'rent', status: 'succeeded' })
+      .find({ tenantId: tenant._id, leaseId: lease._id, type: 'rent', status: 'succeeded', direction: 'payment' })
       .sort({ periodStart: -1 }).limit(1).next()
     const covered = lastPayment?.periodStart && lastPayment.periodStart >= new Date(lastBilling.getFullYear(), lastBilling.getMonth(), 1)
+    const paidUp = finalBalance <= 0
     const isCronLease = String(lease._id) === String(cronLease._id)
-    console.log(`Delinquency check Unit ${unit?.unitNumber}${isCronLease ? ' (lease the cron evaluates)' : ' (not evaluated by cron)'}: lastBilling=${lastBilling.toDateString()}, lastPayment.periodStart=${lastPayment?.periodStart?.toISOString()?.slice(0, 10) ?? 'NONE'} → ${covered ? 'covered ✔' : isCronLease ? '⚠ NOT COVERED — cron will escalate' : 'n/a'}`)
+    const verdict = covered ? 'covered ✔' : paidUp ? 'paid-up (balance ≤ 0) ✔' : isCronLease ? '⚠ NOT COVERED — cron will escalate' : 'n/a'
+    console.log(`Delinquency check Unit ${unit?.unitNumber}${isCronLease ? ' (lease the cron evaluates)' : ' (not evaluated by cron)'}: lastBilling=${lastBilling.toDateString()}, lastPayment.periodStart=${lastPayment?.periodStart?.toISOString()?.slice(0, 10) ?? 'NONE'} → ${verdict}`)
   }
 
   await mongoose.disconnect()
