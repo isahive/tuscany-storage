@@ -46,3 +46,8 @@ next-env.d.ts
 /public/fallback-*.js
 /public/sw.js.map
 /public/workbox-*.js.map
+
+# Customer billing-history data — contains PII, keep local only
+data/billing-history/raw/
+data/billing-history/*.json
+!data/billing-history/_example.json
