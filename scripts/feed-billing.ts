@@ -64,7 +64,7 @@ type RowStatus = 'pending' | 'succeeded' | 'failed' | 'refunded' | 'voided'
 interface ParsedRow {
   date: string
   storableId: string
-  kind: 'charge' | 'payment' | 'credit_grant' | 'credit_application' | 'refund'
+  kind: 'charge' | 'payment' | 'credit_grant' | 'credit_application' | 'refund' | 'void'
   type: RowType
   status: RowStatus
   direction: 'charge' | 'payment'
@@ -121,7 +121,8 @@ function extractPeriod(text: string): { periodStart?: string; periodEnd?: string
   return {}
 }
 function unitHints(text: string): string[] {
-  return [...text.matchAll(/Unit ([A-Za-z]?\d+[A-Za-z]?)\b/g)].map((m) => m[1])
+  // storEDGE writes both "Unit D13" and "for unit D13 rent"
+  return [...text.matchAll(/unit ([A-Za-z]?\d+[A-Za-z]?)\b/gi)].map((m) => m[1])
 }
 function chargeType(title: string, desc: string): RowType {
   if (/deposit/i.test(title)) return 'deposit'
@@ -171,6 +172,25 @@ for (const b of blocks) {
     continue
   }
 
+  // ── void block (cancels a posted charge; lib/paymentBalance convention:
+  // the charge row stays, the void row offsets it with direction payment +
+  // status voided) ──
+  if (/^Void:?$/i.test(title)) {
+    const canceled = body.find((l) => /^Canceled /.test(l)) ?? ''
+    const amtTok = canceled.match(MONEY_RE)?.[0]
+    if (!amtTok) { unparsed.push(`${b.date} ${b.id} Void (no Canceled line)`); continue }
+    const notes = body.find((l) => l.startsWith('Notes:'))?.replace('Notes:', '').trim()
+    const balTok = [...moneyLines].reverse().find((l) => l.startsWith('VOID'))?.match(MONEY_RE)?.[0]
+    parsed.push({
+      date: b.date, storableId: b.id, kind: 'void', type: 'other', status: 'voided',
+      direction: 'payment', amount: cents(amtTok),
+      description: `Void — ${canceled}${notes ? ` — Notes: ${notes}` : ''}`,
+      displayedBalance: balTok !== undefined ? cents(balTok) : undefined,
+      unitHints: unitHints(canceled),
+    })
+    continue
+  }
+
   // ── payment / credit transactions (amount in title) ──
   const titleAmt = title.match(MONEY_RE)?.[0]
   const isPayment = /payment by (.+?):/.test(title)
@@ -204,7 +224,8 @@ for (const b of blocks) {
     isPayment ? method : isGrant ? 'Credit without payment' : 'Credit applied',
     paidLines.join('; ') || undefined,
     notes ? `Notes: ${notes}` : undefined,
-    failed && message ? message : undefined,
+    // Keep non-trivial messages: decline reasons, money-order numbers, etc.
+    message && message !== 'Approved' ? message : undefined,
   ].filter(Boolean)
 
   // Period: prefer the first "Paid … period starting …" line (later refined to
@@ -248,7 +269,7 @@ const jsonPath = path.resolve('data/billing-history', `${slug}.json`)
 fs.writeFileSync(jsonPath, JSON.stringify({ email, finalBalance, rows: audit.map(({ unitHints: _u, kind: _k, ...r }) => r) }, null, 2))
 
 console.log(`Email          : ${email}`)
-console.log(`Blocks parsed  : ${parsed.length} (${rows.filter((r) => r.kind === 'charge').length} charges, ${rows.filter((r) => r.kind === 'payment').length} payments, ${rows.filter((r) => r.kind.startsWith('credit')).length} credits, ${rows.filter((r) => r.kind === 'refund').length} refunds)`)
+console.log(`Blocks parsed  : ${parsed.length} (${rows.filter((r) => r.kind === 'charge').length} charges, ${rows.filter((r) => r.kind === 'payment').length} payments, ${rows.filter((r) => r.kind.startsWith('credit')).length} credits, ${rows.filter((r) => r.kind === 'refund').length} refunds, ${rows.filter((r) => r.kind === 'void').length} voids)`)
 console.log(`Date range     : ${rows[0]?.date} → ${rows[rows.length - 1]?.date}`)
 console.log(`Final balance  : ${fmt(finalBalance)}`)
 console.log(`Audit JSON     : ${jsonPath}`)
