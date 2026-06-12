@@ -29,6 +29,7 @@
 import fs from 'fs'
 import path from 'path'
 import mongoose, { Types } from 'mongoose'
+import { balanceDelta } from '../lib/paymentBalance'
 
 const URI = process.env.MONGODB_URI
 if (!URI) { console.error('MONGODB_URI not set'); process.exit(1) }
@@ -335,10 +336,21 @@ async function main() {
     return
   }
 
-  // Wipe + bulk insert (timestamps staggered per day, paste order preserved)
+  // Wipe + bulk insert (timestamps staggered per day, paste order preserved).
+  //
+  // Credit APPLICATIONS are not imported: GET /api/tenants/[id]/balance is the
+  // app's source of truth and recomputes the balance from every row via
+  // balanceDelta, where any succeeded credit row subtracts. In storEDGE an
+  // application is allocation-only — the payment that added the credit already
+  // subtracted, and the prepaid invoice charge already adds — so importing the
+  // application row double-counts the credit (Bob Neland surfaced as -$290).
+  const importable = audit.filter((r) => r.kind !== 'credit_application')
+  if (importable.length < audit.length) {
+    console.log(`Skipping ${audit.length - importable.length} credit-application row(s) — allocation-only, already netted by invoice + credit rows.`)
+  }
   const importSource = `storable-historical:${slug}`
   const minuteWithinDay = new Map<string, number>()
-  const docs = audit.map((r) => {
+  const docs = importable.map((r) => {
     const idx = minuteWithinDay.get(r.date) ?? 0
     minuteWithinDay.set(r.date, idx + 1)
     const createdAt = new Date(parseUSDate(r.date).getTime() + idx * 60_000)
@@ -370,6 +382,19 @@ async function main() {
       updatedAt: createdAt,
     }
   })
+
+  // Guard: GET /api/tenants/[id]/balance recomputes from rows via
+  // balanceDelta and persists the result — our rows must reproduce the
+  // storEDGE final balance under that exact convention or the app will
+  // silently rewrite tenant.balance the first time someone opens the page.
+  const ledgerSum = docs.reduce(
+    (s, d) => s + balanceDelta({ direction: d.direction as 'charge' | 'payment', status: d.status as never, amount: d.amount }),
+    0,
+  )
+  if (ledgerSum !== finalBalance) {
+    console.error(`✘ Ledger mismatch: the app's recompute would give ${fmt(ledgerSum)} but storEDGE final is ${fmt(finalBalance)}. Refusing to apply.`)
+    process.exit(1)
+  }
 
   const wipe = await db.collection('payments').deleteMany({ tenantId: tenant._id })
   const ins = await db.collection('payments').insertMany(docs)

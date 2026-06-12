@@ -79,7 +79,8 @@ header lines (skipped). Block shapes understood:
 | Payment | `$250.00 payment by Visa ending in 7694:` | `direction: payment, type: rent`, succeeded |
 | Failed payment | `Message: Transaction declined…` or a `FAILED` line | same but `status: failed` |
 | Credit grant | `$260.00 credit without payment:` | `type: credit`, succeeded |
-| Credit application | `$45.00 credit:` + `Paid …` lines | `type: credit`, succeeded, **zero balance effect** |
+| Credit application | `$45.00 credit:` + `Paid …` lines | parsed + validated but **NOT imported** (see below) |
+| Void | `Void:` + `Canceled $X of …` | `direction: payment, status: voided` — offsets the kept charge row |
 | Refund | `3/31/2026  414336  $20.00 refund of Ach payment` | `direction: payment, status: refunded` |
 
 Per-row details extracted: `Due date:` → `dueDate`; `…period starting
@@ -92,9 +93,21 @@ M/D/YYYY` (prorated) → both; `Unit X` mentions → lease assignment.
 charge                  → balance += amount
 payment (succeeded)     → balance -= amount
 payment failed/refunded → no change
+void                    → balance -= amount   (offsets the canceled charge)
 credit grant            → balance -= amount   (creates the credit)
 credit application      → no change           (allocates existing credit to invoices)
 ```
+
+**Credit applications are validated but NOT inserted.** The app's source of
+truth is `GET /api/tenants/[id]/balance`, which recomputes the balance from
+every row via `lib/paymentBalance.balanceDelta` — where ANY succeeded credit
+row subtracts — and persists the result the moment someone opens the
+customer's page. A storEDGE application is allocation-only (the payment that
+added the credit already subtracted; the prepaid invoice charge already
+adds), so inserting it double-counts the credit. This surfaced as Bob Neland
+showing a phantom $290 credit. The feeder asserts before applying that its
+rows reproduce the storEDGE final balance under `balanceDelta` and refuses to
+write otherwise; `scripts/verify-ledger.ts` re-checks fed customers.
 
 `periodStart` **must** be present on rent payment rows — it's what the
 delinquency cron reads. The parser sets it automatically.
