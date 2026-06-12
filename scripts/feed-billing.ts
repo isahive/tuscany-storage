@@ -161,7 +161,11 @@ for (const b of blocks) {
   // ── invoice / charge ──
   if (/invoiced\.?$/i.test(title)) {
     const dueDate = body.find((l) => l.startsWith('Due date:'))?.replace('Due date:', '').trim()
-    const desc = body.find((l) => !l.startsWith('Due date:') && !(l.match(MONEY_RE) || []).length) ?? title
+    // The description may legitimately contain money ("Promotional savings of
+    // $62.50 applied.") — only skip lines that are NOTHING BUT money tokens
+    // (the amount/balance pair line).
+    const isMoneyOnly = (l: string) => l.replace(MONEY_RE, '').trim() === ''
+    const desc = body.find((l) => !l.startsWith('Due date:') && !isMoneyOnly(l)) ?? title
     const pair = [...((body.find((l) => (l.match(MONEY_RE) || []).length >= 2) ?? '').match(MONEY_RE) || [])]
     if (pair.length < 2) { unparsed.push(`${b.date} ${b.id} ${title} (no amount/balance pair)`); continue }
     parsed.push({
@@ -319,10 +323,23 @@ async function main() {
     const promo = latestRent ? cents(latestRent.description.match(/Promotional savings of (-?\$[\d,]+\.\d{2})/)?.[1] ?? '$0.00') : 0
     const deposit = unitRows.find((r) => r.kind === 'charge' && r.type === 'deposit')
     const firstRow = unitRows[0]
+
+    let billingDay = latestRent ? Math.min(parseUSDate(latestRent.periodStart!).getUTCDate(), 28) : undefined
+    // Fresh move-ins: the only full-rent charge starts on the move-in day,
+    // but a LATER prorated stub bridging to the next cycle reveals the real
+    // billing day (the day after the stub ends, e.g. 6/30 stub → bills the 1st).
+    const proratedCharges = unitRows.filter((r) => r.kind === 'charge' && r.type === 'prorated' && r.periodStart && r.periodEnd)
+    const latestProrated = proratedCharges[proratedCharges.length - 1]
+    if (latestRent && latestProrated
+      && parseUSDate(latestProrated.periodStart!).getTime() > parseUSDate(latestRent.periodStart!).getTime()) {
+      const nextCycle = new Date(parseUSDate(latestProrated.periodEnd!).getTime() + 24 * 3600 * 1000)
+      billingDay = Math.min(nextCycle.getUTCDate(), 28)
+    }
+
     return {
       lease, unitNumber: un,
       monthlyRate: latestRent ? latestRent.amount + promo : undefined,
-      billingDay: latestRent ? Math.min(parseUSDate(latestRent.periodStart!).getUTCDate(), 28) : undefined,
+      billingDay,
       startDate: firstRow ? parseUSDate(firstRow.date) : undefined,
       deposit: deposit?.amount,
     }
