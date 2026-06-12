@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useEffect, useCallback } from 'react'
+import { Suspense, useState, useMemo, useEffect, useCallback } from 'react'
 import {
   Box,
   Button,
@@ -16,16 +16,16 @@ import {
   Typography,
   CircularProgress,
 } from '@mui/material'
-import { DataGrid, GridColDef, GridRenderCellParams } from '@mui/x-data-grid'
+import { DataGrid, GridColDef, GridPaginationModel, GridRenderCellParams } from '@mui/x-data-grid'
 import SearchIcon from '@mui/icons-material/Search'
 import AddIcon from '@mui/icons-material/Add'
 import DownloadIcon from '@mui/icons-material/Download'
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf'
 import GroupIcon from '@mui/icons-material/Group'
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { formatMoney, formatCustomerName, customerSortKey, type CustomerNameFormat } from '@/lib/utils'
 import type { TenantStatus } from '@/types'
-import { TENANT_GROUPS, type TenantGroupId } from '@/lib/tenantGroups'
+import { TENANT_GROUPS, isValidTenantGroup, type TenantGroupId } from '@/lib/tenantGroups'
 
 // ── Row type ─────────────────────────────────────────────────────────────────
 
@@ -135,13 +135,69 @@ function escapeHTML(s: string): string {
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
-export default function TenantsPage() {
+const PAGE_SIZE_OPTIONS = [25, 50, 100]
+const DEFAULT_PAGE_SIZE = 25
+// localStorage key for the last-used group/page-size, restored when the page
+// is opened without URL params (e.g. from the sidebar link).
+const LIST_PREFS_KEY = 'tenants-list-prefs'
+
+function TenantsPageInner() {
   const router = useRouter()
-  const [search, setSearch] = useState('')
-  const [groupFilter, setGroupFilter] = useState<TenantGroupId>('all')
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+
+  const [search, setSearch] = useState(() => searchParams.get('q') ?? '')
+  const [groupFilter, setGroupFilter] = useState<TenantGroupId>(() => {
+    const g = searchParams.get('group')
+    return g && isValidTenantGroup(g) ? g : 'all'
+  })
+  const [paginationModel, setPaginationModel] = useState<GridPaginationModel>(() => {
+    const pageSize = Number(searchParams.get('pageSize'))
+    const page = Number(searchParams.get('page'))
+    return {
+      pageSize: PAGE_SIZE_OPTIONS.includes(pageSize) ? pageSize : DEFAULT_PAGE_SIZE,
+      page: Number.isInteger(page) && page > 1 ? page - 1 : 0,
+    }
+  })
   const [rows, setRows] = useState<TenantRow[]>([])
   const [loading, setLoading] = useState(true)
   const [nameFormat, setNameFormat] = useState<CustomerNameFormat>('last_first')
+
+  useEffect(() => {
+    if (searchParams.toString()) return
+    try {
+      const saved = JSON.parse(localStorage.getItem(LIST_PREFS_KEY) ?? '{}')
+      if (typeof saved.group === 'string' && isValidTenantGroup(saved.group)) {
+        setGroupFilter(saved.group)
+      }
+      if (PAGE_SIZE_OPTIONS.includes(saved.pageSize)) {
+        setPaginationModel((m) => ({ ...m, pageSize: saved.pageSize }))
+      }
+    } catch {
+      // ignore
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Keep the selection in the URL so it survives refresh and back-navigation,
+  // and remember group/page-size as the default for the next visit.
+  useEffect(() => {
+    const params = new URLSearchParams()
+    if (search) params.set('q', search)
+    if (groupFilter !== 'all') params.set('group', groupFilter)
+    if (paginationModel.pageSize !== DEFAULT_PAGE_SIZE) params.set('pageSize', String(paginationModel.pageSize))
+    if (paginationModel.page > 0) params.set('page', String(paginationModel.page + 1))
+    const qs = params.toString()
+    window.history.replaceState(null, '', qs ? `${pathname}?${qs}` : pathname)
+    try {
+      localStorage.setItem(LIST_PREFS_KEY, JSON.stringify({
+        group: groupFilter,
+        pageSize: paginationModel.pageSize,
+      }))
+    } catch {
+      // ignore
+    }
+  }, [search, groupFilter, paginationModel, pathname])
 
   useEffect(() => {
     fetch('/api/settings')
@@ -402,7 +458,10 @@ export default function TenantsPage() {
               placeholder="Search by name, unit, email, or phone..."
               size="small"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                setSearch(e.target.value)
+                setPaginationModel((m) => ({ ...m, page: 0 }))
+              }}
               sx={{ flex: 1, minWidth: 240 }}
               InputProps={{
                 startAdornment: (
@@ -417,7 +476,10 @@ export default function TenantsPage() {
               <Select
                 label="Group"
                 value={groupFilter}
-                onChange={(e) => setGroupFilter(e.target.value as TenantGroupId)}
+                onChange={(e) => {
+                  setGroupFilter(e.target.value as TenantGroupId)
+                  setPaginationModel((m) => ({ ...m, page: 0 }))
+                }}
               >
                 {TENANT_GROUPS.map((g) => (
                   <MenuItem key={g.id} value={g.id}>{g.label}</MenuItem>
@@ -439,8 +501,9 @@ export default function TenantsPage() {
             rows={filtered}
             columns={columns}
             rowHeight={48}
-            pageSizeOptions={[25, 50, 100]}
-            initialState={{ pagination: { paginationModel: { pageSize: 25 } } }}
+            pageSizeOptions={PAGE_SIZE_OPTIONS}
+            paginationModel={paginationModel}
+            onPaginationModelChange={setPaginationModel}
             disableRowSelectionOnClick
             sx={{
               border: 'none',
@@ -464,5 +527,19 @@ export default function TenantsPage() {
         )}
       </Card>
     </Box>
+  )
+}
+
+export default function TenantsPage() {
+  return (
+    <Suspense
+      fallback={
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
+          <CircularProgress size={32} sx={{ color: '#8CA87C' }} />
+        </Box>
+      }
+    >
+      <TenantsPageInner />
+    </Suspense>
   )
 }
