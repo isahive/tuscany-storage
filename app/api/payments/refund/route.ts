@@ -122,11 +122,16 @@ export async function POST(req: NextRequest) {
     if (reason && reason.trim()) descParts.push(reason.trim())
     const refundDescription = descParts.join(' — ')
 
+    // The ledger effect of a refund is +refundAmount: the original payment
+    // row's amount was just reduced, so it subtracts less on recompute. The
+    // refund row itself contributes 0 (see balanceDelta), and reverting line
+    // items only flips their status back to pending — charges count toward
+    // the balance regardless of status, so the flips are display-only.
     const balanceAfter = await nextBalanceAfter(Payment, payment.tenantId, {
       direction: 'payment',
       status: 'refunded',
       amount: refundAmountCents,
-    }) + revertedAmountCents
+    }) + refundAmountCents
 
     const refundRow = await Payment.create({
       tenantId: payment.tenantId,
@@ -147,16 +152,16 @@ export async function POST(req: NextRequest) {
     })
 
     // ── Update tenant balance + status ──
-    // Refund row itself contributes 0 to balance (see balanceDelta), but
-    // any reverted line items add their amount back.
-    if (revertedAmountCents > 0) {
-      const { syncTenantStatusFromBalance } = await import('@/lib/tenantStatus')
-      const refundedTenant = await Tenant.findById(payment.tenantId)
-      if (refundedTenant) {
-        refundedTenant.balance = (refundedTenant.balance ?? 0) + revertedAmountCents
-        syncTenantStatusFromBalance(refundedTenant)
-        await refundedTenant.save()
-      }
+    // Mirror the ledger: +refundAmount, whether or not line items were
+    // reverted. (It used to add only the reverted amount, so refunding
+    // without reverting items left tenant.balance lagging the recompute
+    // until the balance route self-healed it.)
+    const { syncTenantStatusFromBalance } = await import('@/lib/tenantStatus')
+    const refundedTenant = await Tenant.findById(payment.tenantId)
+    if (refundedTenant) {
+      refundedTenant.balance = (refundedTenant.balance ?? 0) + refundAmountCents
+      syncTenantStatusFromBalance(refundedTenant)
+      await refundedTenant.save()
     }
 
     return NextResponse.json({

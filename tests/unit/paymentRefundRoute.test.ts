@@ -12,7 +12,18 @@ vi.mock('next-auth', async () => {
 vi.mock('@/lib/db', () => ({ connectDB: vi.fn(async () => undefined) }))
 
 import { getServerSession } from 'next-auth'
+import Tenant from '@/models/Tenant'
+import { balanceDelta } from '@/lib/paymentBalance'
 import { POST as refund } from '@/app/api/payments/refund/route'
+
+/** The app's source-of-truth recompute (GET /api/tenants/[id]/balance). */
+async function ledgerRecompute(tenantId: string): Promise<number> {
+  const rows = await Payment.find({ tenantId }).sort({ createdAt: 1, _id: 1 }).lean()
+  return rows.reduce(
+    (s, r: any) => s + balanceDelta({ direction: r.direction ?? 'charge', status: r.status, amount: r.amount }),
+    0,
+  )
+}
 
 async function pendingChargeAndPaidPayment(tenantId: string, leaseId: string, unitId: string, amount = 10000) {
   const charge = await Payment.create({
@@ -111,5 +122,43 @@ describe('POST /api/payments/refund', () => {
       status: 'refunded',
     })
     expect(refundRow).not.toBeNull()
+  })
+
+  it('refund WITHOUT reverted line items still raises tenant.balance by the refund amount, in sync with the ledger', async () => {
+    const { tenant, lease, unit } = await makeRentedTenant()
+    const { payment } = await pendingChargeAndPaidPayment(
+      tenant._id.toString(), lease._id.toString(), unit._id.toString(), 10000,
+    )
+    vi.mocked(getServerSession).mockResolvedValueOnce(adminSession() as never)
+    const res = await refund(makeRequest('POST', '', {
+      paymentId: payment._id.toString(),
+      method: 'cash',
+    }))
+    expect(res.status).toBe(200)
+
+    const updated = await Tenant.findById(tenant._id)
+    expect(updated!.balance).toBe(10000)
+    expect(await ledgerRecompute(tenant._id.toString())).toBe(updated!.balance)
+  })
+
+  it('refund WITH reverted line items flips them to pending and still moves the balance by the refund amount only', async () => {
+    const { tenant, lease, unit } = await makeRentedTenant()
+    const { charge, payment } = await pendingChargeAndPaidPayment(
+      tenant._id.toString(), lease._id.toString(), unit._id.toString(), 10000,
+    )
+    vi.mocked(getServerSession).mockResolvedValueOnce(adminSession() as never)
+    const res = await refund(makeRequest('POST', '', {
+      paymentId: payment._id.toString(),
+      method: 'cash',
+      lineItemIds: [charge._id.toString()],
+    }))
+    expect(res.status).toBe(200)
+
+    const revertedCharge = await Payment.findById(charge._id)
+    expect(revertedCharge!.status).toBe('pending')
+
+    const updated = await Tenant.findById(tenant._id)
+    expect(updated!.balance).toBe(10000)
+    expect(await ledgerRecompute(tenant._id.toString())).toBe(updated!.balance)
   })
 })

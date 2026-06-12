@@ -2,7 +2,12 @@ import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'vitest'
 import { startTestDb, stopTestDb, clearTestDb } from '@/tests/helpers/db'
 import VisitorAccess from '@/models/VisitorAccess'
 
-beforeAll(async () => { await startTestDb() })
+beforeAll(async () => {
+  await startTestDb()
+  // Mongoose builds indexes in the background; the unique-active-PIN test
+  // races the partial index unless we wait for the build to finish.
+  await VisitorAccess.init()
+})
 afterAll(async () => { await stopTestDb() })
 beforeEach(async () => { await clearTestDb() })
 
