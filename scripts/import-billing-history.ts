@@ -32,6 +32,11 @@ type Row = {
   direction: 'charge' | 'payment'
   amount: number
   description: string
+  // Optional billing period (US dates). Set these on rent rows — the
+  // delinquency cron decides "period covered" from Payment.periodStart, so
+  // rent rows imported without it get flagged late/locked out spuriously.
+  periodStart?: string
+  periodEnd?: string
 }
 
 type File = {
@@ -129,6 +134,8 @@ async function main() {
       lastAttemptAt: createdAt,
       description: r.description,
       importSource,
+      ...(r.periodStart ? { periodStart: parseUSDate(r.periodStart) } : {}),
+      ...(r.periodEnd ? { periodEnd: parseUSDate(r.periodEnd) } : {}),
       createdAt,
       updatedAt: createdAt,
     }
