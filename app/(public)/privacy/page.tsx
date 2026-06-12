@@ -15,7 +15,7 @@ export default function PrivacyPolicyPage() {
           <h1 className="font-serif text-4xl font-bold text-cream sm:text-5xl">
             Privacy Policy
           </h1>
-          <p className="mt-4 text-cream/60">Last updated: April 13, 2026</p>
+          <p className="mt-4 text-cream/60">Last updated: June 12, 2026</p>
         </div>
       </section>
 
@@ -25,7 +25,7 @@ export default function PrivacyPolicyPage() {
           <div className="space-y-10 text-brown leading-relaxed">
             <div>
               <p>
-                Tuscany Village Self Storage (&quot;we,&quot; &quot;us,&quot; or &quot;our&quot;)
+                Tuscany Village Self Storage (&ldquo;we,&rdquo; &ldquo;us,&rdquo; or &ldquo;our&rdquo;)
                 operates the website at tuscanystorage.com and the associated tenant portal. This
                 Privacy Policy explains how we collect, use, disclose, and safeguard your information
                 when you visit our website or use our services.
@@ -66,6 +66,37 @@ export default function PrivacyPolicyPage() {
                 <li>Comply with legal obligations, including Tennessee lien laws</li>
                 <li>Improve our website and services</li>
               </ul>
+            </div>
+
+            <div>
+              <h2 className="font-serif text-2xl font-bold text-brown mb-4">
+                SMS / Text Messaging
+              </h2>
+              <p className="mb-3">
+                By providing your mobile phone number when you reserve or rent a unit, create an
+                account, or otherwise communicate with us, you consent to receive text messages
+                from Tuscany Village Self Storage related to your account. These messages may
+                include payment reminders, billing notices, gate access information, move-in and
+                move-out updates, and other account or service notifications. We will only send
+                you marketing or promotional text messages if you have separately opted in to
+                receive them.
+              </p>
+              <ul className="list-disc pl-6 space-y-2 text-muted">
+                <li>Message frequency varies based on your account activity.</li>
+                <li>Message and data rates may apply.</li>
+                <li>
+                  You can opt out at any time by replying <span className="font-semibold text-brown">STOP</span>{' '}
+                  to any message. Reply <span className="font-semibold text-brown">HELP</span> for help, or
+                  contact us using the information at the bottom of this page.
+                </li>
+                <li>Consent to receive text messages is not a condition of renting a unit.</li>
+              </ul>
+              <p className="mt-3">
+                No mobile information will be shared with third parties or affiliates for
+                marketing or promotional purposes. All the above categories exclude text messaging
+                originator opt-in data and consent; this information will not be shared with any
+                third parties.
+              </p>
             </div>
 
             <div>
@@ -112,6 +143,19 @@ export default function PrivacyPolicyPage() {
                   .
                 </li>
                 <li>
+                  <span className="font-semibold text-brown">Twilio</span> — for sending text
+                  message notifications. Twilio&apos;s privacy policy is available at{' '}
+                  <a
+                    href="https://www.twilio.com/en-us/legal/privacy"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-tan hover:underline"
+                  >
+                    twilio.com/legal/privacy
+                  </a>
+                  .
+                </li>
+                <li>
                   <span className="font-semibold text-brown">Vercel</span> — for website hosting
                   and analytics.
                 </li>
@@ -146,8 +190,8 @@ export default function PrivacyPolicyPage() {
               </h2>
               <p>
                 We may update this Privacy Policy from time to time. We will notify you of any
-                changes by posting the new policy on this page and updating the &quot;Last
-                updated&quot; date.
+                changes by posting the new policy on this page and updating the &ldquo;Last
+                updated&rdquo; date.
               </p>
             </div>
 
