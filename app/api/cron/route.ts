@@ -68,6 +68,15 @@ const JOBS = {
 
 type JobName = keyof typeof JOBS
 
+// ── Pre-launch pause ─────────────────────────────────────────────────────────
+// Jobs listed here stay scheduled but no-op when invoked. `delinquency` is
+// paused during pre-launch data prep: running it against an incomplete billing
+// ledger was locking out / auction-flagging tenants and generating spurious
+// "Past Due Fee" rows. REMOVE 'delinquency' here before go-live, after the
+// ledger recompute + cron balance-sync fix land. See memory:
+// project-prelaunch-not-in-use.
+const PAUSED_JOBS = new Set<JobName>(['delinquency'])
+
 // Vercel function limit for the heavy sweeps (delinquency, invoices) —
 // requires Fluid compute, which allows up to 300s on all plans.
 export const maxDuration = 300
@@ -84,6 +93,10 @@ async function runJob(name: JobName | undefined) {
       { success: false, error: `Unknown job. Valid: ${Object.keys(JOBS).join(', ')}` },
       { status: 400 },
     )
+  }
+
+  if (PAUSED_JOBS.has(name)) {
+    return NextResponse.json({ success: true, data: { job: name, result: { skipped: 'paused' } } })
   }
 
   try {
