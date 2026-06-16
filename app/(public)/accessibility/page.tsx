@@ -15,7 +15,7 @@ export default function AccessibilityStatementPage() {
           <h1 className="font-serif text-4xl font-bold text-cream sm:text-5xl">
             Accessibility Statement
           </h1>
-          <p className="mt-4 text-cream/60">Last reviewed: [LAST_REVIEWED_DATE]</p>
+          <p className="mt-4 text-cream/60">Last reviewed: June 16, 2026</p>
         </div>
       </section>
 
@@ -26,7 +26,7 @@ export default function AccessibilityStatementPage() {
             <div>
               <h2 className="font-serif text-2xl font-bold text-brown mb-4">Our Commitment</h2>
               <p>
-                [LEGAL_ENTITY_NAME], doing business as Tuscany Village Self Storage
+                Tuscany Village Self-Storage Inc., doing business as Tuscany Village Self Storage
                 (&ldquo;we,&rdquo; &ldquo;us,&rdquo; or &ldquo;our&rdquo;), is committed to ensuring
                 digital accessibility for people with disabilities. We believe everyone should be
                 able to reserve a unit, manage their account, and access information about our
@@ -85,21 +85,21 @@ export default function AccessibilityStatementPage() {
               <ul className="mt-3 space-y-1 text-muted">
                 <li>
                   Email:{' '}
-                  <a href="mailto:[CONTACT_EMAIL]" className="text-tan hover:underline">
-                    [CONTACT_EMAIL]
+                  <a href="mailto:tuscanystorage@gmail.com" className="text-tan hover:underline">
+                    tuscanystorage@gmail.com
                   </a>
                 </li>
                 <li>
                   Phone:{' '}
-                  <a href="tel:[PHONE]" className="text-tan hover:underline">
-                    [PHONE]
+                  <a href="tel:+18654262100" className="text-tan hover:underline">
+                    (865) 426-2100
                   </a>
                 </li>
               </ul>
               <p className="mt-3">
                 When reporting an issue, please include the web address (URL) of the page and a
                 description of the problem so we can reproduce it. We aim to respond to accessibility
-                feedback within [RESPONSE_DAYS] business days.
+                feedback within 5 business days.
               </p>
             </div>
 
@@ -130,11 +130,7 @@ export default function AccessibilityStatementPage() {
                 us if you encounter an issue that is not listed here.
               </p>
               <ul className="list-disc pl-6 space-y-2 text-muted">
-                <li>
-                  [Describe any known accessibility limitations here, or state &ldquo;No known
-                  limitations at this time.&rdquo; Update this section as issues are identified and
-                  resolved.]
-                </li>
+                <li>No known limitations at this time.</li>
               </ul>
             </div>
 
@@ -148,17 +144,13 @@ export default function AccessibilityStatementPage() {
                   Self-evaluation, including automated testing with axe-core and manual checks for
                   keyboard navigation, heading structure, and color contrast
                 </li>
-                <li>
-                  [If a third-party accessibility audit has been performed, describe the evaluator
-                  and date here; otherwise remove this line.]
-                </li>
               </ul>
             </div>
 
             <div>
               <h2 className="font-serif text-2xl font-bold text-brown mb-4">Date</h2>
               <p>
-                This statement was last reviewed on [LAST_REVIEWED_DATE]. We review and update it
+                This statement was last reviewed on June 16, 2026. We review and update it
                 periodically as our website and accessibility practices evolve.
               </p>
             </div>
