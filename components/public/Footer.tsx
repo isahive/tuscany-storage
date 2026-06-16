@@ -101,12 +101,15 @@ export default function Footer() {
       <div className="border-t border-white/20">
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-2 px-4 py-5 text-sm text-white/70 sm:flex-row sm:px-6 lg:px-8">
           <p>© {new Date().getFullYear()} Tuscany Village Self Storage. All rights reserved.</p>
-          <div className="flex gap-6">
+          <div className="flex flex-wrap justify-center gap-6">
             <Link href="/privacy" className="underline-offset-2 hover:text-white hover:underline">
               Privacy Policy
             </Link>
             <Link href="/terms" className="underline-offset-2 hover:text-white hover:underline">
               Terms of Service
+            </Link>
+            <Link href="/accessibility" className="underline-offset-2 hover:text-white hover:underline">
+              Accessibility
             </Link>
           </div>
         </div>
