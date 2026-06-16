@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useEffect } from 'react'
 import {
   Alert,
   Box,
@@ -31,6 +31,7 @@ import PersonAddIcon from '@mui/icons-material/PersonAdd'
 import HourglassEmptyIcon from '@mui/icons-material/HourglassEmpty'
 import MarkEmailReadIcon from '@mui/icons-material/MarkEmailRead'
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz'
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
 import { formatDate } from '@/lib/utils'
 import type { WaitingListStatus } from '@/types'
 
@@ -50,7 +51,7 @@ const STATUS_LABELS: Record<WaitingListStatus, string> = {
   expired:   'Expired',
 }
 
-// ── Mock data ─────────────────────────────────────────────────────────────────
+// ── Row type ──────────────────────────────────────────────────────────────────
 
 interface WaitingListRow {
   id: string
@@ -65,17 +66,6 @@ interface WaitingListRow {
   notifiedAt?: string
   createdAt: string
 }
-
-const INITIAL_DATA: WaitingListRow[] = [
-  { id: '1',  name: 'Jessica Rivera',  email: 'j.rivera@email.com',  phone: '(512) 555-0201', preferredSize: '10x10', preferredType: 'Climate Controlled', desiredMoveInDate: '2026-05-01', status: 'waiting',   createdAt: '2026-03-12' },
-  { id: '2',  name: 'Thomas Wright',   email: 't.wright@email.com',  phone: '(512) 555-0202', preferredSize: '10x20', preferredType: 'Drive-Up',           desiredMoveInDate: '2026-04-15', status: 'notified',  notifiedAt: '2026-04-01', createdAt: '2026-02-28' },
-  { id: '3',  name: 'Hannah Lee',      email: 'h.lee@email.com',     phone: '(512) 555-0203', preferredSize: '5x10',  preferredType: 'Standard',           desiredMoveInDate: '2026-04-20', status: 'waiting',   createdAt: '2026-03-18' },
-  { id: '4',  name: 'Marcus Johnson',  email: 'm.johnson@email.com', phone: '(512) 555-0204', preferredSize: '10x15', preferredType: 'Climate Controlled', desiredMoveInDate: '2026-04-10', status: 'converted', createdAt: '2026-01-15' },
-  { id: '5',  name: 'Olivia Chen',     email: 'o.chen@email.com',    phone: '(512) 555-0205', preferredSize: '10x10', preferredType: 'Standard',           desiredMoveInDate: '2026-05-15', status: 'waiting',   createdAt: '2026-03-22' },
-  { id: '6',  name: 'Daniel Brooks',   email: 'd.brooks@email.com',  phone: '(512) 555-0206', preferredSize: '10x30', preferredType: 'Drive-Up',           desiredMoveInDate: '2026-03-01', status: 'expired',   createdAt: '2025-12-10' },
-  { id: '7',  name: 'Sophia Martinez', email: 's.martinez@email.com',phone: '(512) 555-0207', preferredSize: '5x5',   preferredType: 'Standard',           desiredMoveInDate: '2026-06-01', status: 'waiting',   createdAt: '2026-03-30' },
-  { id: '8',  name: 'Ethan Patel',     email: 'e.patel@email.com',   phone: '(512) 555-0208', preferredSize: '10x20', preferredType: 'Climate Controlled', desiredMoveInDate: '2026-04-25', status: 'notified',  notifiedAt: '2026-04-03', createdAt: '2026-02-20' },
-]
 
 // ── Convert-to-tenant dialog ─────────────────────────────────────────────────
 
@@ -292,7 +282,8 @@ function SummaryCard({ title, count, icon, bgColor, textColor }: SummaryCardProp
 type StatusFilter = WaitingListStatus | 'all'
 
 export default function WaitingListPage() {
-  const [rows, setRows] = useState<WaitingListRow[]>(INITIAL_DATA)
+  const [rows, setRows] = useState<WaitingListRow[]>([])
+  const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [convertDialogOpen, setConvertDialogOpen] = useState(false)
@@ -302,6 +293,40 @@ export default function WaitingListPage() {
     message: '',
     severity: 'success',
   })
+
+  // ── Load from the backend (waitinglists collection) ──────────────────────────
+
+  const loadEntries = useCallback(async () => {
+    setLoading(true)
+    try {
+      const res = await fetch('/api/waiting-list?limit=100')
+      const json = await res.json()
+      if (json?.success) {
+        const mapped: WaitingListRow[] = (json.data?.items ?? []).map((w: any) => ({
+          id: String(w._id),
+          name: w.name ?? '',
+          email: w.email ?? '',
+          phone: w.phone ?? '',
+          preferredSize: w.preferredSize ?? '',
+          preferredType: w.preferredType ?? '',
+          desiredMoveInDate: w.desiredMoveInDate ?? '',
+          status: w.status as WaitingListStatus,
+          notes: w.notes,
+          notifiedAt: w.notifiedAt,
+          createdAt: w.createdAt ?? '',
+        }))
+        setRows(mapped)
+      }
+    } catch {
+      // leave the list empty on failure
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    loadEntries()
+  }, [loadEntries])
 
   // ── Counts ──────────────────────────────────────────────────────────────────
 
@@ -401,6 +426,25 @@ export default function WaitingListPage() {
     setConvertDialogOpen(true)
   }, [])
 
+  const handleDelete = useCallback(async (entryId: string) => {
+    if (!window.confirm('Delete this waiting list entry? This cannot be undone.')) return
+    try {
+      const res = await fetch(`/api/waiting-list/${entryId}`, { method: 'DELETE' })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok || !json?.success) {
+        throw new Error(json?.error || 'Delete failed')
+      }
+      setRows((prev) => prev.filter((r) => r.id !== entryId))
+      setSnackbar({ open: true, message: 'Entry deleted.', severity: 'success' })
+    } catch (err) {
+      setSnackbar({
+        open: true,
+        message: err instanceof Error ? err.message : 'Delete failed',
+        severity: 'error',
+      })
+    }
+  }, [])
+
   // ── Columns ─────────────────────────────────────────────────────────────────
 
   const columns: GridColDef[] = [
@@ -487,7 +531,7 @@ export default function WaitingListPage() {
     {
       field: 'actions',
       headerName: 'Actions',
-      width: 140,
+      width: 170,
       sortable: false,
       filterable: false,
       renderCell: (params: GridRenderCellParams) => {
@@ -526,6 +570,15 @@ export default function WaitingListPage() {
                   <PersonAddIcon fontSize="small" />
                 </IconButton>
               </span>
+            </Tooltip>
+            <Tooltip title="Delete entry">
+              <IconButton
+                size="small"
+                onClick={() => handleDelete(row.id)}
+                sx={{ color: '#B91C1C', '&:hover': { bgcolor: 'rgba(185, 28, 28, 0.08)' } }}
+              >
+                <DeleteOutlineIcon fontSize="small" />
+              </IconButton>
             </Tooltip>
           </Box>
         )
@@ -619,6 +672,7 @@ export default function WaitingListPage() {
         <DataGrid
           rows={filtered}
           columns={columns}
+          loading={loading}
           rowHeight={56}
           pageSizeOptions={[10, 25, 50]}
           initialState={{ pagination: { paginationModel: { pageSize: 10 } } }}
