@@ -2,7 +2,7 @@ import { connectDB } from '@/lib/db'
 import Tenant from '@/models/Tenant'
 import Lease from '@/models/Lease'
 import Payment from '@/models/Payment'
-import { nextBalanceAfter } from '@/lib/paymentBalance'
+import { recordCharge } from '@/lib/paymentBalance'
 import Notification from '@/models/Notification'
 import AccessLog from '@/models/AccessLog'
 import PrintBatch from '@/models/PrintBatch'
@@ -255,27 +255,20 @@ export async function runDelinquency(): Promise<DelinquencyResult[]> {
         currentStatus = 'delinquent'
 
         if (!feeExempt && !hasLateFeeForBillingMonth(existingFeeRows, periodStart, '')) {
-          // Create late fee payment record
-          const lateFeeBalance = await nextBalanceAfter(Payment, tenant._id, {
-            direction: 'charge',
-            status: 'pending',
-            amount: lateFeeCents,
-          })
-          await Payment.create({
+          // recordCharge writes the late-fee row AND bumps tenant.balance so the
+          // cached balance stays in sync with the ledger.
+          await recordCharge(Payment, Tenant, {
             tenantId: tenant._id,
             leaseId: lease._id,
             unitId: lease.unitId,
             stripePaymentIntentId: `late_fee_${Date.now()}_${tenant._id}`,
             amount: lateFeeCents,
-            currency: 'usd',
             type: 'late_fee',
             status: 'pending',
-            direction: 'charge',
-            balanceAfter: lateFeeBalance,
             periodStart,
             periodEnd,
-            attemptCount: 0,
           })
+          tenant.balance = (tenant.balance ?? 0) + lateFeeCents
           existingFeeRows.push({ type: 'late_fee', direction: 'charge', description: null, periodStart, createdAt: now })
         }
 
@@ -415,7 +408,7 @@ export async function runDelinquency(): Promise<DelinquencyResult[]> {
             tenant,
             unitNumber: undefined,
             monthlyRate: lease.monthlyRate,
-            balance: (tenant.balance ?? 0) + (event.status === 'late' ? lateFeeCents : 0),
+            balance: tenant.balance ?? 0,
             dueDate: event.status === 'auction' ? auctionNoticeDate : lastBillingDate,
             eventKey,
           })
@@ -457,29 +450,22 @@ export async function runDelinquency(): Promise<DelinquencyResult[]> {
               continue
             }
 
-            const feeBalance = await nextBalanceAfter(Payment, tenant._id, {
-              direction: 'charge',
-              status: 'pending',
-              amount: fee.amount,
-            })
-            await Payment.create({
+            // Reuse stripePaymentIntentId as the idempotency token so the
+            // unique-ish constraint catches duplicate cron runs the same day.
+            // recordCharge also keeps tenant.balance in sync with the ledger.
+            await recordCharge(Payment, Tenant, {
               tenantId: tenant._id,
               leaseId: lease._id,
               unitId: lease.unitId,
-              // Reuse stripePaymentIntentId as the idempotency token so the
-              // unique-ish constraint catches duplicate cron runs the same day.
               stripePaymentIntentId: feeKey,
               amount: fee.amount,
-              currency: 'usd',
               type: 'other',
               status: 'pending',
-              direction: 'charge',
-              balanceAfter: feeBalance,
               periodStart,
               periodEnd,
-              attemptCount: 0,
               description: fee.name,
             })
+            tenant.balance = (tenant.balance ?? 0) + fee.amount
             existingFeeRows.push({ type: 'other', direction: 'charge', description: fee.name, periodStart, createdAt: now })
             results.push({
               tenantEmail: tenant.email,

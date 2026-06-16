@@ -3,6 +3,7 @@ import Tenant from '@/models/Tenant'
 import Lease from '@/models/Lease'
 import Payment from '@/models/Payment'
 import Unit from '@/models/Unit'
+import { recordCharge } from '@/lib/paymentBalance'
 import { getSettings } from '@/lib/getSettings'
 import { sendTemplatedNotification } from '@/lib/sendNotification'
 import type { ITenantDocument } from '@/models/Tenant'
@@ -88,19 +89,18 @@ export async function runInvoiceGeneration(): Promise<InvoiceResult[]> {
         | null
 
       if (!existing && !tenant.autopayEnabled) {
-        // Create pending invoice for manual payers
-        await Payment.create({
+        // Create pending invoice for manual payers — recordCharge also bumps
+        // tenant.balance so the cached balance tracks the ledger.
+        await recordCharge(Payment, Tenant, {
           tenantId: tenant._id,
           leaseId: lease._id,
           unitId: lease.unitId,
           stripePaymentIntentId: `invoice_${Date.now()}_${tenant._id}`,
           amount: lease.monthlyRate,
-          currency: 'usd',
           type: 'rent',
           status: 'pending',
           periodStart,
           periodEnd,
-          attemptCount: 0,
         })
         results.push({
           tenantEmail: tenant.email,
