@@ -34,7 +34,14 @@ export async function GET(_req: NextRequest, context: RouteContext) {
       return NextResponse.json({ success: false, error: 'Tenant not found' }, { status: 404 })
     }
 
-    return NextResponse.json({ success: true, data: tenant })
+    // `notes` are internal admin-only memos shown as a banner on the admin
+    // tenant page. Never leak them to a tenant reading their own profile.
+    const data = tenant.toObject()
+    if (session.user.role !== 'admin') {
+      delete data.notes
+    }
+
+    return NextResponse.json({ success: true, data })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Internal server error'
     return NextResponse.json({ success: false, error: message }, { status: 500 })
@@ -127,6 +134,9 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
       delete updateData.status
       delete updateData.stripeCustomerId
       delete updateData.defaultPaymentMethodId
+      // `notes` are internal admin-only memos — a tenant must not be able to
+      // write the banner shown about them on the admin page.
+      delete updateData.notes
     }
 
     await connectDB()
@@ -153,7 +163,13 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
       await syncTenantToPdkSafe(tenant._id as any)
     }
 
-    return NextResponse.json({ success: true, data: tenant })
+    // Mirror the GET guard: never echo the internal admin memo to a tenant.
+    const data = tenant.toObject()
+    if (session.user.role !== 'admin') {
+      delete data.notes
+    }
+
+    return NextResponse.json({ success: true, data })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Internal server error'
     return NextResponse.json({ success: false, error: message }, { status: 500 })

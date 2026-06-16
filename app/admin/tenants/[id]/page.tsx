@@ -86,6 +86,9 @@ interface TenantData {
   autopayEnabled: boolean; smsOptIn: boolean
   stripeCustomerId?: string; defaultPaymentMethodId?: string
   customFields?: Record<string, string>
+  /** Internal admin-only memo. Shown as a banner atop Customer Information;
+   *  the API strips this field for non-admins so a tenant never sees it. */
+  notes?: string
   createdAt: string; updatedAt: string
 }
 
@@ -476,6 +479,28 @@ export default function TenantDetailPage() {
               <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 2 }}>
                 Customer Information
               </Typography>
+
+              {/* Admin-only notes banner — mirrors Storable's orange memo box.
+                  Edited from Edit Profile → Notes; never visible to tenants. */}
+              {tenant.notes?.trim() && (
+                <Box
+                  sx={{
+                    mb: 2,
+                    px: 2,
+                    py: 1.5,
+                    borderRadius: 1,
+                    bgcolor: '#FCEEDD',
+                    border: '1px solid #F5D9BC',
+                  }}
+                >
+                  <Typography
+                    variant="body2"
+                    sx={{ color: '#9A5B12', whiteSpace: 'pre-line', fontWeight: 500 }}
+                  >
+                    {tenant.notes}
+                  </Typography>
+                </Box>
+              )}
 
               <Grid container spacing={3}>
                 <Grid item xs={12} sm={6}>
