@@ -4,6 +4,7 @@ import {
   shouldAutoApprove,
   lateLienEventKey,
   lateLienFeeKey,
+  hasLateFeeForBillingMonth,
 } from './lockout'
 
 describe('lockoutFeeKey', () => {
@@ -104,5 +105,50 @@ describe('shouldAutoApprove', () => {
     expect(shouldAutoApprove({ type: 'unlocked', trigger: 'manual', settings: noFlags })).toBe(true)
     expect(shouldAutoApprove({ type: 'unlocked', trigger: 'manual', settings: manualOn })).toBe(false)
     expect(shouldAutoApprove({ type: 'unlocked', trigger: 'manual', settings: autoOn })).toBe(true)
+  })
+})
+
+describe('hasLateFeeForBillingMonth', () => {
+  const june = new Date(2026, 5, 1) // billing period start for June
+  const FEE = 'Past Due Fee'
+
+  it('matches an imported Storable late fee with null periodStart via createdAt (the duplicate-causing case)', () => {
+    const rows = [
+      { type: 'late_fee', direction: 'charge', description: 'Past Due Fee for unit G15', periodStart: null, createdAt: new Date('2026-06-06T12:00:00Z') },
+    ]
+    expect(hasLateFeeForBillingMonth(rows, june, FEE)).toBe(true)
+  })
+
+  it('matches the cron’s own per-event "other" fee for the month', () => {
+    const rows = [
+      { type: 'other', direction: 'charge', description: FEE, periodStart: new Date(2026, 5, 1), createdAt: new Date('2026-06-12T06:00:00Z') },
+    ]
+    expect(hasLateFeeForBillingMonth(rows, june, FEE)).toBe(true)
+  })
+
+  it('does NOT match a late fee from a different month', () => {
+    const rows = [
+      { type: 'late_fee', direction: 'charge', description: 'Past Due Fee', periodStart: null, createdAt: new Date('2026-05-06T12:00:00Z') },
+    ]
+    expect(hasLateFeeForBillingMonth(rows, june, FEE)).toBe(false)
+  })
+
+  it('ignores non-charge rows (a payment, not a fee)', () => {
+    const rows = [
+      { type: 'late_fee', direction: 'payment', description: 'Past Due Fee', periodStart: null, createdAt: new Date('2026-06-06T12:00:00Z') },
+    ]
+    expect(hasLateFeeForBillingMonth(rows, june, FEE)).toBe(false)
+  })
+
+  it('ignores unrelated charges (rent, or an other-fee with a different name)', () => {
+    const rows = [
+      { type: 'rent', direction: 'charge', description: 'Rent', periodStart: new Date(2026, 5, 1), createdAt: new Date('2026-06-01T00:00:00Z') },
+      { type: 'other', direction: 'charge', description: 'Cut Lock', periodStart: new Date(2026, 5, 1), createdAt: new Date('2026-06-03T00:00:00Z') },
+    ]
+    expect(hasLateFeeForBillingMonth(rows, june, FEE)).toBe(false)
+  })
+
+  it('returns false on an empty ledger', () => {
+    expect(hasLateFeeForBillingMonth([], june, FEE)).toBe(false)
   })
 })

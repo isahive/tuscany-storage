@@ -16,6 +16,7 @@ import {
   lateLienEventKey,
   lateLienFeeKey,
   shouldAutoApprove,
+  hasLateFeeForBillingMonth,
 } from '@/lib/lockout'
 import type { ITenantDocument } from '@/models/Tenant'
 import type { ILeaseDocument } from '@/models/Lease'
@@ -234,6 +235,18 @@ export async function runDelinquency(): Promise<DelinquencyResult[]> {
       // status escalation still happens but no Payment rows are written.
       const feeExempt = !!tenant.lateFeeExempt
 
+      // Existing late-fee-like charges on this lease. Used to avoid stacking a
+      // second late fee on top of one already imported from Storable (which
+      // carries a null periodStart) or added by the other code path in the same
+      // billing month. Kept in memory and appended to as we create fees so both
+      // paths below see each other within a single run.
+      const existingFeeRows: Array<{ type?: string; direction?: string; description?: string | null; periodStart?: Date | null; createdAt?: Date | null }> =
+        await Payment.find({
+          leaseId: lease._id,
+          direction: 'charge',
+          type: { $in: ['late_fee', 'other'] },
+        }).select('type direction description periodStart createdAt').lean()
+
       // LATE: mark delinquent, add late fee
       if (daysSinceBilling >= lateDay && currentStatus === 'active') {
         console.log(`[Delinquency] Day ${daysSinceBilling}: Marking ${tenant.email} as delinquent`)
@@ -241,7 +254,7 @@ export async function runDelinquency(): Promise<DelinquencyResult[]> {
         await Tenant.findByIdAndUpdate(tenant._id, { status: 'delinquent' })
         currentStatus = 'delinquent'
 
-        if (!feeExempt) {
+        if (!feeExempt && !hasLateFeeForBillingMonth(existingFeeRows, periodStart, '')) {
           // Create late fee payment record
           const lateFeeBalance = await nextBalanceAfter(Payment, tenant._id, {
             direction: 'charge',
@@ -263,6 +276,7 @@ export async function runDelinquency(): Promise<DelinquencyResult[]> {
             periodEnd,
             attemptCount: 0,
           })
+          existingFeeRows.push({ type: 'late_fee', direction: 'charge', description: null, periodStart, createdAt: now })
         }
 
         results.push({
@@ -435,6 +449,14 @@ export async function runDelinquency(): Promise<DelinquencyResult[]> {
             })
             if (exists) continue
 
+            // Recurring (Late) fees also dedupe across sources: skip if a late
+            // fee for this billing month already exists from Storable import or
+            // the main late step above. Lockout/lien fees are one-shot per
+            // episode (handled by feeKey) so they're exempt from this check.
+            if (event.status === 'late' && hasLateFeeForBillingMonth(existingFeeRows, periodStart, fee.name)) {
+              continue
+            }
+
             const feeBalance = await nextBalanceAfter(Payment, tenant._id, {
               direction: 'charge',
               status: 'pending',
@@ -458,6 +480,7 @@ export async function runDelinquency(): Promise<DelinquencyResult[]> {
               attemptCount: 0,
               description: fee.name,
             })
+            existingFeeRows.push({ type: 'other', direction: 'charge', description: fee.name, periodStart, createdAt: now })
             results.push({
               tenantEmail: tenant.email,
               action: `${event.status}_fee_added:${fee.name}`,

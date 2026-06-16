@@ -98,3 +98,42 @@ export function shouldAutoApprove(args: {
   if (args.trigger === 'auto') return !args.settings.lockoutRequireApprovalAuto
   return !args.settings.lockoutRequireApprovalManual
 }
+
+/**
+ * Cross-source late-fee dedupe. The cron's own idempotency key only catches
+ * rows it created itself, so it would happily stack a second late fee on top
+ * of one already imported from Storable (or applied by the other cron path)
+ * for the same billing month.
+ *
+ * This predicate answers: does `rows` already contain a late-fee-like charge
+ * whose EFFECTIVE month matches the billing month of `billingPeriodStart`?
+ *
+ * "Late-fee-like" = a `late_fee` charge (canonical; Storable imports land here)
+ * or an `other` charge whose description equals the configured fee name (the
+ * cron's own per-event Past Due Fee). Effective month uses `periodStart` when
+ * present and falls back to `createdAt` — imported Storable late fees carry a
+ * null `periodStart`, which is exactly the gap that let duplicates through.
+ */
+export function hasLateFeeForBillingMonth(
+  rows: Array<{
+    type?: string
+    direction?: string
+    description?: string | null
+    periodStart?: Date | string | null
+    createdAt?: Date | string | null
+  }>,
+  billingPeriodStart: Date,
+  feeName: string,
+): boolean {
+  const year = billingPeriodStart.getFullYear()
+  const month = billingPeriodStart.getMonth()
+  return rows.some((r) => {
+    if (r.direction !== 'charge') return false
+    const isLateFeeLike = r.type === 'late_fee' || (r.type === 'other' && r.description === feeName)
+    if (!isLateFeeLike) return false
+    const effective = r.periodStart ?? r.createdAt
+    if (!effective) return false
+    const d = new Date(effective)
+    return d.getFullYear() === year && d.getMonth() === month
+  })
+}
