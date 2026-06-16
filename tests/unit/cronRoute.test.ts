@@ -117,10 +117,18 @@ describe('POST /api/cron — execute job', () => {
   })
 
   it('500s and surfaces the error message when a job throws', async () => {
-    jobMocks.runDelinquency.mockRejectedValueOnce(new Error('Mongo unavailable'))
-    const res = await runJob(makeRequest('POST', '/api/cron', { job: 'delinquency' }))
+    jobMocks.runInvoiceGeneration.mockRejectedValueOnce(new Error('Mongo unavailable'))
+    const res = await runJob(makeRequest('POST', '/api/cron', { job: 'generateInvoices' }))
     expect(res.status).toBe(500)
     const json = await res.json()
     expect(json.error).toMatch(/Mongo unavailable/i)
+  })
+
+  it('no-ops a paused job (delinquency) without invoking it', async () => {
+    const res = await runJob(makeRequest('POST', '/api/cron', { job: 'delinquency' }))
+    expect(res.status).toBe(200)
+    const json = await res.json()
+    expect(json.data.result).toEqual({ skipped: 'paused' })
+    expect(jobMocks.runDelinquency).not.toHaveBeenCalled()
   })
 })
