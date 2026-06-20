@@ -7,8 +7,11 @@ import {
 } from './tenantGroups'
 
 describe('TENANT_GROUPS', () => {
-  it('lists all 17 groups (16 segments + All)', () => {
-    expect(TENANT_GROUPS).toHaveLength(17)
+  it('lists all 18 groups (17 segments + All)', () => {
+    expect(TENANT_GROUPS).toHaveLength(18)
+  })
+  it('includes the Archived group', () => {
+    expect(TENANT_GROUPS.some((g) => g.id === 'archived')).toBe(true)
   })
   it('has unique ids', () => {
     const ids = TENANT_GROUPS.map((g) => g.id)
