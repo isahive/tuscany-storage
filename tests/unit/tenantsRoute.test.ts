@@ -66,6 +66,26 @@ describe('GET /api/tenants', () => {
     expect(json.data.total).toBe(2)
   })
 
+  it('hides archived accounts from the default view', async () => {
+    await makeTenant({ firstName: 'Active' })
+    await makeTenant({ firstName: 'Gone', archived: true })
+    vi.mocked(getServerSession).mockResolvedValueOnce(adminSession() as never)
+    const res = await listTenants(makeRequest('GET', '/api/tenants?limit=10') as any)
+    const json = await readJson<any>(res)
+    expect(json.data.total).toBe(1)
+    expect(json.data.items[0].firstName).toBe('Active')
+  })
+
+  it('shows only archived accounts under the Archived group', async () => {
+    await makeTenant({ firstName: 'Active' })
+    await makeTenant({ firstName: 'Gone', archived: true })
+    vi.mocked(getServerSession).mockResolvedValueOnce(adminSession() as never)
+    const res = await listTenants(makeRequest('GET', '/api/tenants?group=archived&limit=10') as any)
+    const json = await readJson<any>(res)
+    expect(json.data.total).toBe(1)
+    expect(json.data.items[0].firstName).toBe('Gone')
+  })
+
   it('escapes regex metacharacters in search', async () => {
     await makeTenant({ firstName: 'Normal' })
     vi.mocked(getServerSession).mockResolvedValueOnce(adminSession() as never)

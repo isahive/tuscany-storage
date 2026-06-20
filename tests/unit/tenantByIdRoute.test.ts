@@ -4,6 +4,7 @@ import { makeTenant } from '@/tests/helpers/factories'
 import { makeRequest, readJson } from '@/tests/helpers/request'
 import { adminSession, tenantSession } from '@/tests/helpers/session'
 import Tenant from '@/models/Tenant'
+import WaitingList from '@/models/WaitingList'
 
 vi.mock('next-auth', async () => {
   const actual = await vi.importActual<typeof import('next-auth')>('next-auth')
@@ -68,6 +69,42 @@ describe('GET /api/tenants/[id]', () => {
     const res = await getTenant(makeRequest('GET', '') as any, { params: Promise.resolve({ id: t._id.toString() }) })
     const json = await readJson<any>(res)
     expect(json.data.notes).toBeUndefined()
+  })
+
+  it('surfaces an open waiting-list signup (matched by email) to an admin', async () => {
+    const t = await makeTenant()
+    await WaitingList.create({
+      name: 'Brian Case', email: t.email.toLowerCase(), phone: '(865) 206-1402',
+      preferredSize: '10 x 30', preferredType: 'Boat, RV, Camper & Trailer - Open Air', status: 'waiting',
+    })
+    vi.mocked(getServerSession).mockResolvedValueOnce(adminSession() as never)
+    const res = await getTenant(makeRequest('GET', '') as any, { params: Promise.resolve({ id: t._id.toString() }) })
+    const json = await readJson<any>(res)
+    expect(json.data.waitingList).toMatchObject({
+      preferredSize: '10 x 30', preferredType: 'Boat, RV, Camper & Trailer - Open Air', status: 'waiting',
+    })
+  })
+
+  it('ignores a closed (converted/expired) waiting-list entry', async () => {
+    const t = await makeTenant()
+    await WaitingList.create({
+      name: 'X', email: t.email.toLowerCase(), phone: '1', preferredSize: '5 x 5', status: 'converted',
+    })
+    vi.mocked(getServerSession).mockResolvedValueOnce(adminSession() as never)
+    const res = await getTenant(makeRequest('GET', '') as any, { params: Promise.resolve({ id: t._id.toString() }) })
+    const json = await readJson<any>(res)
+    expect(json.data.waitingList).toBeUndefined()
+  })
+
+  it('never exposes waiting-list internals to a tenant reading their own record', async () => {
+    const t = await makeTenant()
+    await WaitingList.create({
+      name: 'X', email: t.email.toLowerCase(), phone: '1', preferredSize: '10 x 30', status: 'waiting',
+    })
+    vi.mocked(getServerSession).mockResolvedValueOnce(tenantSession(t._id.toString()) as never)
+    const res = await getTenant(makeRequest('GET', '') as any, { params: Promise.resolve({ id: t._id.toString() }) })
+    const json = await readJson<any>(res)
+    expect(json.data.waitingList).toBeUndefined()
   })
 })
 

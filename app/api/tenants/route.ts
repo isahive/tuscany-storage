@@ -42,6 +42,13 @@ export async function GET(req: NextRequest) {
       if (groupFilter) Object.assign(filter, groupFilter)
     }
 
+    // Archived accounts are hidden from every view except the explicit
+    // "Archived" group (Storable parity). Skip if a group filter already
+    // pinned `archived` (the 'archived' and 'active' groups both do).
+    if (filter.archived === undefined) {
+      filter.archived = { $ne: true }
+    }
+
     if (search) {
       // Escape regex metacharacters to prevent ReDoS / injection
       const escaped = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')

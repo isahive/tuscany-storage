@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { authOptions } from '@/lib/auth'
 import { connectDB } from '@/lib/db'
 import Tenant from '@/models/Tenant'
+import WaitingList from '@/models/WaitingList'
 import { syncTenantToPdkSafe } from '@/lib/pdkSync'
 
 // API responses must always reflect live data — never prerender at build.
@@ -39,6 +40,23 @@ export async function GET(_req: NextRequest, context: RouteContext) {
     const data = tenant.toObject()
     if (session.user.role !== 'admin') {
       delete data.notes
+    } else {
+      // Surface an open waiting-list signup (matched by email, Storable's key)
+      // so the admin profile can show the "on the waiting list for X" banner.
+      // Admin-only: a tenant never sees their own waiting-list internals here.
+      const wl = await WaitingList.findOne({
+        email: tenant.email.toLowerCase(),
+        status: { $in: ['waiting', 'notified'] },
+      })
+        .sort({ createdAt: -1 })
+        .lean<{ preferredType?: string; preferredSize: string; status: string }>()
+      if (wl) {
+        data.waitingList = {
+          preferredType: wl.preferredType,
+          preferredSize: wl.preferredSize,
+          status: wl.status,
+        }
+      }
     }
 
     return NextResponse.json({ success: true, data })

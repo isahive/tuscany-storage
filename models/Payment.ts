@@ -37,6 +37,12 @@ export interface IPaymentDocument extends Document {
   paymentMethodLabel?: string
   /** Source system the row came from (e.g. "storable-csv-2026-05-14"). */
   importSource?: string
+  /** Idempotency key for auto-generated recurring rent charges:
+   *  `${leaseId}:${dueDate YYYY-MM-DD}:rent`. A sparse unique index makes the
+   *  recurring-billing cron's pre-charge claim fail instead of issuing a second
+   *  Stripe charge when two sweeps overlap. Only set on cron-claimed rows;
+   *  cleared when an attempt fails so the next run can retry. */
+  billingPeriodKey?: string
   /** When direction='payment', the charge rows this payment was applied
    *  against. Lets the Refund Payment screen list the underlying line items
    *  the way Storable Easy does (multi-item refund). */
@@ -97,6 +103,7 @@ const PaymentSchema = new Schema<IPaymentDocument>(
     cardholderName: { type: String },
     paymentMethodLabel: { type: String },
     importSource: { type: String, index: true },
+    billingPeriodKey: { type: String },
     appliedToItemIds: [{ type: Schema.Types.ObjectId, ref: 'Payment' }],
     refundOfPaymentId: { type: Schema.Types.ObjectId, ref: 'Payment', index: true },
     refundReason: { type: String },
@@ -109,5 +116,9 @@ PaymentSchema.index({ tenantId: 1 })
 PaymentSchema.index({ leaseId: 1 })
 PaymentSchema.index({ status: 1 })
 PaymentSchema.index({ stripePaymentIntentId: 1 })
+// One live auto-charge per lease+period. Sparse so it only constrains rows the
+// recurring-billing cron claims — historical imports and manual payments (no
+// billingPeriodKey) are untouched.
+PaymentSchema.index({ billingPeriodKey: 1 }, { unique: true, sparse: true })
 
 export default mongoose.models.Payment || mongoose.model<IPaymentDocument>('Payment', PaymentSchema)

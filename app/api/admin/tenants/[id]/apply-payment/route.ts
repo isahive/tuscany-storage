@@ -8,6 +8,7 @@ import Tenant from '@/models/Tenant'
 import Payment from '@/models/Payment'
 import { nextBalanceAfter } from '@/lib/paymentBalance'
 import { syncTenantStatusFromBalance } from '@/lib/tenantStatus'
+import { withTxn } from '@/lib/withTxn'
 
 interface RouteContext {
   params: Promise<{ id: string }>
@@ -146,6 +147,11 @@ export async function POST(req: NextRequest, context: RouteContext) {
         })
         tenant.defaultPaymentMethodId = pmId
       }
+
+      // Persist any Stripe customer / default-PM linkage created above BEFORE
+      // the balance transaction, which re-reads the tenant fresh and would
+      // otherwise drop these in-memory edits.
+      await tenant.save()
     }
 
     // ── Record the payment ──
@@ -167,61 +173,77 @@ export async function POST(req: NextRequest, context: RouteContext) {
       ? `${baseDescription} — Transaction declined: ${failureReason}`
       : baseDescription
 
-    const balanceAfter = await nextBalanceAfter(Payment, tenant._id, {
-      direction: 'payment',
-      status: paymentStatus,
-      amount,
-    })
-
     // Resolve charge rows this payment is settling so the Refund screen can
     // list line items the way Storable Easy does.
     const appliedToObjectIds = itemIds
       .filter((s) => Types.ObjectId.isValid(s))
       .map((s) => new Types.ObjectId(s))
 
-    const paymentRow = await Payment.create({
-      tenantId: tenant._id,
-      amount,
-      currency: 'usd',
-      type: method === 'card' || method === 'ach' ? 'rent' : 'other',
-      status: paymentStatus,
-      direction: 'payment',
-      balanceAfter,
-      stripePaymentIntentId,
-      stripeChargeId,
-      description: paymentDescription,
-      failureReason,
-      createdBy: session.user.id,
-      attemptCount: 1,
-      lastAttemptAt: new Date(),
-      appliedToItemIds: appliedToObjectIds.length > 0 ? appliedToObjectIds : undefined,
-    })
+    // Record the payment row, settle line items and move the balance as ONE
+    // atomic unit. The balance read-modify-write lives inside the callback so
+    // withTransaction can retry it on a write conflict (two admins posting
+    // payments for the same tenant at once) without losing an update.
+    let finalBalance = tenant.balance ?? 0
+    const paymentRow = await withTxn(async (txnSession) => {
+      const balanceAfter = await nextBalanceAfter(
+        Payment,
+        tenant._id,
+        { direction: 'payment', status: paymentStatus, amount },
+        txnSession,
+      )
 
-    // Only confirmed-succeeded payments touch line items and balance.
-    // Pending (ACH awaiting clearing) and failed attempts are logged but the
-    // money is treated as not-yet-moved — a webhook later promotes a pending
-    // row to succeeded (or to failed) and re-runs this reconciliation.
-    if (paymentStatus === 'succeeded') {
-      // ── Mark line items as paid ──
-      if (appliedToObjectIds.length > 0) {
-        await Payment.updateMany(
-          { _id: { $in: appliedToObjectIds }, tenantId: tenant._id, status: 'pending' },
-          { $set: { status: 'succeeded', lastAttemptAt: new Date() } }
-        )
+      const [row] = await Payment.create([{
+        tenantId: tenant._id,
+        amount,
+        currency: 'usd',
+        type: method === 'card' || method === 'ach' ? 'rent' : 'other',
+        status: paymentStatus,
+        direction: 'payment',
+        balanceAfter,
+        stripePaymentIntentId,
+        stripeChargeId,
+        description: paymentDescription,
+        failureReason,
+        createdBy: session.user.id,
+        attemptCount: 1,
+        lastAttemptAt: new Date(),
+        appliedToItemIds: appliedToObjectIds.length > 0 ? appliedToObjectIds : undefined,
+      }], { session: txnSession })
+
+      // Only confirmed-succeeded payments touch line items and balance.
+      // Pending (ACH awaiting clearing) and failed attempts are logged but the
+      // money is treated as not-yet-moved — a webhook later promotes a pending
+      // row to succeeded (or to failed) and re-runs this reconciliation.
+      if (paymentStatus === 'succeeded') {
+        if (appliedToObjectIds.length > 0) {
+          await Payment.updateMany(
+            { _id: { $in: appliedToObjectIds }, tenantId: tenant._id, status: 'pending' },
+            { $set: { status: 'succeeded', lastAttemptAt: new Date() } },
+            { session: txnSession },
+          )
+        }
+
+        // Re-read the tenant inside the transaction so a concurrent payment
+        // can't clobber this balance update (the doc write is the conflict
+        // point that triggers a safe retry).
+        const fresh = await Tenant.findById(id).session(txnSession ?? null)
+        if (fresh) {
+          fresh.balance = (fresh.balance ?? 0) - amount
+          syncTenantStatusFromBalance(fresh)
+          await fresh.save({ session: txnSession })
+          finalBalance = fresh.balance ?? 0
+        }
       }
 
-      // ── Reduce tenant balance + sync status ──
-      tenant.balance = (tenant.balance ?? 0) - amount
-      syncTenantStatusFromBalance(tenant)
-      await tenant.save()
-    }
+      return row
+    })
 
     return NextResponse.json({
       success: paymentStatus !== 'failed',
       data: {
         paymentId: String(paymentRow._id),
         status: paymentStatus,
-        balance: tenant.balance,
+        balance: finalBalance,
         stripePaymentIntentId,
       },
       error: paymentStatus === 'failed' ? (failureReason ?? 'Payment failed') : undefined,

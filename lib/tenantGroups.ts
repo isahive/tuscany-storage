@@ -26,6 +26,7 @@ export const TENANT_GROUPS = [
   { id: 'active_insurance_policies', label: 'Active Insurance Policies',    description: 'Tenants with an active third-party insurance policy. (Currently mirrors the protection-plan source until a separate insurance model is added.)' },
   { id: 'tenant_protection_eligible', label: 'Tenant Protection Eligible',  description: 'Active renters not yet enrolled in a protection plan.' },
   { id: 'automatic_lockout_disabled', label: 'Automatic Lockout Disabled',  description: 'Tenants flagged to skip automated lockouts.' },
+  { id: 'archived',                  label: 'Archived',                     description: 'Archived (inactive) accounts. Hidden from every other view — Storable parity.' },
 ] as const
 
 export type TenantGroupId = (typeof TENANT_GROUPS)[number]['id']

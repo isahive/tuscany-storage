@@ -9,6 +9,7 @@ import { runInvoiceGeneration } from '@/jobs/invoices'
 import { runLockoutReportEmail } from '@/jobs/lockout-report-email'
 import { reconcilePdkHolders } from '@/jobs/pdk-reconcile'
 import { runVisitorAccessExpiration } from '@/jobs/visitor-access-expiration'
+import { withCronLock, isLockSkipped } from '@/lib/cronLock'
 
 // API responses must always reflect live data — never prerender at build.
 export const dynamic = 'force-dynamic'
@@ -100,7 +101,13 @@ async function runJob(name: JobName | undefined) {
   }
 
   try {
-    const result = await JOBS[name].fn()
+    // Hold a per-job lock so an overlapping invocation (a slow run still going
+    // when the next tick fires, or a manual POST racing the schedule) no-ops
+    // instead of double-applying fees / lockouts / charges.
+    const result = await withCronLock<unknown>(`cron:${name}`, () => JOBS[name].fn())
+    if (isLockSkipped(result)) {
+      return NextResponse.json({ success: true, data: { job: name, result: { skipped: 'already running' } } })
+    }
     return NextResponse.json({ success: true, data: { job: name, result } })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Job failed'

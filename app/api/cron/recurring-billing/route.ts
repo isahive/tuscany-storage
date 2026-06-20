@@ -4,7 +4,8 @@ import Lease from '@/models/Lease'
 import Tenant from '@/models/Tenant'
 import Unit from '@/models/Unit'
 import Payment from '@/models/Payment'
-import { nextBalanceAfter } from '@/lib/paymentBalance'
+import { priorBalanceAfter, balanceDelta } from '@/lib/paymentBalance'
+import { withCronLock, isLockSkipped } from '@/lib/cronLock'
 
 // API responses must always reflect live data — never prerender at build.
 export const dynamic = 'force-dynamic'
@@ -119,6 +120,36 @@ async function processLease(
     return skip('Stripe not configured')
   }
 
+  // ── Atomically claim this lease+period BEFORE touching Stripe ──
+  // The sparse unique index on billingPeriodKey makes a second overlapping
+  // sweep (or an in-flight retry) fail this insert and skip, rather than issue
+  // a duplicate Stripe charge. The claim is committed standalone — NOT inside a
+  // transaction — precisely so a concurrent run can see it immediately.
+  const billingPeriodKey = `${lease._id}:${dueDate.toISOString().slice(0, 10)}:rent`
+  const prior = await priorBalanceAfter(Payment, tenant._id)
+
+  let claim
+  try {
+    claim = await Payment.create({
+      tenantId: tenant._id,
+      leaseId: lease._id,
+      unitId: unit._id,
+      amount,
+      currency: 'usd',
+      type: 'rent',
+      status: 'pending',
+      direction: 'payment',
+      billingPeriodKey,
+      balanceAfter: prior, // neutral until the charge resolves below
+      periodStart,
+      periodEnd,
+      attemptCount: 0,
+    })
+  } catch (err: any) {
+    if (err?.code === 11000) return skip('period already claimed (concurrent run)')
+    throw err
+  }
+
   const { stripe } = await import('@/lib/stripe')
 
   try {
@@ -140,28 +171,13 @@ async function processLease(
     })
 
     const status = intent.status === 'succeeded' ? 'succeeded' : 'pending'
-    const balanceAfter = await nextBalanceAfter(Payment, tenant._id, {
-      direction: 'payment',
-      status,
-      amount,
-    })
-    await Payment.create({
-      tenantId: tenant._id,
-      leaseId: lease._id,
-      unitId: unit._id,
-      stripePaymentIntentId: intent.id,
-      stripeChargeId: typeof intent.latest_charge === 'string' ? intent.latest_charge : undefined,
-      amount,
-      currency: 'usd',
-      type: 'rent',
-      status,
-      direction: 'payment',
-      balanceAfter,
-      periodStart,
-      periodEnd,
-      attemptCount: 1,
-      lastAttemptAt: today,
-    })
+    claim.status = status
+    claim.stripePaymentIntentId = intent.id
+    claim.stripeChargeId = typeof intent.latest_charge === 'string' ? intent.latest_charge : undefined
+    claim.balanceAfter = prior + balanceDelta({ direction: 'payment', status, amount })
+    claim.attemptCount = 1
+    claim.lastAttemptAt = today
+    await claim.save()
 
     return {
       leaseId: String(lease._id), tenantName, unit: unitNum, amount,
@@ -170,29 +186,17 @@ async function processLease(
       paymentIntentId: intent.id,
     }
   } catch (err: any) {
-    // Record the failure (failed rows don't move balance — delta is 0)
-    const failedBalanceAfter = await nextBalanceAfter(Payment, tenant._id, {
-      direction: 'payment',
-      status: 'failed',
-      amount,
-    })
-    await Payment.create({
-      tenantId: tenant._id,
-      leaseId: lease._id,
-      unitId: unit._id,
-      stripePaymentIntentId: err?.payment_intent?.id ?? `failed_${Date.now()}`,
-      amount,
-      currency: 'usd',
-      type: 'rent',
-      status: 'failed',
-      direction: 'payment',
-      balanceAfter: failedBalanceAfter,
-      periodStart,
-      periodEnd,
-      attemptCount: 1,
-      lastAttemptAt: today,
-      failureReason: err?.message ?? 'Stripe error',
-    })
+    // Charge failed — keep the row for billing history, but release the period
+    // (clear billingPeriodKey) so the next sweep can retry. Failed rows don't
+    // move the balance, so balanceAfter stays at `prior`.
+    claim.status = 'failed'
+    claim.stripePaymentIntentId = err?.payment_intent?.id ?? `failed_${today.getTime()}`
+    claim.balanceAfter = prior
+    claim.attemptCount = 1
+    claim.lastAttemptAt = today
+    claim.failureReason = err?.message ?? 'Stripe error'
+    claim.billingPeriodKey = undefined
+    await claim.save()
     return {
       leaseId: String(lease._id), tenantName, unit: unitNum, amount,
       status: 'failed',
@@ -201,7 +205,7 @@ async function processLease(
   }
 }
 
-async function runSweep(req: NextRequest) {
+async function runSweep(req: NextRequest): Promise<NextResponse> {
   if (!isAuthorized(req)) {
     return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 })
   }
@@ -215,6 +219,23 @@ async function runSweep(req: NextRequest) {
 
   await connectDB()
 
+  // A dry run does no writes, so it's safe to let it run alongside a live sweep.
+  // A live sweep takes the lock so two overlapping invocations can't double-charge.
+  if (dryRun) return runSweepInner(today, dryRun, onlyTenantId)
+
+  const result = await withCronLock('recurring-billing', () =>
+    runSweepInner(today, dryRun, onlyTenantId),
+  )
+  if (isLockSkipped(result)) {
+    return NextResponse.json(
+      { success: true, summary: { skipped: 'another billing run is in progress' } },
+      { status: 200 },
+    )
+  }
+  return result
+}
+
+async function runSweepInner(today: Date, dryRun: boolean, onlyTenantId: string | undefined): Promise<NextResponse> {
   const leaseFilter: Record<string, unknown> = { status: 'active' }
   if (onlyTenantId) leaseFilter.tenantId = onlyTenantId
 

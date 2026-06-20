@@ -65,7 +65,7 @@ type RowStatus = 'pending' | 'succeeded' | 'failed' | 'refunded' | 'voided'
 interface ParsedRow {
   date: string
   storableId: string
-  kind: 'charge' | 'payment' | 'credit_grant' | 'credit_application' | 'refund' | 'void'
+  kind: 'charge' | 'payment' | 'credit_grant' | 'credit_application' | 'refund' | 'void' | 'zeroed'
   type: RowType
   status: RowStatus
   direction: 'charge' | 'payment'
@@ -198,6 +198,23 @@ for (const b of blocks) {
     continue
   }
 
+  // ── zeroed payment (storEDGE reversal annotation: a prior card payment was
+  // set to $0 because it was refunded; the matching Refund row moves the money,
+  // so this row is a $0 no-op for our ledger — recognized so it isn't flagged
+  // unparsed, but excluded from insert). Shape: title "Zeroed … payment.",
+  // a "$X refunded" note, then the "$0.00  <balance>" pair line. ──
+  if (/^Zeroed .*payment\.?$/i.test(title)) {
+    const balLine = [...moneyLines].reverse().find((l) => !/refunded$/.test(l))
+    const balToks = balLine ? [...(balLine.match(MONEY_RE) || [])] : []
+    parsed.push({
+      date: b.date, storableId: b.id, kind: 'zeroed', type: 'other', status: 'voided',
+      direction: 'payment', amount: 0,
+      displayedBalance: balToks.length ? cents(balToks[balToks.length - 1]) : undefined,
+      description: title, unitHints: [],
+    })
+    continue
+  }
+
   // ── payment / credit transactions (amount in title) ──
   const titleAmt = title.match(MONEY_RE)?.[0]
   const isPayment = /payment by (.+?):/.test(title)
@@ -300,22 +317,39 @@ async function main() {
   if (!tenant) { console.error(`Tenant ${email} not found`); process.exit(1) }
 
   const activeLeases = await db.collection('leases').find({ tenantId: tenant._id, status: { $in: ['active', 'pending_moveout'] } }).toArray()
-  if (!activeLeases.length) { console.error('No active lease for tenant'); process.exit(1) }
+  // History-only mode: moved-out / never-leased tenants carry a phantom balance
+  // from the May bad-import but have no active lease to fix. We still import
+  // their real storEDGE rows and reconcile the balance; we just skip the
+  // lease rate/billingDay fix and the delinquency check, and mark them
+  // moved_out (no unit = not an active renter). storEDGE shows these settled
+  // to $0, but we reconcile to whatever the paste's final balance actually is.
+  const historyOnly = activeLeases.length === 0
+  if (historyOnly) console.log('\n⚠ No active lease — HISTORY-ONLY mode (import rows + reconcile balance, no lease fix).')
   // The delinquency cron evaluates ONE lease per tenant (Lease.findOne in
   // natural order) — multi-unit payment rows must hang off that same lease or
   // the cron won't see the period as paid. Mirror its query exactly.
-  const cronLease = await db.collection('leases').findOne({ tenantId: tenant._id, status: 'active' }) ?? activeLeases[0]
+  const cronLease = historyOnly ? null : (await db.collection('leases').findOne({ tenantId: tenant._id, status: 'active' }) ?? activeLeases[0])
   const leaseUnits = await Promise.all(activeLeases.map(async (l) => ({
     lease: l,
     unit: await db.collection('units').findOne({ _id: l.unitId }),
   })))
   const byUnitNumber = new Map(leaseUnits.map((lu) => [String(lu.unit?.unitNumber), lu]))
   const defaultLU = leaseUnits[0]
+  // For history-only rows we still link unitId where the unit number in the
+  // paste resolves to a real unit (better reporting); leaseId is left unset.
+  const unitByNumber = new Map<string, Types.ObjectId>()
+  if (historyOnly) {
+    const hintNums = [...new Set(audit.flatMap((r) => r.unitHints))]
+    for (const n of hintNums) {
+      const u = await db.collection('units').findOne({ unitNumber: n })
+      if (u) unitByNumber.set(n, u._id as Types.ObjectId)
+    }
+  }
   console.log(`\nTenant: ${tenant.firstName} ${tenant.lastName} (${tenant._id}) status=${tenant.status} balance=${fmt(tenant.balance ?? 0)}`)
-  console.log(`Active lease(s): ${leaseUnits.map((lu) => `Unit ${lu.unit?.unitNumber} @ ${fmt(lu.lease.monthlyRate)}/mo billingDay=${lu.lease.billingDay}`).join(' | ')}`)
+  if (!historyOnly) console.log(`Active lease(s): ${leaseUnits.map((lu) => `Unit ${lu.unit?.unitNumber} @ ${fmt(lu.lease.monthlyRate)}/mo billingDay=${lu.lease.billingDay}`).join(' | ')}`)
 
   // Per-active-unit fixes derived from the history itself
-  const fixes = leaseUnits.map(({ lease, unit }) => {
+  const fixes = historyOnly ? [] : leaseUnits.map(({ lease, unit }) => {
     const un = String(unit?.unitNumber)
     const unitRows = audit.filter((r) => r.unitHints.includes(un))
     const rentCharges = unitRows.filter((r) => r.kind === 'charge' && (r.type === 'rent') && r.periodStart)
@@ -347,7 +381,11 @@ async function main() {
   for (const f of fixes) {
     console.log(`Lease fix Unit ${f.unitNumber}: rate=${f.monthlyRate ? fmt(f.monthlyRate) : 'keep'} billingDay=${f.billingDay ?? 'keep'} start=${f.startDate?.toISOString().slice(0, 10) ?? 'keep'} deposit=${f.deposit ? fmt(f.deposit) : 'keep'}${finalBalance <= 0 ? ' + clear auction' : ''}`)
   }
-  console.log(`Tenant fix: balance=${fmt(finalBalance)}${finalBalance <= 0 ? ", status=active, clear lockedOutAt" : ' (positive — status left as-is)'}`)
+  if (historyOnly) {
+    console.log(`Tenant fix: balance=${fmt(finalBalance)}, status=moved_out, clear lockedOutAt (history-only — no active lease)`)
+  } else {
+    console.log(`Tenant fix: balance=${fmt(finalBalance)}${finalBalance <= 0 ? ", status=active, clear lockedOutAt" : ' (positive — status left as-is)'}`)
+  }
 
   if (!APPLY) {
     console.log('\nDry run — re-run with --apply to write.')
@@ -363,9 +401,9 @@ async function main() {
   // application is allocation-only — the payment that added the credit already
   // subtracted, and the prepaid invoice charge already adds — so importing the
   // application row double-counts the credit (Bob Neland surfaced as -$290).
-  const importable = audit.filter((r) => r.kind !== 'credit_application')
+  const importable = audit.filter((r) => r.kind !== 'credit_application' && r.kind !== 'zeroed')
   if (importable.length < audit.length) {
-    console.log(`Skipping ${audit.length - importable.length} credit-application row(s) — allocation-only, already netted by invoice + credit rows.`)
+    console.log(`Skipping ${audit.length - importable.length} allocation-only row(s) (credit applications + zeroed payments) — already netted by invoice + credit/refund rows.`)
   }
   const importSource = `storable-historical:${slug}`
   const minuteWithinDay = new Map<string, number>()
@@ -375,14 +413,19 @@ async function main() {
     const createdAt = new Date(parseUSDate(r.date).getTime() + idx * 60_000)
     // Charges attach to their own unit's lease; payment-side rows touching
     // several active units (or none) attach to the cron's lease (see above).
+    // History-only: no lease to attach to — leaseId is omitted and unitId is
+    // resolved from the row's unit hint when that unit still exists.
     const hinted = [...new Set(r.unitHints)].map((u) => byUnitNumber.get(u)).filter(Boolean) as typeof leaseUnits
-    const lu = r.direction === 'payment' && hinted.length !== 1
-      ? leaseUnits.find((x) => String(x.lease._id) === String(cronLease._id)) ?? defaultLU
-      : hinted[0] ?? defaultLU
+    const lu = historyOnly ? undefined : (r.direction === 'payment' && hinted.length !== 1
+      ? leaseUnits.find((x) => String(x.lease._id) === String(cronLease!._id)) ?? defaultLU
+      : hinted[0] ?? defaultLU)
+    const histUnitId = historyOnly
+      ? (r.unitHints.map((u) => unitByNumber.get(u)).find(Boolean))
+      : undefined
     return {
       tenantId: tenant._id as Types.ObjectId,
-      leaseId: lu.lease._id as Types.ObjectId,
-      unitId: lu.lease.unitId as Types.ObjectId,
+      ...(lu ? { leaseId: lu.lease._id as Types.ObjectId, unitId: lu.lease.unitId as Types.ObjectId } : {}),
+      ...(histUnitId ? { unitId: histUnitId } : {}),
       stripePaymentIntentId: `storable_${r.storableId}`,
       amount: r.amount,
       currency: 'usd',
@@ -435,14 +478,23 @@ async function main() {
       },
     )
   }
-  await db.collection('tenants').updateOne(
-    { _id: tenant._id },
-    {
-      $set: { balance: finalBalance, updatedAt: now, ...(finalBalance <= 0 ? { status: 'active' } : {}) },
-      ...(finalBalance <= 0 ? { $unset: { lockedOutAt: 1 } } : {}),
-    },
-  )
-  console.log('Lease + tenant fixes applied.')
+  if (historyOnly) {
+    // No active lease: settle the balance to its reconciled value, mark the
+    // tenant moved_out (not an active renter), and clear any stale lockout.
+    await db.collection('tenants').updateOne(
+      { _id: tenant._id },
+      { $set: { balance: finalBalance, status: 'moved_out', updatedAt: now }, $unset: { lockedOutAt: 1 } },
+    )
+  } else {
+    await db.collection('tenants').updateOne(
+      { _id: tenant._id },
+      {
+        $set: { balance: finalBalance, updatedAt: now, ...(finalBalance <= 0 ? { status: 'active' } : {}) },
+        ...(finalBalance <= 0 ? { $unset: { lockedOutAt: 1 } } : {}),
+      },
+    )
+  }
+  console.log(historyOnly ? 'Tenant balance + status applied (history-only).' : 'Lease + tenant fixes applied.')
 
   // ── 4. Verify against the delinquency cron's check ──
   for (const { lease, unit } of leaseUnits) {
@@ -458,7 +510,7 @@ async function main() {
       .sort({ periodStart: -1 }).limit(1).next()
     const covered = lastPayment?.periodStart && lastPayment.periodStart >= new Date(lastBilling.getFullYear(), lastBilling.getMonth(), 1)
     const paidUp = finalBalance <= 0
-    const isCronLease = String(lease._id) === String(cronLease._id)
+    const isCronLease = String(lease._id) === String(cronLease!._id)
     const verdict = covered ? 'covered ✔' : paidUp ? 'paid-up (balance ≤ 0) ✔' : isCronLease ? '⚠ NOT COVERED — cron will escalate' : 'n/a'
     console.log(`Delinquency check Unit ${unit?.unitNumber}${isCronLease ? ' (lease the cron evaluates)' : ' (not evaluated by cron)'}: lastBilling=${lastBilling.toDateString()}, lastPayment.periodStart=${lastPayment?.periodStart?.toISOString()?.slice(0, 10) ?? 'NONE'} → ${verdict}`)
   }
