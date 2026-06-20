@@ -89,6 +89,9 @@ interface TenantData {
   /** Internal admin-only memo. Shown as a banner atop Customer Information;
    *  the API strips this field for non-admins so a tenant never sees it. */
   notes?: string
+  /** Open waiting-list signup matched by email (admin-only). Drives the
+   *  "on the waiting list for X" banner, mirroring Storable. */
+  waitingList?: { preferredType?: string; preferredSize: string; status: string }
   createdAt: string; updatedAt: string
 }
 
@@ -345,6 +348,31 @@ export default function TenantDetailPage() {
           </Button>
         ))}
       </Box>
+
+      {/* Waiting-list banner — full-width salmon alert under the action row,
+          mirroring Storable's "This customer is on the waiting list for X". */}
+      {tenant.waitingList && (
+        <Box
+          sx={{
+            mb: 3,
+            px: 2,
+            py: 1.5,
+            borderRadius: 1,
+            bgcolor: '#F7DDD2',
+            border: '1px solid #E9B59F',
+          }}
+        >
+          <Typography variant="body2" sx={{ color: '#8A3D22' }}>
+            This customer is on the{' '}
+            <Box component="span" sx={{ fontWeight: 700 }}>waiting list</Box>
+            {' '}for a{' '}
+            {[tenant.waitingList.preferredType, tenant.waitingList.preferredSize && `(${tenant.waitingList.preferredSize})`]
+              .filter(Boolean)
+              .join(' ')}{' '}
+            unit.
+          </Typography>
+        </Box>
+      )}
 
       <Grid container spacing={3}>
         {/* Left column: ID Photo + Balance */}

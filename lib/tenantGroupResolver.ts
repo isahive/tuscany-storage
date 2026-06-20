@@ -86,6 +86,11 @@ export async function buildTenantGroupFilter(
     case 'automatic_lockout_disabled':
       return { automaticLockoutEnabled: false }
 
+    case 'archived':
+      // The only view that surfaces archived accounts; every other view
+      // excludes them (enforced in /api/tenants). Storable parity.
+      return { archived: true }
+
     default:
       return null
   }

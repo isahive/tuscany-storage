@@ -24,6 +24,15 @@ vi.mock('@/jobs/rate-management-reminder', () => ({ runRateManagementReminder: j
 vi.mock('@/jobs/lockout-report-email', () => ({ runLockoutReportEmail: jobMocks.runLockoutReportEmail }))
 vi.mock('@/jobs/pdk-reconcile', () => ({ reconcilePdkHolders: jobMocks.reconcilePdkHolders }))
 
+// The dispatcher is what's under test, not the cron lock — run fn() straight
+// through so this suite needs no DB connection. Lock behavior is covered in
+// lib/cronLock.test.ts.
+vi.mock('@/lib/cronLock', () => ({
+  withCronLock: (_name: string, fn: () => Promise<unknown>) => fn(),
+  isLockSkipped: (x: unknown) =>
+    typeof x === 'object' && x !== null && (x as { skipped?: string }).skipped === 'locked',
+}))
+
 import { GET as listJobs, POST as runJob } from '@/app/api/cron/route'
 
 describe('GET /api/cron — list jobs', () => {

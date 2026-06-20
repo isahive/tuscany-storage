@@ -39,6 +39,10 @@ describe('buildTenantGroupFilter', () => {
     expect(await buildTenantGroupFilter('late')).toEqual({ status: 'delinquent' })
   })
 
+  it('archived = archived:true', async () => {
+    expect(await buildTenantGroupFilter('archived')).toEqual({ archived: true })
+  })
+
   it('locked_out = status:locked_out', async () => {
     expect(await buildTenantGroupFilter('locked_out')).toEqual({ status: 'locked_out' })
   })

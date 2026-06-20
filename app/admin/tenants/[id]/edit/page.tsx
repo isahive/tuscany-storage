@@ -99,6 +99,7 @@ export default function EditProfilePage() {
   const [success, setSuccess] = useState<string | null>(null)
   const [pwOpen, setPwOpen] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [isArchived, setIsArchived] = useState(false)
   const [facilityName, setFacilityName] = useState('this facility')
   const [hearOptions, setHearOptions] = useState<string[]>([])
   const [customFields, setCustomFields] = useState<CustomFormField[]>([])
@@ -145,6 +146,7 @@ export default function EditProfilePage() {
         return
       }
       const t = tJson.data
+      setIsArchived(Boolean(t.archived))
       setForm({
         firstName: t.firstName ?? '',
         lastName: t.lastName ?? '',
@@ -263,6 +265,18 @@ export default function EditProfilePage() {
     else setError(json.error ?? 'Failed to archive')
   }
 
+  async function handleUnarchive() {
+    if (!confirm('Un-archive this customer? They will reappear in the active customer list.')) return
+    const res = await fetch(`/api/tenants/${tenantId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ archived: false }),
+    })
+    const json = await res.json()
+    if (json.success) { setIsArchived(false); setSuccess('Customer un-archived') }
+    else setError(json.error ?? 'Failed to un-archive')
+  }
+
   async function handleWaitingList() {
     const res = await fetch(`/api/tenants/${tenantId}`, {
       method: 'PATCH',
@@ -295,9 +309,15 @@ export default function EditProfilePage() {
           <Button onClick={handleWaitingList} size="small" sx={{ bgcolor: '#B8BCC4', color: 'white', textTransform: 'none', '&:hover': { bgcolor: '#A0A4AC' } }}>
             Add To Waiting List
           </Button>
-          <Button onClick={handleArchive} size="small" sx={{ bgcolor: '#B8BCC4', color: 'white', textTransform: 'none', '&:hover': { bgcolor: '#A0A4AC' } }}>
-            Archive
-          </Button>
+          {isArchived ? (
+            <Button onClick={handleUnarchive} size="small" sx={{ bgcolor: '#8CA87C', color: 'white', textTransform: 'none', '&:hover': { bgcolor: '#7E9770' } }}>
+              Un-Archive
+            </Button>
+          ) : (
+            <Button onClick={handleArchive} size="small" sx={{ bgcolor: '#B8BCC4', color: 'white', textTransform: 'none', '&:hover': { bgcolor: '#A0A4AC' } }}>
+              Archive
+            </Button>
+          )}
         </Box>
       </Box>
 
