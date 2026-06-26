@@ -2,7 +2,6 @@ import type { NextAuthOptions } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import GoogleProvider from 'next-auth/providers/google'
 import FacebookProvider from 'next-auth/providers/facebook'
-import AppleProvider from 'next-auth/providers/apple'
 import bcrypt from 'bcryptjs'
 import { connectDB } from './db'
 import Tenant from '@/models/Tenant'
@@ -84,16 +83,6 @@ export const authOptions: NextAuthOptions = {
           FacebookProvider({
             clientId: process.env.FACEBOOK_CLIENT_ID,
             clientSecret: process.env.FACEBOOK_CLIENT_SECRET,
-          }),
-        ]
-      : []),
-
-    // ─── Apple ────────────────────────────────────────────────────────────────
-    ...(process.env.APPLE_ID && process.env.APPLE_SECRET
-      ? [
-          AppleProvider({
-            clientId: process.env.APPLE_ID,
-            clientSecret: process.env.APPLE_SECRET,
           }),
         ]
       : []),
