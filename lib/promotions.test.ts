@@ -7,6 +7,7 @@ import {
   unitTypeExclusivityConflict,
   normalizePromoCode,
   findPromoCodeMatch,
+  findAutomaticPromo,
   validateDateWindow,
   type PromotionLike,
 } from './promotions'
@@ -194,6 +195,49 @@ describe('findPromoCodeMatch', () => {
       'standard',
       new Date(2026, 5, 1),
     )).toBeNull()
+  })
+})
+
+describe('findAutomaticPromo', () => {
+  const autoPromo: PromotionLike = {
+    ...basePromo,
+    method: 'automatic',
+    allUnitTypes: true,
+    unitTypes: [],
+  }
+
+  it('returns the active automatic promo regardless of unit type when allUnitTypes', () => {
+    expect(findAutomaticPromo([autoPromo], 'standard', new Date(2026, 5, 1))).toBe(autoPromo)
+  })
+
+  it('returns null when there is no automatic promo', () => {
+    expect(findAutomaticPromo(
+      [{ ...autoPromo, method: 'promo_code', promoCode: 'X' }],
+      'standard',
+      new Date(2026, 5, 1),
+    )).toBeNull()
+  })
+
+  it('skips an automatic promo that is not yet active', () => {
+    expect(findAutomaticPromo([autoPromo], 'standard', new Date(2025, 11, 1))).toBeNull()
+  })
+
+  it('skips an automatic promo that has expired', () => {
+    expect(findAutomaticPromo(
+      [{ ...autoPromo, noExpiration: false, endDate: new Date(2026, 1, 1) }],
+      'standard',
+      new Date(2026, 5, 1),
+    )).toBeNull()
+  })
+
+  it('respects unit-type scoping when not allUnitTypes', () => {
+    const scoped: PromotionLike = { ...autoPromo, allUnitTypes: false, unitTypes: ['climate_controlled'] }
+    expect(findAutomaticPromo([scoped], 'standard', new Date(2026, 5, 1))).toBeNull()
+    expect(findAutomaticPromo([scoped], 'climate_controlled', new Date(2026, 5, 1))).toBe(scoped)
+  })
+
+  it('matches any unit type when none is provided', () => {
+    expect(findAutomaticPromo([autoPromo], undefined, new Date(2026, 5, 1))).toBe(autoPromo)
   })
 })
 

@@ -63,7 +63,6 @@ interface TenantForm {
   smsOptIn: boolean
   // Account & Access
   email: string
-  username: string
   loginDisabled: boolean
   // Personal Information
   driversLicenseNumber: string
@@ -109,7 +108,7 @@ export default function EditProfilePage() {
     firstName: '', lastName: '',
     address: '', addressLine2: '', city: '', state: '', zip: '', phone: '',
     smsOptIn: false,
-    email: '', username: '', loginDisabled: false,
+    email: '', loginDisabled: false,
     driversLicenseNumber: '', driversLicenseState: '',
     idPhotoUrl: '', idPhotoIsProfile: false,
     howDidYouHear: '',
@@ -158,7 +157,6 @@ export default function EditProfilePage() {
         phone: t.phone ?? '',
         smsOptIn: !!t.smsOptIn,
         email: t.email ?? '',
-        username: t.username ?? t.email ?? '',
         loginDisabled: !!t.loginDisabled,
         driversLicenseNumber: t.driversLicenseNumber ?? t.driversLicense ?? '',
         driversLicenseState: t.driversLicenseState ?? '',
@@ -203,7 +201,6 @@ export default function EditProfilePage() {
         smsOptIn: form.smsOptIn,
         smsConsent: form.smsOptIn,
         email: form.email,
-        username: form.username,
         loginDisabled: form.loginDisabled,
         driversLicenseNumber: form.driversLicenseNumber,
         driversLicenseState: form.driversLicenseState,
@@ -380,13 +377,11 @@ export default function EditProfilePage() {
           All fields are required to create login credentials.
         </Typography>
         <Grid container spacing={2}>
-          <Grid item xs={12} md={6}>
+          <Grid item xs={12}>
             <Typography variant="caption" sx={{ fontWeight: 600 }}>Email</Typography>
-            <TextField fullWidth size="small" value={form.email} onChange={(e) => update('email', e.target.value)} />
-          </Grid>
-          <Grid item xs={12} md={6}>
-            <Typography variant="caption" sx={{ fontWeight: 600 }}>Username</Typography>
-            <TextField fullWidth size="small" value={form.username} onChange={(e) => update('username', e.target.value)} />
+            <TextField fullWidth size="small" value={form.email} onChange={(e) => update('email', e.target.value)}
+              helperText="This is also the customer's username for signing in."
+            />
           </Grid>
           <Grid item xs={12}>
             <MuiLink

@@ -11,6 +11,7 @@ import Promotion from '@/models/Promotion'
 import ProtectionPlan from '@/models/ProtectionPlan'
 import { DEFAULT_SETTINGS } from '@/lib/defaultSettings'
 import { calculateCharges } from '@/lib/billing/calculate-charges'
+import { findAutomaticPromo } from '@/lib/promotions'
 import { nextBalanceAfter } from '@/lib/paymentBalance'
 import { sendTemplatedNotification } from '@/lib/sendNotification'
 
@@ -118,6 +119,17 @@ export async function POST(req: NextRequest) {
       } else {
         console.warn(`[finalize] Promo ${code} not found`)
       }
+    }
+
+    // No code-based promo → auto-apply the active automatic promotion (move-in
+    // special) for this unit type, mirroring the preview in calculate-charges so
+    // the charged amount and lease.appliedPromotionId reflect the discount.
+    if (!appliedPromotion) {
+      const autoPromos = await Promotion.find({
+        status: 'active',
+        method: 'automatic',
+      }).lean()
+      appliedPromotion = findAutomaticPromo(autoPromos as any, (unit as any).type, new Date()) as any
     }
 
     let appliedProtectionPlan: any = null

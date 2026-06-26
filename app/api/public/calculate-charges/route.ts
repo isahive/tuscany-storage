@@ -7,6 +7,7 @@ import ProtectionPlan from '@/models/ProtectionPlan'
 import Settings from '@/models/Settings'
 import { DEFAULT_SETTINGS } from '@/lib/defaultSettings'
 import { calculateCharges } from '@/lib/billing/calculate-charges'
+import { findAutomaticPromo } from '@/lib/promotions'
 
 const schema = z.object({
   unitId: z.string().min(1),
@@ -76,6 +77,17 @@ export async function POST(req: NextRequest) {
           appliedPromotion = promo
         }
       }
+    }
+
+    // No code-based promo applied → auto-apply the active automatic promotion
+    // (the move-in special) for this unit type. The public rent flow has no
+    // promo-code field; the discount is applied without any customer action.
+    if (!appliedPromotion) {
+      const autoPromos = await Promotion.find({
+        status: 'active',
+        method: 'automatic',
+      }).lean()
+      appliedPromotion = findAutomaticPromo(autoPromos as any, (unit as any).type, sd) as any
     }
 
     let appliedProtectionPlan: any = null

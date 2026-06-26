@@ -309,12 +309,9 @@ export default function NewCustomerPage() {
               All fields are required to create login credentials.
             </Typography>
             <Grid container spacing={2}>
-              <Grid item xs={12} sm={6}>
-                <TextField label="Email" fullWidth size="small" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField label="Username" fullWidth size="small" value={email} disabled
-                  sx={{ '& .MuiInputBase-root': { bgcolor: '#E5E7EB' } }}
+              <Grid item xs={12}>
+                <TextField label="Email" fullWidth size="small" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required
+                  helperText="This is also the customer's username for signing in."
                 />
               </Grid>
               <Grid item xs={12} sm={6}>

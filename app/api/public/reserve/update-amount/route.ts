@@ -8,6 +8,7 @@ import Promotion from '@/models/Promotion'
 import ProtectionPlan from '@/models/ProtectionPlan'
 import { DEFAULT_SETTINGS } from '@/lib/defaultSettings'
 import { calculateCharges } from '@/lib/billing/calculate-charges'
+import { findAutomaticPromo } from '@/lib/promotions'
 
 const schema = z.object({
   leaseId: z.string(),
@@ -66,6 +67,17 @@ export async function POST(req: NextRequest) {
           promo.unitTypes.includes((unit as any).type)
         if (validWindow && validUnitType) appliedPromotion = promo
       }
+    }
+
+    // No code-based promo → auto-apply the active automatic promotion (move-in
+    // special) for this unit type, so the Stripe intent amount matches the
+    // discounted total the customer sees and finalize records.
+    if (!appliedPromotion) {
+      const autoPromos = await Promotion.find({
+        status: 'active',
+        method: 'automatic',
+      }).lean()
+      appliedPromotion = findAutomaticPromo(autoPromos as any, (unit as any).type, sd) as any
     }
 
     let appliedProtectionPlan: any = null

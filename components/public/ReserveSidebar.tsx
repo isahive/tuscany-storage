@@ -54,8 +54,6 @@ interface ReserveSidebarProps {
   signDate: Date
   protectionPlanId: string | null
   onProtectionPlanChange: (id: string | null) => void
-  promoCode: string
-  onPromoCodeApply: (code: string) => void
   onChargesUpdate: (breakdown: ChargeBreakdown) => void
   facility: FacilityInfo
 }
@@ -78,8 +76,6 @@ export default function ReserveSidebar({
   signDate,
   protectionPlanId,
   onProtectionPlanChange,
-  promoCode,
-  onPromoCodeApply,
   onChargesUpdate,
   facility,
 }: ReserveSidebarProps) {
@@ -87,9 +83,6 @@ export default function ReserveSidebar({
   const [breakdown, setBreakdown] = useState<ChargeBreakdown | null>(null)
   const [calculating, setCalculating] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [promoInput, setPromoInput] = useState(promoCode)
-  const [promoApplying, setPromoApplying] = useState(false)
-  const [promoLocalError, setPromoLocalError] = useState<string | null>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const onChargesUpdateRef = useRef(onChargesUpdate)
 
@@ -115,7 +108,6 @@ export default function ReserveSidebar({
         body: JSON.stringify({
           unitId: unit._id,
           signDate: signDate.toISOString(),
-          promoCode: promoCode || undefined,
           protectionPlanId: protectionPlanId || null,
         }),
       })
@@ -127,13 +119,12 @@ export default function ReserveSidebar({
       const data = json.data as ChargeBreakdown
       setBreakdown(data)
       onChargesUpdateRef.current(data)
-      if (data.promoCodeError) setPromoLocalError(data.promoCodeError)
     } catch {
       setError('Could not calculate charges')
     } finally {
       setCalculating(false)
     }
-  }, [unit._id, signDate, promoCode, protectionPlanId])
+  }, [unit._id, signDate, protectionPlanId])
 
   // Debounced recalculation when inputs change
   useEffect(() => {
@@ -141,19 +132,6 @@ export default function ReserveSidebar({
     debounceRef.current = setTimeout(() => { calculate() }, 300)
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
   }, [calculate])
-
-  function handlePromoApply() {
-    setPromoApplying(true)
-    setPromoLocalError(null)
-    onPromoCodeApply(promoInput.trim())
-    setTimeout(() => setPromoApplying(false), 400)
-  }
-
-  function handlePromoClear() {
-    setPromoInput('')
-    setPromoLocalError(null)
-    onPromoCodeApply('')
-  }
 
   return (
     <aside className="lg:sticky lg:top-24 space-y-4">
@@ -209,48 +187,6 @@ export default function ReserveSidebar({
           )}
         </div>
       )}
-
-      {/* ─── Promo code ───────────────────────────────────────────────── */}
-      <div className="rounded-xl border border-mid bg-white shadow-sm p-4">
-        <label className="block text-xs font-semibold uppercase tracking-wide text-brown mb-2">
-          Promo Code
-        </label>
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={promoInput}
-            onChange={(e) => setPromoInput(e.target.value.toUpperCase())}
-            placeholder="Enter code"
-            className="flex-1 rounded border border-mid px-3 py-2 text-sm text-brown bg-white focus:border-tan focus:outline-none focus:ring-1 focus:ring-tan/30 uppercase"
-          />
-          {promoCode ? (
-            <button
-              type="button"
-              onClick={handlePromoClear}
-              className="rounded bg-mid/40 px-3 py-2 text-xs font-semibold text-brown hover:bg-mid/60 transition-colors"
-            >
-              Clear
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={handlePromoApply}
-              disabled={promoApplying || !promoInput.trim()}
-              className="rounded bg-tan px-4 py-2 text-xs font-semibold text-brown hover:bg-tan-light transition-colors disabled:opacity-50"
-            >
-              {promoApplying ? '…' : 'Apply'}
-            </button>
-          )}
-        </div>
-        {promoLocalError && (
-          <p className="mt-2 text-xs text-red-600">{promoLocalError}</p>
-        )}
-        {promoCode && breakdown?.appliedPromotion && !promoLocalError && (
-          <p className="mt-2 text-xs text-olive font-medium">
-            ✓ {breakdown.appliedPromotion.name} applied
-          </p>
-        )}
-      </div>
 
       {/* ─── Charges ──────────────────────────────────────────────────── */}
       <div className="rounded-xl border border-mid bg-white shadow-sm p-4">

@@ -101,6 +101,12 @@ function billingItemLabel(row: BillingRow): string {
 
 function billingDescription(row: BillingRow): string {
   if (row.description) return row.description
+  // Rent is a monthly prepayment due on the 1st — show the due date, not the
+  // period range, whose end (last day of the month) reads like a due date.
+  const rentDue = row.dueDate ?? row.periodStart
+  if (row.type === 'rent' && rentDue) {
+    return `Due date: ${fmtDate(rentDue)}`
+  }
   if (row.periodStart && row.periodEnd) {
     return `Period: ${fmtDate(row.periodStart)} – ${fmtDate(row.periodEnd)}`
   }

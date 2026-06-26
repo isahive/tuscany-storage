@@ -61,7 +61,13 @@ function itemDescription(item: LineItem): string {
     return `${label} – ${item.description}`
   }
   const unitPart = item.unitNumber ? ` for unit ${item.unitNumber}` : ''
-  const periodPart = item.periodStart && item.periodEnd
+  // Rent is a monthly prepayment due on the 1st — show the due date (period
+  // start / dueDate), not the period range, whose end is the last day of the
+  // month and reads misleadingly like the rent is "due" then.
+  const rentDue = item.dueDate ?? item.periodStart
+  const periodPart = item.type === 'rent' && rentDue
+    ? ` due on ${fmtDate(rentDue)}`
+    : item.periodStart && item.periodEnd
     ? ` for ${fmtDate(item.periodStart)} to ${fmtDate(item.periodEnd)}`
     : item.dueDate
     ? ` due on ${fmtDate(item.dueDate)}`

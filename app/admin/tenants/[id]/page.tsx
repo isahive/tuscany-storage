@@ -555,7 +555,6 @@ export default function TenantDetailPage() {
                     Account &amp; Access
                   </Typography>
                   <InfoRow label="Login" value={tenant.status === 'locked_out' ? 'Disabled' : 'Enabled'} />
-                  <InfoRow label="Username" value={tenant.email} />
                   <InfoRow label="Security question" value={tenant.securityQuestion || '—'} />
                   <InfoRow label="Security answer" value={tenant.securityAnswer ? '••••••••' : '—'} />
                   <InfoRow label="Access Code" value={tenant.gateCode || 'None'} />

@@ -153,6 +153,26 @@ export function findPromoCodeMatch(
   return null
 }
 
+/**
+ * Find the active `automatic`-method promotion that applies to a unit type.
+ * These are auto-applied on the public rent flow (no code entry) — the move-in
+ * special is configured this way. Storable's exclusivity rule guarantees at
+ * most one automatic promo per unit type, so the first available match wins.
+ */
+export function findAutomaticPromo(
+  candidates: PromotionLike[],
+  unitType?: string,
+  now: Date = new Date(),
+): PromotionLike | null {
+  for (const c of candidates) {
+    if (c.method !== 'automatic') continue
+    if (!isPromotionAvailable(c, now)) continue
+    if (unitType && !c.allUnitTypes && !c.unitTypes.includes(unitType)) continue
+    return c
+  }
+  return null
+}
+
 // ─── Validation helpers ──────────────────────────────────────────────────────
 
 /** Storable rule: endDate must be at least one day after startDate. */
